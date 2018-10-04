@@ -1,0 +1,19 @@
+ARbitrary PRECision Computation Package (ARPREC)
+Copyright (C) 2003-2013
+================================================
+
+Revision date:  21 Oct 2013
+
+Authors and contributors:
+David H. Bailey    	Lawrence Berkeley Natl Lab   dhbailey@lbl.gov
+Yozo Hida          	U.C. Berkeley
+Karthik Jeyabalan  	LBNL; now at Cornell Univ    kj44@cornell.edu
+Xiaoye S. Li       	Lawrence Berekely Natl Lab   xiaoye@nersc.gov
+Brandon Thompson   	LBNL; now at Synopsis        thompsbj@gmail.com
+Alex Kaiser 		LBNL; now at NYU             adkaiser@gmail.com
+
+This work was supported by the Director, Office of Science, Division
+of Mathematical, Information, and Computational Sciences of the
+U.S. Department of Energy under contract numbers DE-AC03-76SF00098 and
+DE-AC02-05CH11231.
+

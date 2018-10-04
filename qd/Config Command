@@ -1,0 +1,1 @@
+CC=icc CXX=icpc CFLAGS="-ipo -O2 -ansi-alias" CXXFLAGS="-ipo -O2 -ansi-alias -fno-exceptions" LD=xild AR=xiar LDFLAGS="-L/opt/intel/compilers_and_libraries/linux/lib/intel64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu/debug -L/usr/lib64 -L/usr/lib64 -L/usr/lib/gcc/x86_64-linux-gnu/4.9" LIBOBJS="-lirc -limf -lsvml -lstdc++ -lc -lm -lgcc_s -ldl -lintlc" ./configure

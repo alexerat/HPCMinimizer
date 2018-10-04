@@ -1,0 +1,8 @@
+#!/bin/bash
+#PBS -P bn52
+#PBS -q normal
+#PBS -l walltime=00:10:00,mem=2GB,ncpus=32
+#PBS -l wd
+#PBS -M u6141396@anu.edu.au
+#PBS -m abe
+mpirun ./localMinima
