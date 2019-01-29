@@ -31,17 +31,12 @@
 
 #include "precision.h"
 
-#define fabs abs
+//#define fabs abs
 #define cabs std::abs
 
 #define DTTMFMT "%Y-%m-%d %H:%M:%S "
 #define DTTMSZ 21
 
-
-
-#ifdef  __cplusplus
-extern "C" {
-#endif/*__cplusplus*/
 
 /**
  * \addtogroup liblbfgs_api libLBFGS API
@@ -85,7 +80,7 @@ enum {
     LBFGSERR_INVALID_DELTA,
     /** Invalid parameter lbfgs_parameter_t::linesearch specified. */
     LBFGSERR_INVALID_LINESEARCH,
-    /** Invalid parameter lbfgs_parameter_t::max_step specified. */
+    /** Invalid parameter lbfgs_parameter_t::min_step specified. */
     LBFGSERR_INVALID_MINSTEP,
     /** Invalid parameter lbfgs_parameter_t::max_step specified. */
     LBFGSERR_INVALID_MAXSTEP,
@@ -180,10 +175,10 @@ enum {
 
 /**
  * L-BFGS optimization parameters.
- *  Call lbfgs_parameter_init() function to initialize parameters to the
- *  default values.
+ *  
  */
-typedef struct {
+template <typename floatval_t>
+struct lbfgs_parameter_t {
     /**
      * The number of corrections to approximate the inverse hessian matrix.
      *  The L-BFGS routine stores the computation results of previous \ref m
@@ -202,7 +197,12 @@ typedef struct {
      *  where ||.|| denotes the Euclidean (L2) norm. The default value is
      *  \c 1e-5.
      */
-    floatval_t epsilon;
+    floatval_t conv_epsilon;
+
+    /**
+     * Machine epsilon to be used to ensure proper numerical treatment.
+     */
+    floatval_t eps;
 
     /**
      * Distance for delta-based convergence test.
@@ -343,7 +343,12 @@ typedef struct {
      *  L1 norm of the variables x,
      */
     int             orthantwise_end;
-} lbfgs_parameter_t;
+
+    /**
+     * The step size to use when calculating gradients.
+     */
+    floatval_t gstep;
+};
 
 /**
  * Callback interface to provide objective function and gradient evaluations.
@@ -363,13 +368,14 @@ typedef struct {
  *  @retval floatval_t The value of the objective function for the current
  *                          variables.
  */
-typedef floatval_t (*lbfgs_evaluate_t)(
-    void *instance,
-    const floatval_t *x,
-    const floatval_t *params,
-    floatval_t *g,
-    const int n,
-    const floatval_t step
+template<typename floatval_t> 
+using lbfgs_evaluate_t = floatval_t (*)(
+    void *,
+    const floatval_t *,
+    const floatval_t *,
+    floatval_t *,
+    const int,
+    const floatval_t
     );
 
 /**
@@ -392,64 +398,67 @@ typedef floatval_t (*lbfgs_evaluate_t)(
  *  @retval int         Zero to continue the optimization process. Returning a
  *                      non-zero value will cancel the optimization process.
  */
-typedef int (*lbfgs_progress_t)(
-    void *instance,
-    const floatval_t *x,
-    const floatval_t *g,
-    const floatval_t fx,
-    const floatval_t xnorm,
-    const floatval_t gnorm,
-    const floatval_t step,
-    int n,
-    int k,
-    int ls
+template <typename floatval_t>
+using lbfgs_progress_t = int (*)(
+    void *,
+    const floatval_t *,
+    const floatval_t *,
+    const floatval_t,
+    const floatval_t,
+    const floatval_t,
+    const floatval_t,
+    int,
+    int,
+    int
     );
 
-    struct tag_callback_data {
-        int n;
-        void *instance;
-        lbfgs_evaluate_t proc_evaluate;
-        lbfgs_progress_t proc_progress;
-    };
-    typedef struct tag_callback_data callback_data_t;
+template <typename floatval_t>
+struct callback_data_t {
+    int n;
+    void *instance;
+    lbfgs_evaluate_t<floatval_t> proc_evaluate;
+    lbfgs_progress_t<floatval_t> proc_progress;
+};
 
-typedef int (*line_search_proc_t)(
-    int n,
-    floatval_t *x,
-    floatval_t *extparams,
-    floatval_t *lbounds,
-    floatval_t *ubounds,
-    floatval_t *f,
-    floatval_t *g,
-    floatval_t *s,
-    floatval_t *stp,
-    const floatval_t* xp,
-    const floatval_t* gp,
-    floatval_t *wa,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+template <typename floatval_t>
+using line_search_proc_t = int (*)(
+    int,
+    floatval_t *,
+    floatval_t *,
+    floatval_t *,
+    floatval_t *,
+    floatval_t *,
+    floatval_t *,
+    floatval_t *,
+    floatval_t *,
+    const floatval_t*,
+    const floatval_t*,
+    floatval_t *,
+    callback_data_t<floatval_t> *,
+    const lbfgs_parameter_t<floatval_t> *
     );
 
-struct tag_iteration_data {
+template <typename floatval_t>
+struct iteration_data_t {
     floatval_t alpha;
     floatval_t *s;     /* [n] */
     floatval_t *y;     /* [n] */
     floatval_t ys;     /* vecdot(y, s) */
     };
-typedef struct tag_iteration_data iteration_data_t;
 
 /**
  * L-BFGS initialization space.
  *  Call lbfgs_init() function to initialize workspace and set parameters,
  *  and call lbfgs_dest() to free workspace memory.
  */
-struct tag_lbfgs_wspace {
+template <typename floatval_t>
+struct lbfgs_wspace_t {
     /**
       * The linesearch algorithm to be used.
       */
-    line_search_proc_t linesearch;
+    line_search_proc_t<floatval_t> linesearch;
 
-    lbfgs_parameter_t param;
+    lbfgs_parameter_t<floatval_t> param;
 
     /**
       * The workspace memory.
@@ -457,9 +466,8 @@ struct tag_lbfgs_wspace {
     floatval_t *xp;
     floatval_t *g, *gp, *pg;
     floatval_t *d, *w, *pf;
-    iteration_data_t *lm;
+    iteration_data_t<floatval_t> *lm;
     };
-typedef struct tag_lbfgs_wspace lbfgs_wspace_t;
 
 
 /*
@@ -517,12 +525,11 @@ In this formula, ||.|| denotes the Euclidean norm.
  *  @param  param       The pointer to a structure representing parameters for
  *                      L-BFGS optimization. A client program can set this
  *                      parameter to \c NULL to use the default parameters.
- *                      Call lbfgs_parameter_init() function to fill a
- *                      structure with the default values.
  *  @retval int         The status code. This function returns zero if the
  *                      minimization process terminates without an error. A
  *                      non-zero value indicates an error.
  */
+template <typename floatval_t>
 int lbfgs(
     int n,
     floatval_t *x,
@@ -530,60 +537,29 @@ int lbfgs(
     floatval_t *lowerbounds,
     floatval_t *upperbounds,
     floatval_t *extparams,
-    lbfgs_evaluate_t proc_evaluate,
-    lbfgs_progress_t proc_progress,
+    lbfgs_evaluate_t<floatval_t> proc_evaluate,
+    lbfgs_progress_t<floatval_t> proc_progress,
     void *instance,
-    lbfgs_wspace_t *wspace
+    lbfgs_wspace_t<floatval_t> *wspace
     );
+
+
 
 /**
  *  Initialize the workspace.
  */
-int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *param);
+template <typename floatval_t>
+int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param);
 
 /**
  *  Delete the workspace.
  */
-int lbfgs_dest(lbfgs_wspace_t *wspace);
-
-/**
- * Initialize L-BFGS parameters to the default values.
- *
- *  Call this function to fill a parameter structure with the default values
- *  and overwrite parameter values if necessary.
- *
- *  @param  param       The pointer to the parameter structure.
- */
-void lbfgs_parameter_init(lbfgs_parameter_t *param);
-
-/**
- * Allocate an array for variables.
- *
- *  This function allocates an array of variables for the convenience of
- *  ::lbfgs function; the function has a requreiemt for a variable array
- *  when libLBFGS is built with SSE/SSE2 optimization routines. A user does
- *  not have to use this function for libLBFGS built without SSE/SSE2
- *  optimization.
- *
- *  @param  n           The number of variables.
- */
-floatval_t* lbfgs_malloc(int n);
-
-/**
- * Free an array of variables.
- *
- *  @param  x           The array of variables allocated by ::lbfgs_malloc
- *                      function.
- */
-void lbfgs_free(floatval_t *x);
-
+template <typename floatval_t>
+int lbfgs_dest(lbfgs_wspace_t<floatval_t> *wspace);
 
 
 /** @} */
 
-#ifdef  __cplusplus
-}
-#endif/*__cplusplus*/
 
 
 

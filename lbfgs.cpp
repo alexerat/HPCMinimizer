@@ -63,7 +63,8 @@ licence.
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
+#include <cmath>
+
 
 #include "lbfgs.h"
 #include "arithmetic_ansi.h"
@@ -77,15 +78,24 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-static const lbfgs_parameter_t _defparam = {
-    6, 1e-5, 0, 1e-5,
-    0, LBFGS_LINESEARCH_DEFAULT, 40,
-    1e-20, 1e20, 1e-4, 0.9, 0.9, 1.0e-16,
-    0.0, 0, -1
-};
-
 /* Forward function declarations. */
 
+template int lbfgs<double>(int n,double *x,double *ptr_fx,double *lowerbounds,double *upperbounds,double *extparams,lbfgs_evaluate_t<double> proc_evaluate,lbfgs_progress_t<double> proc_progress,void *instance,lbfgs_wspace_t<double> *wspace);
+template int lbfgs<dd_real>(int n,dd_real *x,dd_real *ptr_fx,dd_real *lowerbounds,dd_real *upperbounds,dd_real *extparams,lbfgs_evaluate_t<dd_real> proc_evaluate,lbfgs_progress_t<dd_real> proc_progress,void *instance,lbfgs_wspace_t<dd_real> *wspace);
+//template int lbfgs<qd_real>(int n,qd_real *x,qd_real *ptr_fx,qd_real *lowerbounds,qd_real *upperbounds,qd_real *extparams,lbfgs_evaluate_t<qd_real> proc_evaluate,lbfgs_progress_t<qd_real> proc_progress,void *instance,lbfgs_wspace_t<qd_real> *wspace);
+//template int lbfgs<mp_real>(int n,mp_real *x,mp_real *ptr_fx,mp_real *lowerbounds,mp_real *upperbounds,mp_real *extparams,lbfgs_evaluate_t<mp_real> proc_evaluate,lbfgs_progress_t<mp_real> proc_progress,void *instance,lbfgs_wspace_t<mp_real> *wspace);
+
+template int lbfgs_init<double>(int n, lbfgs_wspace_t<double> *wspace, lbfgs_parameter_t<double> *param);
+template int lbfgs_init<dd_real>(int n, lbfgs_wspace_t<dd_real> *wspace, lbfgs_parameter_t<dd_real> *param);
+//template int lbfgs_init<qd_real>(int n, lbfgs_wspace_t<qd_real> *wspace, lbfgs_parameter_t<qd_real> *param);
+//template int lbfgs_init<mp_real>(int n, lbfgs_wspace_t<mp_real> *wspace, lbfgs_parameter_t<mp_real> *param);
+
+template int lbfgs_dest<double>(lbfgs_wspace_t<double> *x);
+template int lbfgs_dest<dd_real>(lbfgs_wspace_t<dd_real> *x);
+//template int lbfgs_dest<qd_real>(lbfgs_wspace_t<qd_real> *x);
+//template int lbfgs_dest<mp_real>(lbfgs_wspace_t<mp_real> *x);
+
+template <typename floatval_t>
 static int line_search_backtracking(
     int n,
     floatval_t *x,
@@ -99,10 +109,11 @@ static int line_search_backtracking(
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wa,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+    callback_data_t<floatval_t> *cd,
+    const lbfgs_parameter_t<floatval_t> *param
     );
 
+template <typename floatval_t>
 static int line_search_backtracking_owlqn(
     int n,
     floatval_t *x,
@@ -116,10 +127,11 @@ static int line_search_backtracking_owlqn(
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wp,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+    callback_data_t<floatval_t> *cd,
+    const lbfgs_parameter_t<floatval_t> *param
     );
 
+template <typename floatval_t>
 static int line_search_morethuente(
     int n,
     floatval_t *x,
@@ -133,10 +145,11 @@ static int line_search_morethuente(
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wa,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+    callback_data_t<floatval_t> *cd,
+    const lbfgs_parameter_t<floatval_t> *param
     );
 
+template <typename floatval_t>
 static int update_trial_interval(
     floatval_t *x,
     floatval_t *fx,
@@ -149,15 +162,18 @@ static int update_trial_interval(
     floatval_t *dt,
     const floatval_t tmin,
     const floatval_t tmax,
-    int *brackt
+    int *brackt,
+    const floatval_t EPS
     );
 
+template <typename floatval_t>
 static floatval_t owlqn_x1norm(
     const floatval_t* x,
     const int start,
     const int n
     );
 
+template <typename floatval_t>
 static void owlqn_pseudo_gradient(
     floatval_t* pg,
     const floatval_t* x,
@@ -165,57 +181,47 @@ static void owlqn_pseudo_gradient(
     const int n,
     const floatval_t c,
     const int start,
-    const int end
+    const int end, 
+    const floatval_t EPS
     );
 
+template <typename floatval_t>
 static void owlqn_project(
     floatval_t* d,
     const floatval_t* sign,
     const int start,
-    const int end
+    const int end,
+    const floatval_t EPS
     );
 
-
-floatval_t* lbfgs_malloc(int n)
-{
-    return (floatval_t*)vecalloc(sizeof(floatval_t) * n);
-}
-
-void lbfgs_free(floatval_t *x)
-{
-    vecfree(x);
-}
-
-void lbfgs_parameter_init(lbfgs_parameter_t *param)
-{
-    memcpy(param, &_defparam, sizeof(*param));
-}
-
-int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *_param)
+template <typename floatval_t>
+int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *_param)
 {
     //cout << "Entered lbfgs initialization." << endl;
 
-    iteration_data_t *it = NULL;
-    lbfgs_parameter_t defparam;
-    lbfgs_parameter_t param;
+    iteration_data_t<floatval_t> *it = NULL;
+    lbfgs_parameter_t<floatval_t> defparam;
+    lbfgs_parameter_t<floatval_t> param;
     int i, m;
 
     defparam.m = 12;
-    defparam.epsilon = CONVEPS;
+    defparam.conv_epsilon = floatval_t(1e-12);
+    defparam.eps = get_epsilon<floatval_t>();
     defparam.past = 0;
-    defparam.delta = DELTA;
+    defparam.delta = floatval_t(1e-12);
     defparam.max_iterations = 50;
     defparam.linesearch = LBFGS_LINESEARCH_MORETHUENTE;
     defparam.max_linesearch = 50;
-    defparam.min_step = MINSTEP;
-    defparam.max_step = MAXSTEP;
+    defparam.min_step = floatval_t(1e-16);
+    defparam.max_step = floatval_t(1e16);
     defparam.ftol = 1e-4;
     defparam.wolfe = 0.9;
     defparam.gtol = 0.9;
-    defparam.xtol = XTOL;
+    defparam.xtol = floatval_t(1e-14);
     defparam.orthantwise_c = 0.0;
     defparam.orthantwise_start = 0;
     defparam.orthantwise_end = -1;
+    defparam.gstep = 1e-8;
 
     if(_param == NULL)
     {
@@ -235,7 +241,7 @@ int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *_param)
     {
         return LBFGSERR_INVALID_N;
     }
-    if (param.epsilon < EPS)
+    if (param.eps < defparam.eps)
     {
         return LBFGSERR_INVALID_EPSILON;
     }
@@ -243,19 +249,23 @@ int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *_param)
     {
         return LBFGSERR_INVALID_TESTPERIOD;
     }
-    if (param.delta < EPS)
+    if (param.delta < defparam.eps)
     {
         return LBFGSERR_INVALID_DELTA;
     }
-    if (param.min_step < EPS)
+    cout << "Hit this " << to_out_string(param.min_step, 5) << " " << to_out_string(defparam.eps, 5) << std::scientific << endl ;
+    if (param.min_step < defparam.eps)
     {
+        
+
+        
         return LBFGSERR_INVALID_MINSTEP;
     }
     if (param.max_step < param.min_step)
     {
         return LBFGSERR_INVALID_MAXSTEP;
     }
-    if (param.ftol < EPS)
+    if (param.ftol < defparam.eps)
     {
         return LBFGSERR_INVALID_FTOL;
     }
@@ -267,11 +277,11 @@ int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *_param)
             return LBFGSERR_INVALID_WOLFE;
         }
     }
-    if (param.gtol < EPS)
+    if (param.gtol < defparam.eps)
     {
         return LBFGSERR_INVALID_GTOL;
     }
-    if (param.xtol < EPS)
+    if (param.xtol < defparam.eps)
     {
         return LBFGSERR_INVALID_XTOL;
     }
@@ -359,7 +369,7 @@ int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *_param)
     }
 
     /* Allocate limited memory storage. */
-    wspace->lm = new iteration_data_t[m];
+    wspace->lm = new iteration_data_t<floatval_t>[m];
     if (wspace->lm == NULL)
     {
         lbfgs_dest(wspace);
@@ -393,7 +403,8 @@ int lbfgs_init(int n, lbfgs_wspace_t *wspace, lbfgs_parameter_t *_param)
     return 0;
 }
 
-int lbfgs_dest(lbfgs_wspace_t *wspace)
+template <typename floatval_t>
+int lbfgs_dest(lbfgs_wspace_t<floatval_t> *wspace)
 {
     int i;
     const int m = wspace->param.m;
@@ -419,6 +430,13 @@ int lbfgs_dest(lbfgs_wspace_t *wspace)
     return 1;
 }
 
+
+/*
+ *
+ * 
+ * 
+ */
+template <typename floatval_t>
 int lbfgs(
     int n,
     floatval_t *x,
@@ -426,29 +444,32 @@ int lbfgs(
     floatval_t *lbounds,
     floatval_t *ubounds,
     floatval_t *extparams,
-    lbfgs_evaluate_t proc_evaluate,
-    lbfgs_progress_t proc_progress,
+    lbfgs_evaluate_t<floatval_t> proc_evaluate,
+    lbfgs_progress_t<floatval_t> proc_progress,
     void *instance,
-    lbfgs_wspace_t *wspace
+    lbfgs_wspace_t<floatval_t> *wspace
     )
 {
     int ret;
     int i, j, k, ls, end, bound, nLocked;
     floatval_t step;
 
-    const int m = wspace->param.m;
-
     floatval_t *xp = wspace->xp;
     floatval_t *g = wspace->g, *gp = wspace->gp, *pg = wspace->pg;
     floatval_t *d = wspace->d, *w = wspace->w, *pf = wspace->pf;
-    iteration_data_t *lm = wspace->lm, *it = NULL;
+    iteration_data_t<floatval_t> *lm = wspace->lm, *it = NULL;
     floatval_t ys, yy;
     floatval_t xnorm, gnorm, beta;
     floatval_t fx = 0.;
     floatval_t rate = 0.;
-    line_search_proc_t linesearch = wspace->linesearch;
+    line_search_proc_t<floatval_t> linesearch = wspace->linesearch;
 
-    lbfgs_parameter_t param = wspace->param;
+    lbfgs_parameter_t<floatval_t> param = wspace->param;
+
+    const int m = param.m;
+    const floatval_t EPS = param.eps;
+    const floatval_t GSTEP = param.gstep;
+    const floatval_t CONVEPS = param.conv_epsilon;
 
     if((lbounds != NULL && ubounds == NULL) || (lbounds == NULL && ubounds != NULL))
     {
@@ -458,7 +479,7 @@ int lbfgs(
     //cout << "Starting callback allocation." << endl;
 
     /* Construct a callback data. */
-    callback_data_t cd;
+    callback_data_t<floatval_t> cd;
     cd.n = n;
     cd.instance = instance;
     cd.proc_evaluate = proc_evaluate;
@@ -473,7 +494,7 @@ int lbfgs(
         /* Compute the L1 norm of the variable and add it to the object value. */
         xnorm = owlqn_x1norm(x, param.orthantwise_start, param.orthantwise_end);
         fx += xnorm * param.orthantwise_c;
-        owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end);
+        owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end, EPS);
     }
 
 
@@ -509,6 +530,28 @@ int lbfgs(
             // TODO: Make sure this is back in.
             if(x[i] - lbounds[i] < -EPS || ubounds[i] - x[i] < -EPS)
             {
+                cout << "Invalid start at: ";
+                for (i = 0;i < n;i++)
+                {
+                    cout << ", x[" << i << "] = " << to_out_string(x[i],5);
+                }
+                cout << endl;
+
+                cout << "Bounds lower: ";
+                for (i = 0;i < n;i++)
+                {
+                    cout << ", lbounds[" << i << "] = " << to_out_string(lbounds[i],5);
+                }
+                cout << endl;
+
+                cout << "Bounds upper: ";
+                for (i = 0;i < n;i++)
+                {
+                    cout << ", ubounds[" << i << "] = " << to_out_string(ubounds[i],5);
+                }
+                cout << endl;
+
+
                 ret = LBFGSERR_INVALID_START_X;
                 goto lbfgs_exit;
             }
@@ -522,7 +565,7 @@ int lbfgs(
             }
             else
             {
-                if(g[i] > 0. && x[i] - ubounds[i] > -EPS || g[i] < 0. && lbounds[i] - x[i] > -EPS)
+                if((g[i] > 0. && x[i] - ubounds[i] > -EPS) || (g[i] < 0. && lbounds[i] - x[i] > -EPS))
                 {
 #ifdef VERBOSE
                     cout << "Dimension " << i << " held due to bounds." << endl;
@@ -540,7 +583,7 @@ int lbfgs(
 
     if(nLocked == n)
     {
-        ret = LBFGSERR_INVALID_START_X;
+        ret = LBFGS_ALREADY_MINIMIZED;
         goto lbfgs_exit;
     }
 
@@ -562,7 +605,7 @@ int lbfgs(
 
     if (xnorm < 1.0) xnorm = 1.0;
 
-    if (gnorm / xnorm <= param.epsilon)
+    if (gnorm / xnorm <= param.conv_epsilon)
     {
         ret = LBFGS_ALREADY_MINIMIZED;
         goto lbfgs_exit;
@@ -596,14 +639,14 @@ int lbfgs(
         else
         {
             ls = linesearch(n, x, extparams, lbounds, ubounds, &fx, g, d, &step, xp, pg, w, &cd, &param);
-            owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end);
+            owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end, EPS);
         }
 
 #ifdef VERBOSE
         cout << "After linesearch";
         for (i = 0;i < n;i++)
         {
-			cout << ", x[" << i << "] = " << x[i].to_out_string(5);
+			cout << ", x[" << i << "] = " << to_out_string(x[i],5);
 		}
 		cout << endl;
 #endif
@@ -664,7 +707,7 @@ int lbfgs(
          */
         if (xnorm < 1.0) xnorm = 1.0;
 
-        if (gnorm / xnorm <= param.epsilon)
+        if (gnorm / xnorm <= param.conv_epsilon)
         {
             /* Convergence. */
             ret = LBFGS_SUCCESS;
@@ -722,7 +765,7 @@ int lbfgs(
         vecdot(&yy, it->y, it->y, n);
         it->ys = ys;
 
-        if(abs(ys) < EPS * 1e2)
+        if(fabs(ys) < CONVEPS)
         {
             // Sufficient convergence
             ret = LBFGS_STOP;
@@ -761,7 +804,7 @@ int lbfgs(
             vecdot(&it->alpha, it->s, d, n);
 
 #ifdef VERBOSE
-            if(abs(it->ys) < EPS)
+            if(fabs(it->ys) < EPS)
             {
                 cout << "This is a small division 13" << endl;
             }
@@ -773,7 +816,7 @@ int lbfgs(
         }
 
 #ifdef VERBOSE
-        if(abs(yy) < EPS)
+        if(fabs(yy) < EPS)
         {
             cout << "This is a small division 14" << endl;
         }
@@ -788,7 +831,7 @@ int lbfgs(
             vecdot(&beta, it->y, d, n);
 
 #ifdef VERBOSE
-            if(abs(it->ys) < EPS)
+            if(fabs(it->ys) < EPS)
             {
                 cout << "This is a small division 15" << endl;
             }
@@ -817,7 +860,7 @@ int lbfgs(
                 }
                 else
                 {
-                    if(g[i] > 0. && x[i] - ubounds[i] > -EPS || g[i] < 0. && lbounds[i] - x[i] > -EPS)
+                    if((g[i] > 0. && x[i] - ubounds[i] > -EPS) || (g[i] < 0. && lbounds[i] - x[i] > -EPS))
                     {
 #ifdef VERBOSE
                         cout << "Dimension " << i << " held due to bounds." << endl;
@@ -831,7 +874,7 @@ int lbfgs(
 
         vecdot(&ys, g, d, n);
 
-        if(abs(ys) < EPS)
+        if(fabs(ys) < CONVEPS)
         {
             // Sufficient convergence
             ret = LBFGS_STOP;
@@ -865,13 +908,40 @@ lbfgs_exit:
         *ptr_fx = fx;
     }
 
+    // Look for bounded values.
+    if(lbounds != NULL && ubounds != NULL)
+    {
+        bool recomp = false;
+        for(int i=0;i<n;i++)
+        {
+            // TODO: Make sure this is back in.
+            if(x[i] - lbounds[i] < 0.0)
+            {
+                cout << "Final boundary exceeded." << endl;
 
+                x[i] = lbounds[i];
+                recomp = true;
+            }
+            else if(ubounds[i] - x[i] < 0.0)
+            {
+                cout << "Final boundary exceeded." << endl;
+
+                x[i] = ubounds[i];
+                recomp = true;
+            }
+        }
+
+        if(recomp)
+        {
+            fx = cd.proc_evaluate(cd.instance, x, extparams, g, cd.n, GSTEP);
+        }
+    }
 
     return ret;
 }
 
 
-
+template <typename floatval_t>
 static int line_search_backtracking(
     int n,
     floatval_t *x,
@@ -885,14 +955,16 @@ static int line_search_backtracking(
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wp,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+    callback_data_t<floatval_t> *cd,
+    const lbfgs_parameter_t<floatval_t> *param
     )
 {
     int count = 0;
     floatval_t width, dg;
     floatval_t finit, dginit = 0., dgtest;
     const floatval_t dec = 0.5, inc = 2.1;
+    const floatval_t EPS = param->eps;
+    const floatval_t GSTEP = param->gstep;
 
     /* Check the input parameters for errors. */
     if (*stp < EPS)
@@ -920,13 +992,13 @@ static int line_search_backtracking(
         {
             for(int i=0;i<n;i++)
             {
-                if(abs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
+                if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
                 {
-                    *stp = (ubounds[i] - x[i]) / s[i];
+                    *stp = (ubounds[i] - x[i]) / s[i] - EPS;
                 }
-                else if(abs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
+                else if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
                 {
-                    *stp = (lbounds[i] - x[i]) / s[i];
+                    *stp = (lbounds[i] - x[i]) / s[i] - EPS;
                 }
             }
         }
@@ -1000,7 +1072,7 @@ static int line_search_backtracking(
 }
 
 
-
+template <typename floatval_t>
 static int line_search_backtracking_owlqn(
     int n,
     floatval_t *x,
@@ -1014,13 +1086,15 @@ static int line_search_backtracking_owlqn(
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wp,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+    callback_data_t<floatval_t> *cd,
+    const lbfgs_parameter_t<floatval_t> *param
     )
 {
     int i, count = 0;
     floatval_t width = 0.5, norm = 0.;
     floatval_t finit = *f, dgtest;
+    const floatval_t EPS = param->eps;
+    const floatval_t GSTEP = param->gstep;
 
     /* Check the input parameters for errors. */
     if (*stp < -EPS)
@@ -1031,7 +1105,7 @@ static int line_search_backtracking_owlqn(
     /* Choose the orthant for the new point. */
     for (i = 0;i < n;++i)
     {
-        wp[i] = (abs(xp[i]) < EPS) ? -gp[i] : xp[i];
+        wp[i] = (fabs(xp[i]) < EPS) ? -gp[i] : xp[i];
     }
 
     for (;;)
@@ -1041,11 +1115,11 @@ static int line_search_backtracking_owlqn(
         {
             for(int i=0;i<n;i++)
             {
-                if(abs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
+                if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
                 {
                     *stp = (ubounds[i] - x[i]) / s[i];
                 }
-                else if(abs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
+                else if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
                 {
                     *stp = (lbounds[i] - x[i]) / s[i];
                 }
@@ -1057,7 +1131,7 @@ static int line_search_backtracking_owlqn(
         vecadd(x, s, *stp, n);
 
         /* The current point is projected onto the orthant. */
-        owlqn_project(x, wp, param->orthantwise_start, param->orthantwise_end);
+        owlqn_project(x, wp, param->orthantwise_start, param->orthantwise_end, EPS);
 
         /* Evaluate the function and gradient values. */
         *f = cd->proc_evaluate(cd->instance, x, extparams, g, cd->n, GSTEP);
@@ -1100,6 +1174,7 @@ static int line_search_backtracking_owlqn(
     }
 }
 
+template <typename floatval_t>
 static int line_search_morethuente(
     int n,
     floatval_t *x,
@@ -1113,8 +1188,8 @@ static int line_search_morethuente(
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wa,
-    callback_data_t *cd,
-    const lbfgs_parameter_t *param
+    callback_data_t<floatval_t> *cd,
+    const lbfgs_parameter_t<floatval_t> *param
     )
 {
     int count = 0;
@@ -1127,6 +1202,8 @@ static int line_search_morethuente(
     floatval_t finit, ftest1, dginit, dgtest;
     floatval_t width, prev_width;
     floatval_t stmin, stmax;
+    const floatval_t EPS = param->eps;
+    const floatval_t GSTEP = param->gstep;
 
 #ifdef VERBOSE
     cout << "Starting linesearch..." << endl;
@@ -1145,14 +1222,14 @@ static int line_search_morethuente(
     if (EPS < dginit)
     {
 #ifdef VERBOSE
-        cout << "Dginit for increasing gradient was: " << dginit.to_out_string(10) << endl;
+        cout << "Dginit for increasing gradient was: " << to_out_string(dginit,10) << endl;
         for(int i=0; i<n; i++)
         {
-            cout << "     g[" << i << "] for increasing gradient was: " << g[i].to_out_string(10) << endl;
+            cout << "     g[" << i << "] for increasing gradient was: " << to_out_string(g[i],10) << endl;
         }
         for(int i=0; i<n; i++)
         {
-            cout << "     s[" << i << "] for increasing gradient was: " << s[i].to_out_string(10) << endl;
+            cout << "     s[" << i << "] for increasing gradient was: " << to_out_string(s[i],10) << endl;
         }
 #endif
 
@@ -1230,32 +1307,32 @@ static int line_search_morethuente(
         if(lbounds != NULL && ubounds != NULL)
         {
 #ifdef VERBOSE
-            cout << "Step will be: " << (*stp).to_out_string(5) << endl;
+            cout << "Step will be: " << to_out_string((*stp),5) << endl;
 #endif
             for(int i=0;i<n;i++)
             {
 #ifdef VERBOSE
                 cout << "Checking condition for " << i << endl;
-                cout << "Check condition was: " << (x[i] + s[i] * (*stp)).to_out_string(5) << endl;
-                cout << "and: " <<  (x[i] + s[i] * (*stp)).to_out_string(5) << endl;
-                cout << "step[" << i << "]=" << (s[i] * (*stp)).to_out_string(5) << endl;
-                cout << "s[" << i << "]=" << s[i].to_out_string(5) << endl;
+                cout << "Check condition was: " << to_out_string((x[i] + s[i] * (*stp)),5) << endl;
+                cout << "and: " <<  to_out_string((x[i] + s[i] * (*stp)),5) << endl;
+                cout << "step[" << i << "]=" << to_out_string((s[i] * (*stp)),5) << endl;
+                cout << "s[" << i << "]=" << to_out_string(s[i],5) << endl;
 #endif
-                if(abs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
+                if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
                 {
 #ifdef VERBOSE
                     cout << "Adjusting step, upper bound." << endl;
 #endif
-                    *stp = (ubounds[i] - x[i]) / s[i];
+                    *stp = (ubounds[i] - x[i]) / s[i] - EPS;
                     stmax = *stp;
                     bounded = true;
                 }
-                else if(abs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
+                else if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
                 {
 #ifdef VERBOSE
                     cout << "Adjusting step, lower bound." << endl;
 #endif
-                    *stp = (lbounds[i] - x[i]) / s[i];
+                    *stp = (lbounds[i] - x[i]) / s[i] - EPS;
                     stmax = *stp;
                     bounded = true;
                 }
@@ -1276,7 +1353,7 @@ static int line_search_morethuente(
         cout << "Before step";
         for (int i = 0;i < n;i++)
         {
-			cout << ", x[" << i << "] = " << x[i].to_out_string(5);
+			cout << ", x[" << i << "] = " << to_out_string(x[i],5);
 		}
 		cout << endl;
 #endif
@@ -1288,7 +1365,7 @@ static int line_search_morethuente(
         cout << "After step";
         for (int i = 0;i < n;i++)
         {
-			cout << ", x[" << i << "] = " << x[i].to_out_string(5);
+			cout << ", x[" << i << "] = " << to_out_string(x[i],5);
 		}
 		cout << endl;
 #endif
@@ -1326,16 +1403,31 @@ static int line_search_morethuente(
             //return count;
             return LBFGSERR_ROUNDING_ERROR;
         }
-        if (abs(*stp - param->max_step) < EPS && ftest1 - *f > -EPS && dgtest - dg > -EPS)
+        // TODO Re-add a fixed version of  ftest1 - *f > -EPS
+        if (fabs((*stp)- param->max_step) < EPS && (ftest1 - *f) > -EPS &&  (dgtest - dg) > -EPS)
         {
             /* The step is the maximum value. */
-#ifdef VERBOSE
+//#ifdef VERBOSE
             cout << "Hit the max step." << endl;
-#endif
+            cout << "Step is: " << to_out_string((*stp), 5) << " Max is: " << to_out_string(param->max_step, 5) << endl;
+
+            cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
+            cout << "*stp * dgtest is: " << to_out_string(*stp * dgtest, 5) << endl;
+            cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
+//#endif
             return LBFGSERR_MAXIMUMSTEP;
         }
-        if (abs(*stp - param->min_step) < EPS && (*f - ftest1 > EPS || dg - dgtest > -EPS))
+        if (fabs((*stp) - param->min_step) < EPS && ((*f) - ftest1 > EPS || (dg - dgtest) > -EPS))
         {
+            cout << "Hit the min step." << endl;
+            cout << "Step is: " << to_out_string((*stp), 5) << " Min is: " << to_out_string(param->min_step, 5) << endl;
+ 
+            cout << "Condition value is: " << to_out_string (fabs((*stp) - param->min_step), 5) << endl;
+
+            cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
+            
+            cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
+
             /* The step is the minimum value. */
             return LBFGSERR_MINIMUMSTEP;
         }
@@ -1350,7 +1442,7 @@ static int line_search_morethuente(
             return LBFGSERR_MAXIMUMLINESEARCH;
         }
 
-        if (ftest1 - *f > -EPS && (param->gtol * (-dginit) - abs(dg)) > -EPS)
+        if (ftest1 - *f > -EPS && (param->gtol * (-dginit) - fabs(dg)) > -EPS)
         {
             /* The sufficient decrease condition and the directional derivative condition hold. */
             return count;
@@ -1386,7 +1478,7 @@ static int line_search_morethuente(
                 Call update_trial_interval() to update the interval of
                 uncertainty and to compute the new step.
              */
-            uinfo = update_trial_interval(&stx, &fxm, &dgxm, &sty, &fym, &dgym, stp, &fm, &dgm, stmin, stmax, &brackt);
+            uinfo = update_trial_interval(&stx, &fxm, &dgxm, &sty, &fym, &dgym, stp, &fm, &dgm, stmin, stmax, &brackt, EPS);
 
             /* Reset the function and gradient values for f. */
             fx = fxm + stx * dgtest;
@@ -1401,7 +1493,7 @@ static int line_search_morethuente(
                 Call update_trial_interval() to update the interval of
                 uncertainty and to compute the new step.
              */
-            uinfo = update_trial_interval(&stx, &fx, &dgx, &sty, &fy, &dgy, stp, f, &dg, stmin, stmax, &brackt);
+            uinfo = update_trial_interval(&stx, &fx, &dgx, &sty, &fy, &dgy, stp, f, &dg, stmin, stmax, &brackt, EPS);
         }
 
         /*
@@ -1442,9 +1534,9 @@ static int line_search_morethuente(
 #define CUBIC_MINIMIZER(cm, u, fu, du, v, fv, dv) \
     d = (v) - (u); \
     theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
-    p = abs(theta); \
-    q = abs(du); \
-    r = abs(dv); \
+    p = fabs(theta); \
+    q = fabs(du); \
+    r = fabs(dv); \
     s = max3(p, q, r); \
     /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
     a = theta / s; \
@@ -1470,9 +1562,9 @@ static int line_search_morethuente(
 #define CUBIC_MINIMIZER2(cm, u, fu, du, v, fv, dv, xmin, xmax) \
     d = (v) - (u); \
     theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
-    p = abs(theta); \
-    q = abs(du); \
-    r = abs(dv); \
+    p = fabs(theta); \
+    q = fabs(du); \
+    r = fabs(dv); \
     s = max3(p, q, r); \
     /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
     a = theta / s; \
@@ -1481,7 +1573,7 @@ static int line_search_morethuente(
     p = gamma - (dv) + theta; \
     q = gamma - (dv) + gamma + (du); \
     r = p / q; \
-    if (r < -EPS && abs(gamma) > EPS) { \
+    if (r < -EPS && fabs(gamma) > EPS) { \
         (cm) = (v) - r * d; \
     } else if (a < -EPS) { \
         (cm) = (xmax); \
@@ -1543,6 +1635,7 @@ static int line_search_morethuente(
  *      guaranteed sufficient decrease. ACM Transactions on Mathematical
  *      Software (TOMS), Vol 20, No 3, pp. 286-307, 1994.
  */
+template <typename floatval_t>
 static int update_trial_interval(
     floatval_t *x,
     floatval_t *fx,
@@ -1555,7 +1648,8 @@ static int update_trial_interval(
     floatval_t *dt,
     const floatval_t tmin,
     const floatval_t tmax,
-    int *brackt
+    int *brackt,
+    const floatval_t EPS
     )
 {
     int bound;
@@ -1758,7 +1852,7 @@ static int update_trial_interval(
 
 
 
-
+template <typename floatval_t>
 static floatval_t owlqn_x1norm(const floatval_t* x, const int start, const int n)
 {
     int i;
@@ -1772,8 +1866,9 @@ static floatval_t owlqn_x1norm(const floatval_t* x, const int start, const int n
     return norm;
 }
 
+template <typename floatval_t>
 static void owlqn_pseudo_gradient(floatval_t* pg, const floatval_t* x, const floatval_t* g,
-    const int n, const floatval_t c, const int start, const int end)
+    const int n, const floatval_t c, const int start, const int end, const floatval_t EPS)
 {
     int i;
 
@@ -1821,9 +1916,11 @@ static void owlqn_pseudo_gradient(floatval_t* pg, const floatval_t* x, const flo
     }
 }
 
-static void owlqn_project(floatval_t* d, const floatval_t* sign, const int start, const int end)
+template <typename floatval_t>
+static void owlqn_project(floatval_t* d, const floatval_t* sign, const int start, const int end, const floatval_t EPS)
 {
     int i;
+    
 
     for (i = start;i < end;++i)
     {
