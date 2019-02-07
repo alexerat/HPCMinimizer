@@ -253,12 +253,9 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
     {
         return LBFGSERR_INVALID_DELTA;
     }
-    cout << "Hit this " << to_out_string(param.min_step, 5) << " " << to_out_string(defparam.eps, 5) << std::scientific << endl ;
+    //cout << "Hit this " << to_out_string(param.min_step, 5) << " " << to_out_string(defparam.eps, 5) << std::scientific << endl ;
     if (param.min_step < defparam.eps)
     {
-        
-
-        
         return LBFGSERR_INVALID_MINSTEP;
     }
     if (param.max_step < param.min_step)
@@ -533,21 +530,21 @@ int lbfgs(
                 cout << "Invalid start at: ";
                 for (i = 0;i < n;i++)
                 {
-                    cout << ", x[" << i << "] = " << to_out_string(x[i],5);
+                    cout << ", x[" << i << "] = " << to_out_string(x[i],25);
                 }
                 cout << endl;
 
                 cout << "Bounds lower: ";
                 for (i = 0;i < n;i++)
                 {
-                    cout << ", lbounds[" << i << "] = " << to_out_string(lbounds[i],5);
+                    cout << ", lbounds[" << i << "] = " << to_out_string(lbounds[i],25);
                 }
                 cout << endl;
 
                 cout << "Bounds upper: ";
                 for (i = 0;i < n;i++)
                 {
-                    cout << ", ubounds[" << i << "] = " << to_out_string(ubounds[i],5);
+                    cout << ", ubounds[" << i << "] = " << to_out_string(ubounds[i],25);
                 }
                 cout << endl;
 
@@ -1407,19 +1404,20 @@ static int line_search_morethuente(
         if (fabs((*stp)- param->max_step) < EPS && (ftest1 - *f) > -EPS &&  (dgtest - dg) > -EPS)
         {
             /* The step is the maximum value. */
-//#ifdef VERBOSE
-            cout << "Hit the max step." << endl;
+//#ifdef DEBUG
+ /*            cout << "Hit the max step." << endl;
             cout << "Step is: " << to_out_string((*stp), 5) << " Max is: " << to_out_string(param->max_step, 5) << endl;
 
             cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
             cout << "*stp * dgtest is: " << to_out_string(*stp * dgtest, 5) << endl;
             cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
+*/
 //#endif
             return LBFGSERR_MAXIMUMSTEP;
         }
         if (fabs((*stp) - param->min_step) < EPS && ((*f) - ftest1 > EPS || (dg - dgtest) > -EPS))
         {
-            cout << "Hit the min step." << endl;
+ /*           cout << "Hit the min step." << endl;
             cout << "Step is: " << to_out_string((*stp), 5) << " Min is: " << to_out_string(param->min_step, 5) << endl;
  
             cout << "Condition value is: " << to_out_string (fabs((*stp) - param->min_step), 5) << endl;
@@ -1427,7 +1425,7 @@ static int line_search_morethuente(
             cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
             
             cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
-
+*?
             /* The step is the minimum value. */
             return LBFGSERR_MINIMUMSTEP;
         }

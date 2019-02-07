@@ -1280,7 +1280,7 @@ void *run_multi(void *threadarg)
 				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
 				{
 
-					if(true)
+					if(REPORTFAILS)
 					{
 						cout << "Failure code was: " << ret << endl;
 					}
@@ -1293,6 +1293,15 @@ void *run_multi(void *threadarg)
 			for(int i = 0; i < DIM; i++)
 			{
 				locResults_dd.X[i] = locResults_dbl.X[i];
+
+				if(locResults_dd.X[i] - lbounds[i] < get_delta<dd_real>())
+				{
+					locResults_dd.X[i] = lbounds[i];
+				}
+				else if(ubounds[i] - locResults_dd.X[i] < get_delta<dd_real>())
+				{
+					locResults_dd.X[i] = ubounds[i];
+				}
 			}
 
 			if(locResults_dbl.f < results[threadNum].f || locResults_dbl.f < get_delta<double>()*1e5)
@@ -1357,6 +1366,8 @@ void *run_multi(void *threadarg)
 				for(int i = 0; i < DIM; i++)
 				{
 					locResults_qd.X[i] = dd_real(locResults_dd.X[i]);
+
+					
 				}
 			}
 
