@@ -29,7 +29,7 @@ inline dd_real get_epsilon<dd_real>() { return std::numeric_limits<dd_real>::eps
 template<>
 inline qd_real get_epsilon<qd_real>() { return std::numeric_limits<qd_real>::epsilon(); }
 template<>
-inline mp_real get_epsilon<mp_real>() { return std::numeric_limits<mp_real>::epsilon(); }
+inline mp_real get_epsilon<mp_real>() { return static_cast<mp_real>(0.0); }
 
 
 /**

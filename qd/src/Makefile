@@ -1,4 +1,4 @@
-CC=g++
+CC=icpc
 CFLAGS=-c -O2 -DHAVE_CONFIG -std=c++11
 debug: CFLAGS=-c -O0 -g -DHAVE_CONFIG -std=c++11
 INCLUDES=-I../ -I../include

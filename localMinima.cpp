@@ -1951,6 +1951,12 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 		}
 		else
 		{
+			cout << "Using previous best: " << to_out_string(prevBest->f,5) << " at: ";
+			for(int k = 0; k < DIM; k++)
+			{
+				cout << to_out_string(prevBest->X[k],5) << ", ";
+			}
+			cout << endl;
 			best = prevBest->f;
 			for(int k = 0; k < DIM; k++)
 			{
@@ -2055,7 +2061,12 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 		}
 
 #ifndef SILENT
-		cout << "Got it, it was: " << res->f << endl;
+		cout << "Got it, it was: " << res->f << " at: ";
+		for(int k = 0; k < DIM; k++)
+		{
+			cout << to_out_string(res->X[k],4) << ", ";
+		}
+		cout << endl;
 #endif /*!SILENT*/
 	}
 	else
@@ -2103,7 +2114,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 			OptimizeResult<MAX_PRECISION_T> res;
 			res.X = new MAX_PRECISION_T[DIM];
 			MAX_PRECISION_T currBest = 1e10;
-			MAX_PRECISION_T* point;
+			MAX_PRECISION_T* point = new MAX_PRECISION_T[DIM];
 
 #ifndef SILENT
 			int stepCount = 1;
@@ -2134,12 +2145,18 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 					if(res.f < currBest)
 					{
 						currBest = res.f;
-						point = res.X;
+						for(int k = 0; k < DIM; k++)
+						{
+							point[k] = res.X[k];
+						}
 					}
 				}
 				else
 				{
-					point = res.X;
+					for(int k = 0; k < DIM; k++)
+					{
+						point[k] = res.X[k];
+					}
 				}
 			}
 
@@ -2154,6 +2171,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 			}
 
 			delete[] res.X;
+			delete[] point;
 
 			if(isStart && !RANDOMSEARCH)
 			{
@@ -2174,6 +2192,14 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 #ifndef SILENT
 			cout << "Running experiment." << endl;
 #endif /*!SILENT*/
+
+			cout << "Previous best is: " << to_out_string(bestRes.f,5) << " at: ";
+			for(int k = 0; k < DIM; k++)
+			{
+				cout << to_out_string(bestRes.X[k],5) << ", ";
+			}
+			cout << endl;
+
 			runExperiment(&bestRes);
 #ifndef SILENT
 			cout << "Finished experiment." << endl;
