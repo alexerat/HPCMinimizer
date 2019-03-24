@@ -20,7 +20,7 @@
 
 #include "precision.h"
 #include "lbfgs.h"
-#include "de.h"
+//#include "de.h"
 
 // TODO: Remove
 #include <unistd.h>
@@ -30,20 +30,23 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+template<typename floatval_t>
 struct OptimizeResult
 {
 	floatval_t  f;
 	floatval_t* X;
 };
 
-typedef struct
+template <typename floatval_t>
+struct parameter_t
 {
 	floatval_t (*get)(int i, floatval_t* params, int depth);
 	int (*steps)(floatval_t* params, int depth);
 	int (*findPos)(floatval_t value, floatval_t* params, int depth);
-} parameter_t;
+};
 
-typedef struct
+template <typename floatval_t>
+struct boundary_t
 {
 	floatval_t startLower;
 	floatval_t incrementLower;
@@ -53,19 +56,19 @@ typedef struct
 	int dim;
 	bool intCast;
 	bool hasSym;
-} boundary_t;
+};
 
 int nruns = 0;
 bool startBound = true;
 
-floatval_t* params;
+MAX_PRECISION_T* params;
 
 #ifdef PARAMSCONSTSCOUNT
-floatval_t precompute[PARAMSCONSTSCOUNT];
+MAX_PRECISION_T precompute[PARAMSCONSTSCOUNT];
 #endif /*PARAMSCONSTSCOUNT*/
 
-floatval_t* ubounds = NULL;
-floatval_t* lbounds = NULL;
+MAX_PRECISION_T* ubounds = NULL;
+MAX_PRECISION_T* lbounds = NULL;
 
 int nodeNum = 0;
 #ifdef USE_MPI
@@ -129,8 +132,8 @@ volatile int threadStartCount = 0;
 bool threadError = false;
 
 
-parameter_t* parameters;
-boundary_t* boundaries;
+parameter_t<MAX_PRECISION_T>* parameters;
+boundary_t<MAX_PRECISION_T>* boundaries;
 
 int* threadMinBin;
 int** threadBins;
@@ -142,13 +145,14 @@ bool* startLatch;
 int detDebug = 0;
 #endif /*DETERMINISTIC*/
 
-struct OptimizeResult bestRes;
-struct OptimizeResult* results;
+struct OptimizeResult<MAX_PRECISION_T> bestRes;
+struct OptimizeResult<MAX_PRECISION_T>* results;
 
 /**
  *
  *
  */
+template <typename floatval_t>
 class objective_function
 {
 public:
@@ -175,7 +179,9 @@ protected:
 
 	int threadNum;
 	int ret;
-	lbfgs_wspace_t wspace;
+	lbfgs_wspace_t<floatval_t> wspace;
+
+	const floatval_t EPS = get_epsilon<floatval_t>();
 
 public:
 	/**
@@ -184,28 +190,30 @@ public:
 	 */
     objective_function(int threadNum_in)
     {
-	    lbfgs_parameter_t param;
+	    lbfgs_parameter_t<floatval_t> param;
 
 		initialized = false;
 
 		threadNum = threadNum_in;
 
 	    param.m = MEMSIZE;
-	    param.epsilon = CONVEPS;
+	    param.conv_epsilon = get_conv_epsilon<floatval_t>();
+		param.eps = EPS;
 	    param.past = 0;
-	    param.delta = DELTA;
+	    param.delta = get_delta<floatval_t>();
 	    param.max_iterations = MAXIT;
 	    param.linesearch = LBFGS_LINESEARCH_MORETHUENTE;
 	    param.max_linesearch = MAXLINE;
-	    param.min_step = MINSTEP;
-	    param.max_step = MAXSTEP;
+	    param.min_step = get_min_step<floatval_t>();
+	    param.max_step = get_max_step<floatval_t>();
 	    param.ftol = 1e-4;
 	    param.wolfe = 0.9;
 	    param.gtol = 0.9;
-	    param.xtol = XTOL;
+	    param.xtol = EPS;
 	    param.orthantwise_c = 0.0;
 	    param.orthantwise_start = 0;
 	    param.orthantwise_end = -1;
+		param.gstep = get_gstep<floatval_t>();
 
 		ret = -1;
         m_x = new floatval_t[DIM];
@@ -219,8 +227,8 @@ public:
 		{
 			for(int j = 0; j < boundaries[i].dim; j++)
 			{
-				bStepDown[dimCount + j] = boundaries[i].incrementLower;
-				bStepUp[dimCount + j] = boundaries[i].incrementUpper;
+				bStepDown[dimCount + j] = (floatval_t)boundaries[i].incrementLower;
+				bStepUp[dimCount + j] = (floatval_t)boundaries[i].incrementUpper;
 				if(j == 0 && boundaries[i].hasSym)
 				{
 #ifdef VERBOSE
@@ -234,7 +242,7 @@ public:
 
 		if(ALGO == 0)
 		{
-			ret = lbfgs_init(DIM, &wspace, &param);
+			ret = lbfgs_init<floatval_t>(DIM, &wspace, &param);
 			if(ret != 0)
 			{
 				cout << "Initialization error: " << ret << endl;
@@ -296,7 +304,7 @@ public:
 
 		if(ALGO == 0)
 		{
-			lbfgs_dest(&wspace);
+			lbfgs_dest<floatval_t>(&wspace);
 		}
 		else if(ALGO == 1)
 		{
@@ -339,9 +347,9 @@ public:
 				/* Initialize the variables. */
 				for (int i = dimCount;i < (dimCount + boundaries[j].dim);i++)
 				{
-					if(abs(bStepDown[i]) < EPS && sect >= 2*i)
+					if(fabs(bStepDown[i]) < EPS && sect >= 2*i)
 							sect++;
-					if(abs(bStepUp[i]) < EPS && sect > 2*i)
+					if(fabs(bStepUp[i]) < EPS && sect > 2*i)
 							sect++;
 
 #ifdef VERBOSE
@@ -352,19 +360,19 @@ public:
 					if((sect / 2) == i)
 					{
 						if((sect % 2))
-							m_x[i] = localUpper[i] - bStepUp[i]*rnd_uni();
+							m_x[i] = localUpper[i] - bStepUp[i]*rnd_uni<floatval_t>();
 						else
-							m_x[i] = localLower[i] - bStepDown[i]*rnd_uni();
+							m_x[i] = localLower[i] - bStepDown[i]*rnd_uni<floatval_t>();
 
 					}
 					else
 					{
-						m_x[i] = (localUpper[i] - localLower[i])*rnd_uni() + localLower[i];
+						m_x[i] = (localUpper[i] - localLower[i])*rnd_uni<floatval_t>() + localLower[i];
 					}
 
 #ifdef DEBUG
 #ifdef VERBOSE
-					cout << ", x[" << i << "] = " << m_x[i].to_out_string(5);
+					cout << ", x[" << i << "] = " << to_out_string(m_x[i],5);
 #endif /*VERBOSE*/
 
 					if(m_x[i] > localUpper[i] || m_x[i] < localLower[i])
@@ -511,6 +519,15 @@ public:
 		return 0;
 	}
 
+	void setBounds()
+	{
+		for (int i = 0;i < DIM;i++)
+		{
+			localLower[i] = (floatval_t)lbounds[i];
+			localUpper[i] = (floatval_t)ubounds[i];
+		}
+	}
+
 	/**
 	 *
 	 *
@@ -524,10 +541,10 @@ public:
 			// TODO: Fix for boundary sets.
 			for (int i = 0;i < DIM;i++)
 			{
-				m_x[i] = bestRes.X[i];
+				m_x[i] = (floatval_t)bestRes.X[i];
 
-				ini_lower[i] = bestRes.X[i] - POPSPREAD;
-				ini_upper[i] = bestRes.X[i] + POPSPREAD;
+				ini_lower[i] = (floatval_t)(bestRes.X[i] - POPSPREAD);
+				ini_upper[i] = (floatval_t)(bestRes.X[i] + POPSPREAD);
 			}
 		}
 		else
@@ -535,7 +552,6 @@ public:
 			// We need to do this for each boundary set. NOTE: There is a higher density of searching in the corners due to overlap. Resolving this is complicated.
 			for(int j = 0; j < BSETS; j++)
 			{
-
 				int sect = rand() % (2*boundaries[j].dim - (boundaries[j].hasSym ? 1 : 0));
 				int upper = sect % 2;
 				sect = (sect / 2) + dimCount;
@@ -556,13 +572,13 @@ public:
 					{
 						if(upper)
 						{
-							m_x[i] = (localUpper[i] - POPSPREAD) - (bStepUp[i] - 2*POPSPREAD)*rnd_uni();
+							m_x[i] = (localUpper[i] - POPSPREAD) - (bStepUp[i] - 2*POPSPREAD)*rnd_uni<floatval_t>();
 							ini_lower[i] = m_x[i] - POPSPREAD;
 							ini_upper[i] = m_x[i] + POPSPREAD;
 						}
 						else
 						{
-							m_x[i] = (localLower[i] + POPSPREAD) - (bStepDown[i] - 2*POPSPREAD)*rnd_uni();
+							m_x[i] = (localLower[i] + POPSPREAD) - (bStepDown[i] - 2*POPSPREAD)*rnd_uni<floatval_t>();
 							ini_lower[i] = m_x[i] - POPSPREAD;
 							ini_upper[i] = m_x[i] + POPSPREAD;
 						}
@@ -578,14 +594,14 @@ public:
 							upper = !(upper);
 						}
 
-						m_x[i] = (localUpper[i] - localLower[i] - 2*POPSPREAD)*rnd_uni() + localLower[i] + POPSPREAD;
+						m_x[i] = (localUpper[i] - localLower[i] - 2*POPSPREAD)*rnd_uni<floatval_t>() + localLower[i] + POPSPREAD;
 						ini_lower[i] = m_x[i] - POPSPREAD;
 						ini_upper[i] = m_x[i] + POPSPREAD;
 					}
 
 #ifdef DEBUG
 #ifdef VERBOSE
-					cout << ", x[" << i << "] = " << m_x[i].to_out_string(5);
+					cout << ", x[" << i << "] = " << to_out_string(m_x[i],5);
 #endif /*VERBOSE*/
 
 					if(m_x[i] > localUpper[i] || m_x[i] < localLower[i])
@@ -610,12 +626,6 @@ public:
 
 	int getStartPosition(int workNumber)
 	{
-		for (int i = 0;i < DIM;i++)
-		{
-			localLower[i] = lbounds[i];
-			localUpper[i] = ubounds[i];
-		}
-
 #ifdef VERBOSE
 		cout << "Getting start points." << endl;
 #endif /*VERBOSE*/
@@ -680,10 +690,10 @@ public:
 		return ret;
 	}
 
-    int run(struct OptimizeResult* result, int workNumber)
+    int run(struct OptimizeResult<floatval_t>* result, int workNumber, floatval_t* locParams, floatval_t* start_x, bool use_start)
     {
         int ret = -1;
-        floatval_t fx = MAXSTEP;
+        floatval_t fx = get_max_step<floatval_t>();
 
 #ifdef DETERMINISTIC
 		pthread_spin_lock(&workLock);
@@ -692,7 +702,8 @@ public:
 		srand(detNum);
 #endif /*DETERMINISTIC*/
 
-		ret = getStartPosition(workNumber);
+		if(!use_start)
+			ret = getStartPosition(workNumber);
 
 		if(ALGO == 0)
 		{
@@ -702,26 +713,27 @@ public:
 	        */
 #ifdef OPT_PROGRESS
 			if(workNumber % SAMPLE_SPACING == 0)
-				ret = lbfgs(DIM, m_x, &fx, localLower, localUpper, params, _lbgfs_evaluate, _progress, this, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, _progress, this, &wspace);
 			else
-				ret = lbfgs(DIM, m_x, &fx, localLower, localUpper, params, _lbgfs_evaluate, NULL, this, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, this, &wspace);
 #else /*OPT_PROGRESS*/
-	    	ret = lbfgs(DIM, m_x, &fx, localLower, localUpper, params, _lbgfs_evaluate, NULL, this, &wspace);
+	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, this, &wspace);
 #endif /*!OPT_PROGRESS*/
 
 	       /* Report the result. */
 #ifdef VERBOSE
 	       cout << "L-BFGS optimization terminated with status code = " << ret << endl;
 #endif /*VERBOSE*/
-	       //cout << "  fx = " << fx.to_out_string(SIGDIG);
+	       //cout << "  fx = " << to_out_string(fx,SIGDIG);
 		}
-		else if(ALGO == 1)
+		// TODO: Re-add this
+		/*else if(ALGO == 1)
 		{
-			ret = de(DIM, m_x, &fx, localLower, localUpper, params, _de_evaluate, this, POPSIZE, ini_lower, ini_upper,
+			ret = de(DIM, m_x, &fx, localLower, localUpper, locParams, _de_evaluate, this, POPSIZE, ini_lower, ini_upper,
 				 STRAT, MAXGEN, PARAM_F, PARAM_CR, 0, c, d, oldarray, newarray, swaparray, tmp, best, bestit, energy);
 
 			//cout << "DE optimization terminated with status code = " << ret << endl;
-		}
+		}*/
 		else
 		{
 			cout << "Unknown search algorithm." << endl;
@@ -731,14 +743,21 @@ public:
 		cout << "Final values are";
         for (int i = 0;i < DIM;i++)
         {
-			cout << ", x[" << i << "] = " << m_x[i].to_out_string(5);
+			if(use_start)
+				cout << ", x[" << i << "] = " << to_out_string(start_x[i],5);
+			else
+				cout << ", x[" << i << "] = " << to_out_string(m_x[i],5);
 		}
 		cout << endl;
 #endif /*VERBOSE*/
 
         for (int i = 0;i < DIM;i++)
         {
-            result->X[i] = m_x[i];
+			if(use_start)
+				result->X[i] = start_x[i];
+			else
+				result->X[i] = m_x[i];
+            
         }
         result->f = fx;
 
@@ -839,15 +858,15 @@ protected:
 
 			for(int k = 0; k < DIM; k++)
 			{
-				cout << X[k].to_out_string(7) << " ";
+				cout << to_out_string(X[k],7) << " ";
 			}
 
-			cout << endl << "Function is: " << fx.to_out_string(7);
+			cout << endl << "Function is: " << to_out_string(fx,7);
 
 			cout << endl << "Dertivatives are: ";
 			for(int k = 0; k < DIM; k++)
 			{
-				cout << g[k].to_out_string(7) << " ";
+				cout << to_out_string(g[k],7) << " ";
 			}
 			cout << endl;
 
@@ -855,7 +874,7 @@ protected:
 
 			for(int k = 0; k < NPARAMS; k++)
 			{
-				cout << params[k].to_out_string(7) << " ";
+				cout << to_out_string(params[k],7) << " ";
 			}
 			cout << endl;
 			*/
@@ -957,32 +976,32 @@ protected:
         )
     {
         cout << "Iteration " << k << ":" << endl;
-        cout << "  fx = " << fx.to_out_string(SIGDIG);
+        cout << "  fx = " << to_out_string(fx,SIGDIG);
 
 		for(int j = 0; j < DIM; j++)
 		{
-			cout << ", x[" << j << "] = " << x[j].to_out_string(SIGDIG);
+			cout << ", x[" << j << "] = " << to_out_string(x[j],SIGDIG);
 		}
 
         cout << endl;
-        cout << "  xnorm = " << xnorm.to_out_string(SIGDIG) << ", gnorm =" << gnorm.to_out_string(SIGDIG);
-        cout << ", step = " << step.to_out_string(SIGDIG) << endl;
+        cout << "  xnorm = " << to_out_string(xnorm,SIGDIG) << ", gnorm =" << to_out_string(gnorm,SIGDIG);
+        cout << ", step = " << to_out_string(step,SIGDIG) << endl;
         cout << endl;
 
 		ofstream outfile;
 
 		outfile.open("progress.csv", ios::app );
 
-		outfile << k << "," << fx.to_out_string(SIGDIG) << ",";
+		outfile << k << "," << to_out_string(fx,SIGDIG) << ",";
 		for(int j = 0; j < DIM; j++)
 		{
-			outfile << x[j].to_out_string(SIGDIG) << ",";
+			outfile << to_out_string(x[j],SIGDIG) << ",";
 		}
 		for(int j = 0; j < DIM; j++)
 		{
-			outfile << g[j].to_out_string(SIGDIG) << ",";
+			outfile << to_out_string(g[j],SIGDIG) << ",";
 		}
-		outfile << step.to_out_string(SIGDIG) << "," << ls << endl;
+		outfile << to_out_string(step,SIGDIG) << "," << ls << endl;
 
         return 0;
     }
@@ -992,25 +1011,28 @@ protected:
 objective_function *objTest;
 #endif /*TEST_START_POINTS*/
 
-void castBoundaries(int depth, int dimCount, objective_function *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX);
+template<typename floatval_t>
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX);
 
-void locCastRecurs(int depth, int locDepth, int dimCount, objective_function *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+template<typename floatval_t>
+void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
 	if(locDepth == boundaries[depth].dim)
 	{
-		castBoundaries(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
+		castBoundaries<floatval_t>(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
 	}
 	else
 	{
 		X[dimCount + locDepth] = floor(Xin[dimCount + locDepth]);
-		locCastRecurs(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
 
 		X[dimCount + locDepth] = ceil(Xin[dimCount + locDepth]);
-		locCastRecurs(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
 	}
 }
 
-void castBoundaries(int depth, int dimCount, objective_function *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+template<typename floatval_t>
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
 	if(depth == BSETS)
 	{
@@ -1049,8 +1071,46 @@ void *run_multi(void *threadarg)
 	int threadNum = threadStartCount++;
 
 	srand((int)time(NULL) ^ (threadNum*(1+nodeNum)));
-    objective_function *obj = new objective_function(threadNum);
-	struct OptimizeResult locResults;
+    
+	objective_function<double> *obj_dbl = new objective_function<double>(threadNum);
+	OptimizeResult<double> locResults_dbl;
+#define obj obj_dbl
+#define locResults locResults_dbl
+
+#if (MAX_PRECISION_LEVEL > 1)
+	objective_function<dd_real> *obj_dd = new objective_function<dd_real>(threadNum);
+	OptimizeResult<dd_real> locResults_dd;
+#undef obj
+#define obj obj_dd
+#undef locResults
+#define locResults locResults_dd
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	objective_function<qd_real> *obj_qd = new objective_function<qd_real>(threadNum);
+	OptimizeResult<qd_real> locResults_qd;
+#undef obj
+#define obj obj_qd
+#undef locResults
+#define locResults locResults_qd
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	objective_function<mp_real> *obj_mp = new objective_function<mp_real>(threadNum);
+	OptimizeResult<mp_real> locResults_mp;
+#undef obj
+#define obj obj_mp
+#undef locResults
+#define locResults locResults_mp
+#endif
+
+#if (MAX_PRECISION_LEVEL > 1)
+	double* locParams_dbl = new double[NPARAMS];
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	dd_real* locParams_dd = new dd_real[NPARAMS];
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	qd_real* locParams_qd = new qd_real[NPARAMS];
+#endif
 
 	bool workDone = false;
 	bool exitFlag = true;
@@ -1062,24 +1122,63 @@ void *run_multi(void *threadarg)
 	int n;
 	int ret;
 
-	floatval_t bestCast;
-	floatval_t* bestCastX = new floatval_t[DIM];
-	floatval_t* XCast = new floatval_t[DIM];
+	MAX_PRECISION_T bestCast;
+	MAX_PRECISION_T* bestCastX = new MAX_PRECISION_T[DIM];
+	MAX_PRECISION_T* XCast = new MAX_PRECISION_T[DIM];
 
-	if(!obj->initialized)
+
+	if(!obj_dbl->initialized)
 	{
-		delete obj;
+		delete obj_dbl;
 		threadError = true;
 		pthread_exit(NULL);
 		return NULL;
 	}
+
+#if (MAX_PRECISION_LEVEL > 1)
+	if(!obj_dd->initialized)
+	{
+		delete obj_dd;
+		threadError = true;
+		pthread_exit(NULL);
+		return NULL;
+	}
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	if(!obj_qd->initialized)
+	{
+		delete obj_qd;
+		threadError = true;
+		pthread_exit(NULL);
+		return NULL;
+	}
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	if(!obj_mp->initialized)
+	{
+		delete obj_mp;
+		threadError = true;
+		pthread_exit(NULL);
+		return NULL;
+	}
+#endif
 
 	if(threadNum == nThreads - 1 && nruns % nThreads != 0)
 	{
 		numWorks = nruns % nThreads;
 	}
 
-	locResults.X = new floatval_t[DIM];
+	locResults_dbl.X = new double[DIM];
+
+#if (MAX_PRECISION_LEVEL > 1)
+	locResults_dd.X = new dd_real[DIM];
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	locResults_qd.X = new qd_real[DIM];
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	locResults_mp.X = new mp_real[DIM];
+#endif
 
 	for(int i = 0; i < BSETS; i++)
 	{
@@ -1101,7 +1200,17 @@ void *run_multi(void *threadarg)
 
 	if(threadError)
 	{
-		delete obj;
+		delete obj_dbl;
+#if (MAX_PRECISION_LEVEL > 1)
+		delete obj_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+		delete obj_qd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+		delete obj_mp;
+#endif
+		
 		pthread_exit(NULL);
 		return NULL;
 	}
@@ -1124,16 +1233,99 @@ void *run_multi(void *threadarg)
 			threadBins[threadNum][i] = 0;
 		}
 
+		obj_dbl->setBounds();
+
+#if (MAX_PRECISION_LEVEL > 1)
+		for(int i = 0; i < NPARAMS; i++)
+		{
+			locParams_dbl[i] = (double)params[i];
+		}
+		obj_dd->setBounds();
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+		for(int i = 0; i < NPARAMS; i++)
+		{
+			locParams_dd[i] = (dd_real)params[i];
+		}
+		obj_qd->setBounds();
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+		for(int i = 0; i < NPARAMS; i++)
+		{
+			locParams_qd[i] = (qd_real)params[i];
+		}
+		obj_mp->setBounds();
+#endif
+
 		while(!exitFlag)
 		{
 			if(threadError)
 			{
-				delete obj;
+				delete obj_dbl;
+#if (MAX_PRECISION_LEVEL > 1)
+				delete obj_dd;
+#endif
 				pthread_exit(NULL);
 				return NULL;
 			}
 
-			ret = obj->run(&locResults, item);
+#if (MAX_PRECISION_LEVEL > 1)
+			ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, NULL, false);
+#else
+			ret = obj_dbl->run(&locResults_dbl, item, params, NULL, false);
+#endif
+
+			if(ret < 0)
+			{
+				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+				{
+
+					if(REPORTFAILS)
+					{
+						cout << "Failure code was: " << ret << endl;
+					}
+					
+					threadFails[threadNum]++;
+				}
+			}
+
+#if (MAX_PRECISION_LEVEL > 1)
+			for(int i = 0; i < DIM; i++)
+			{
+				locResults_dd.X[i] = locResults_dbl.X[i];
+
+				if(locResults_dd.X[i] - lbounds[i] < get_delta<dd_real>())
+				{
+					locResults_dd.X[i] = lbounds[i];
+				}
+				else if(ubounds[i] - locResults_dd.X[i] < get_delta<dd_real>())
+				{
+					locResults_dd.X[i] = ubounds[i];
+				}
+			}
+
+			if(locResults_dbl.f < results[threadNum].f || locResults_dbl.f < get_delta<double>()*1e5)
+			{
+#if (MAX_PRECISION_LEVEL > 2)
+				ret = obj_dd->run(&locResults_dd, item, locParams_dd, locResults_dd.X, true);
+#else
+				ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
+#endif
+				
+				locResults.f = locResults_dd.f;
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults.X[i] = locResults_dd.X[i];
+				}
+			}
+			else
+			{
+				locResults_dd.f = dd_real(locResults_dbl.f);
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults_dd.X[i] = dd_real(locResults_dbl.X[i]);
+				}
+			}
 
 			if(ret < 0)
 			{
@@ -1148,6 +1340,92 @@ void *run_multi(void *threadarg)
 					threadFails[threadNum]++;
 				}
 			}
+#if (MAX_PRECISION_LEVEL > 2)
+			for(int i = 0; i < DIM; i++)
+			{
+				locResults_qd.X[i] = locResults_dd.X[i];
+			}
+
+			if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<dd_real>()*1e5)
+			{
+#if (MAX_PRECISION_LEVEL > 3)
+				ret = obj_qd->run(&locResults_qd, item, locParams_qd, locResults_qd.X, true);
+#else
+				ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+#endif
+				
+				locResults.f = locResults_qd.f;
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults.X[i] = locResults_qd.X[i];
+				}
+			}
+			else
+			{
+				locResults_qd.f = dd_real(locResults_dd.f);
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults_qd.X[i] = dd_real(locResults_dd.X[i]);
+
+					
+				}
+			}
+
+			if(ret < 0)
+			{
+				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+				{
+
+					if(REPORTFAILS)
+					{
+						cout << "Failure code was: " << ret << endl;
+					}
+
+					threadFails[threadNum]++;
+				}
+			}
+#if (MAX_PRECISION_LEVEL > 3)
+			for(int i = 0; i < DIM; i++)
+			{
+				locResults_mp.X[i] = locResults_qd.X[i];
+			}
+
+			if(locResults_qd.f < results[threadNum].f || locResults_qd.f < get_delta<qd_real>()*1e5)
+			{
+
+				ret = obj_mp->run(&locResults_mp, item, params, locResults_qd.X, true);
+				
+				locResults.f = locResults_mp.f;
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults.X[i] = locResults_mp.X[i];
+				}
+			}
+			else
+			{
+				locResults_mp.f = dd_real(locResults_qd.f);
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults_mp.X[i] = dd_real(locResults_qd.X[i]);
+				}
+			}
+
+			if(ret < 0)
+			{
+				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+				{
+
+					if(REPORTFAILS)
+					{
+						cout << "Failure code was: " << ret << endl;
+					}
+
+					threadFails[threadNum]++;
+				}
+			}
+#endif // (MAX_PRECISION_LEVEL > 3)
+#endif // (MAX_PRECISION_LEVEL > 2)
+#endif // (MAX_PRECISION_LEVEL > 1)
 
 			if(locResults.f < 0.0)
 			{
@@ -1155,7 +1433,7 @@ void *run_multi(void *threadarg)
 
 				for(int i = 0; i < DIM; i++)
 				{
-					cout << locResults.X[i].to_out_string(25) << ",";
+					cout << to_out_string(locResults.X[i],25) << ",";
 				}
 
 				cout << endl;
@@ -1165,10 +1443,12 @@ void *run_multi(void *threadarg)
 				locResults.f = 0.0;
 			}
 
+			
+
 			if(mustCast)
 			{
 				bestCast = 1e10;
-				castBoundaries(0, 0, obj, params, locResults.X, XCast, &bestCast, bestCastX);
+				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, locResults.X, XCast, &bestCast, bestCastX);
 
 				for(int i = 0; i < DIM; i++)
 				{
@@ -1184,20 +1464,20 @@ void *run_multi(void *threadarg)
 			}
 
 
-			floatval_t logRes = log10(locResults.f + EPS);
+			MAX_PRECISION_T logRes = log10(locResults.f + get_epsilon<MAX_PRECISION_T>());
 			int binNum;
 
 			if(logRes > 0)
 			{
 				binNum = (2<<(BUCKETORD+1)) - 1;
 			}
-			else if(abs(logRes) > BUCKETORD)
+			else if(fabs(logRes) > BUCKETORD)
 			{
 				binNum = 0;
 			}
 			else
 			{
-				binNum = to_int(floor((locResults.f / pow(10.0,floor(abs(logRes)))) * (2<<(BUCKETORD - to_int(floor(abs(logRes))))))) + (2<<(BUCKETORD - to_int(floor(abs(logRes))))) - 1;
+				binNum = to_int(floor((locResults.f / pow(10.0,floor(fabs(logRes)))) * (2<<(BUCKETORD - to_int(floor(fabs(logRes))))))) + (2<<(BUCKETORD - to_int(floor(fabs(logRes))))) - 1;
 			}
 
 			if(binNum < threadMinBin[threadNum])
@@ -1312,19 +1592,25 @@ void *run_multi(void *threadarg)
 
 	delete[] bestCastX;
 	delete[] XCast;
-	delete[] locResults.X;
-	delete obj;
+	delete[] locResults_dbl.X;
+	delete obj_dbl;
+
+#if (MAX_PRECISION_LEVEL > 1)
+	delete[] locResults_dd.X;
+	delete obj_dd;
+#endif
+
 	pthread_exit(NULL);
 	return NULL;
 }
 
-int find_minima(struct OptimizeResult* bestResult, struct OptimizeResult* prevBest)
+int find_minima(OptimizeResult<MAX_PRECISION_T>* bestResult, OptimizeResult<MAX_PRECISION_T>* prevBest)
 {
 	ofstream outfile;
-	floatval_t best;
-	floatval_t* bestX;
-	floatval_t avRes = 0.0;
-	floatval_t stdDev = 0.0;
+	MAX_PRECISION_T best;
+	MAX_PRECISION_T* bestX;
+	MAX_PRECISION_T avRes = 0.0;
+	MAX_PRECISION_T stdDev = 0.0;
 	int nClose = 0;
 	int* binsOut = new int[NBINSOUT];
 	int lBin = 2<<(BUCKETORD+1);
@@ -1389,12 +1675,12 @@ int find_minima(struct OptimizeResult* bestResult, struct OptimizeResult* prevBe
 	for(int i=0; i<(nThreads); i++)
 	{
 #ifndef SILENT
-		cout << "Thread " << i << " result is: " << results[i].f.to_out_string(4);
+		cout << "Thread " << i << " result is: " << to_out_string(results[i].f,4);
 		cout << " at: ";
 
 		for(int k = 0; k < DIM; k++)
 		{
-			cout << results[i].X[k].to_out_string(4) << " ";
+			cout << to_out_string(results[i].X[k],4) << " ";
 		}
 		cout << endl;
 #endif /*!SILENT*/
@@ -1615,13 +1901,13 @@ int find_minima(struct OptimizeResult* bestResult, struct OptimizeResult* prevBe
 	return 0;
 }
 
-void runExperiment(struct OptimizeResult* prevBest)
+void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 {
 	ofstream outfile;
-    struct OptimizeResult bestRun;
-	floatval_t best;
-	floatval_t* bestX = new floatval_t[DIM];
-	bestRun.X = new floatval_t[DIM];
+    OptimizeResult<MAX_PRECISION_T> bestRun;
+	MAX_PRECISION_T best;
+	MAX_PRECISION_T* bestX = new MAX_PRECISION_T[DIM];
+	bestRun.X = new MAX_PRECISION_T[DIM];
 
 #ifndef SILENT
     cout << "---------Starting test---------" << endl;
@@ -1636,12 +1922,12 @@ void runExperiment(struct OptimizeResult* prevBest)
 #ifndef TEST_START_POINTS
 
 #ifndef SILENT
-	cout << "Best result is: " << bestRun.f.to_out_string(4);
+	cout << "Best result is: " << to_out_string(bestRun.f,4);
 	cout << " at: ";
 
 	for(int k = 0; k < DIM; k++)
 	{
-		cout << bestRun.X[k].to_out_string(4) << " ";
+		cout << to_out_string(bestRun.X[k],4) << " ";
 	}
 	cout << endl;
 #endif /*!SILENT*/
@@ -1665,6 +1951,12 @@ void runExperiment(struct OptimizeResult* prevBest)
 		}
 		else
 		{
+			cout << "Using previous best: " << to_out_string(prevBest->f,5) << " at: ";
+			for(int k = 0; k < DIM; k++)
+			{
+				cout << to_out_string(prevBest->X[k],5) << ", ";
+			}
+			cout << endl;
 			best = prevBest->f;
 			for(int k = 0; k < DIM; k++)
 			{
@@ -1677,12 +1969,12 @@ void runExperiment(struct OptimizeResult* prevBest)
 	{
 
 #ifndef SILENT
-		cout << "Best result now: " << best.to_out_string(4);
+		cout << "Best result now: " << to_out_string(best,4);
 		cout << " at: ";
 
 		for(int k = 0; k < DIM; k++)
 		{
-			cout << bestX[k].to_out_string(4) << " ";
+			cout << to_out_string(bestX[k],4) << " ";
 		}
 		cout << endl;
 #endif /*!SILENT*/
@@ -1691,11 +1983,11 @@ void runExperiment(struct OptimizeResult* prevBest)
 
 	    if(NPARAMS > 0)
 	    {
-	        outfile << params[0].to_out_string(4);
+	        outfile << to_out_string(params[0],4);
 
 	        for(int i=1; i<NPARAMS; i++)
 	        {
-	            outfile << "," << params[i].to_out_string(4);
+	            outfile << "," << to_out_string(params[i],4);
 	        }
 
 	        outfile << ",";
@@ -1703,21 +1995,21 @@ void runExperiment(struct OptimizeResult* prevBest)
 
 	    if(BOUNDED)
 	    {
-	        outfile << lbounds[0].to_out_string(4) << "," << ubounds[0].to_out_string(4);
+	        outfile << to_out_string(lbounds[0],4) << "," << to_out_string(ubounds[0],4);
 	        for(int k = 1; k < DIM; k++)
 	        {
-	            outfile << "," << lbounds[k].to_out_string(4) << "," << ubounds[k].to_out_string(4);
+	            outfile << "," << to_out_string(lbounds[k],4) << "," << to_out_string(ubounds[k],4);
 	        }
 	        outfile << ",";
 	    }
 
 		EXTRAOUT
 
-		outfile << "," << best.to_out_string(SIGDIG);
+		outfile << "," << to_out_string(best,SIGDIG);
 
 	    for(int k = 0; k < DIM; k++)
 	    {
-	        outfile << "," << bestX[k].to_out_string(SIGDIG);
+	        outfile << "," << to_out_string(bestX[k],SIGDIG);
 	    }
 
 	    outfile << endl;
@@ -1740,7 +2032,7 @@ int getMult(int depth)
 	return mult;
 }
 
-void getAdjacentRes(int depth, int* bState, floatval_t** pBest, floatval_t*** pPoint, struct OptimizeResult* res)
+void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISION_T*** pPoint, OptimizeResult<MAX_PRECISION_T>* res)
 {
 #ifndef SILENT
 	cout << "Getting adjacent result." << endl;
@@ -1748,8 +2040,8 @@ void getAdjacentRes(int depth, int* bState, floatval_t** pBest, floatval_t*** pP
 
 	if(boundaries[depth].steps > 0)
 	{
-		floatval_t* depthRes = pBest[depth];
-		floatval_t** depthP = pPoint[depth];
+		MAX_PRECISION_T* depthRes = pBest[depth];
+		MAX_PRECISION_T** depthP = pPoint[depth];
 
 		int index = 0;
 
@@ -1769,7 +2061,12 @@ void getAdjacentRes(int depth, int* bState, floatval_t** pBest, floatval_t*** pP
 		}
 
 #ifndef SILENT
-		cout << "Got it, it was: " << res->f << endl;
+		cout << "Got it, it was: " << res->f << " at: ";
+		for(int k = 0; k < DIM; k++)
+		{
+			cout << to_out_string(res->X[k],4) << ", ";
+		}
+		cout << endl;
 #endif /*!SILENT*/
 	}
 	else
@@ -1781,7 +2078,7 @@ void getAdjacentRes(int depth, int* bState, floatval_t** pBest, floatval_t*** pP
 	}
 }
 
-int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, floatval_t*** pPoint, bool isStart)
+int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISION_T*** pPoint, bool isStart)
 {
 #ifndef SILENT
 	cout << "Running Boundary Recursion." << endl;
@@ -1791,9 +2088,9 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 	if(depth == 0)
 	{
 		bestRes.f = 1e10;
-		bestRes.X = new floatval_t[DIM];
-		ubounds = new floatval_t[DIM];
-        lbounds = new floatval_t[DIM];
+		bestRes.X = new MAX_PRECISION_T[DIM];
+		ubounds = new MAX_PRECISION_T[DIM];
+        lbounds = new MAX_PRECISION_T[DIM];
 	}
 
 	if(BOUNDED)
@@ -1809,15 +2106,15 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 			for(int k = 0; k < DIM; k++)
 			{
 				cout << "Boundaries for dimension " << k << " lower: ";
-				cout << lbounds[k].to_out_string(4) << " upper: ";
-				cout << ubounds[k].to_out_string(4) << endl;
+				cout << to_out_string(lbounds[k],4) << " upper: ";
+				cout << to_out_string(ubounds[k],4) << endl;
 			}
 #endif /*!SILENT*/
 
-			struct OptimizeResult res;
-			res.X = new floatval_t[DIM];
-			floatval_t currBest = 1e10;
-			floatval_t* point;
+			OptimizeResult<MAX_PRECISION_T> res;
+			res.X = new MAX_PRECISION_T[DIM];
+			MAX_PRECISION_T currBest = 1e10;
+			MAX_PRECISION_T* point = new MAX_PRECISION_T[DIM];
 
 #ifndef SILENT
 			int stepCount = 1;
@@ -1827,7 +2124,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 			{
 				for(int j = 0; j < stepCount; j++)
 				{
-					cout << pBest[i][j].to_out_string(4) << ", ";
+					cout << to_out_string(pBest[i][j],4) << ", ";
 				}
 				stepCount *= (boundaries[i].steps + 1);
 				cout << endl;
@@ -1848,17 +2145,23 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 					if(res.f < currBest)
 					{
 						currBest = res.f;
-						point = res.X;
+						for(int k = 0; k < DIM; k++)
+						{
+							point[k] = res.X[k];
+						}
 					}
 				}
 				else
 				{
-					point = res.X;
+					for(int k = 0; k < DIM; k++)
+					{
+						point[k] = res.X[k];
+					}
 				}
 			}
 
 #ifndef SILENT
-			cout << "Setting Bests, current best is: " << currBest.to_out_string(4) << endl;
+			cout << "Setting Bests, current best is: " << to_out_string(currBest,4) << endl;
 #endif /*!SILENT*/
 
 			bestRes.f = currBest;
@@ -1868,6 +2171,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 			}
 
 			delete[] res.X;
+			delete[] point;
 
 			if(isStart && !RANDOMSEARCH)
 			{
@@ -1888,6 +2192,14 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 #ifndef SILENT
 			cout << "Running experiment." << endl;
 #endif /*!SILENT*/
+
+			cout << "Previous best is: " << to_out_string(bestRes.f,5) << " at: ";
+			for(int k = 0; k < DIM; k++)
+			{
+				cout << to_out_string(bestRes.X[k],5) << ", ";
+			}
+			cout << endl;
+
 			runExperiment(&bestRes);
 #ifndef SILENT
 			cout << "Finished experiment." << endl;
@@ -1926,10 +2238,10 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 				// Copy results to layer below.
 				if(BSETS > 1 && depth > 0)
 				{
-					floatval_t* nextLevelBest = pBest[depth];
-					floatval_t** nextLevelPoint = pPoint[depth];
-					floatval_t* levelBest = pBest[depth - 1];
-					floatval_t** levelPoint = pPoint[depth - 1];
+					MAX_PRECISION_T* nextLevelBest = pBest[depth];
+					MAX_PRECISION_T** nextLevelPoint = pPoint[depth];
+					MAX_PRECISION_T* levelBest = pBest[depth - 1];
+					MAX_PRECISION_T** levelPoint = pPoint[depth - 1];
 
 					for(int j = 0; j < mult; j++)
 					{
@@ -1953,7 +2265,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 			{
 				for(int j = 0; j < stepCount; j++)
 				{
-					cout << pBest[i][j].to_out_string(4) << ", ";
+					cout << to_out_string(pBest[i][j],4) << ", ";
 				}
 				stepCount *= (boundaries[i].steps + 1);
 				cout << endl;
@@ -1977,7 +2289,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, floatval_t** pBest, 
 	return mult;
 }
 
-void parameterRecursion(int depth, int* paramState, int* bState, floatval_t** pBest, floatval_t*** pPoint)
+void parameterRecursion(int depth, int* paramState, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISION_T*** pPoint)
 {
 #ifndef SILENT
 	cout << "Running Parameter Recursion." << endl;
@@ -1996,13 +2308,13 @@ void parameterRecursion(int depth, int* paramState, int* bState, floatval_t** pB
     else
     {
 		// This may seem hanky, but we use function pointers stored by the function.h file. This allows for conditions dependent on previous parameters.
-        parameter_t currentParam  = parameters[depth];
+        parameter_t<MAX_PRECISION_T> currentParam  = parameters[depth];
         for(int i=paramState[depth]; i <= (*(currentParam.steps))(params, depth); i++)
         {
             params[depth] = (*(currentParam.get))(i, params, depth);
 
 #ifndef SILENT
-			cout << "Parameter at: " << depth << " is: " << params[depth].to_out_string(4) << endl;
+			cout << "Parameter at: " << depth << " is: " << to_out_string(params[depth],4) << endl;
 #endif /*!SILENT*/
 
             parameterRecursion(depth + 1, paramState, bState, pBest, pPoint);
@@ -2046,7 +2358,7 @@ bool skipBackLine(ifstream* infile)
 	}
 }
 
-void getLineResult(string line, struct OptimizeResult* res)
+void getLineResult(string line, OptimizeResult<MAX_PRECISION_T>* res)
 {
 	istringstream iss(line);
 	string s;
@@ -2056,11 +2368,11 @@ void getLineResult(string line, struct OptimizeResult* res)
 	}
 
 	getline( iss, s, ',' );
-	res->f = floatval_t(s.c_str());
+	res->f = MAX_PRECISION_T(s.c_str());
 	for(int i = 0; i < DIM; i++)
 	{
 		getline( iss, s, ',' );
-		res->X[i] = floatval_t(s.c_str());
+		res->X[i] = MAX_PRECISION_T(s.c_str());
 	}
 }
 
@@ -2103,15 +2415,15 @@ bool setFileToLastLine(ifstream* infile)
 	}
 }
 
-void getPrevResuts(ifstream* infile, int* bState, floatval_t** pBest, floatval_t*** pPoint)
+void getPrevResuts(ifstream* infile, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISION_T*** pPoint)
 {
 	int dimSize = 1;
 	bool startReached = false;
 	bool usePrev = false;
 	if(infile->is_open())
 	{
-		struct OptimizeResult res;
-		res.X = new floatval_t[DIM];
+		OptimizeResult<MAX_PRECISION_T> res;
+		res.X = new MAX_PRECISION_T[DIM];
 
 #ifndef SILENT
 		cout << "Previous results are: " << endl;
@@ -2121,8 +2433,8 @@ void getPrevResuts(ifstream* infile, int* bState, floatval_t** pBest, floatval_t
 		{
 			startReached = false;
 
-			floatval_t* dimPBest = pBest[i];
-			floatval_t** dimPPoint = pPoint[i];
+			MAX_PRECISION_T* dimPBest = pBest[i];
+			MAX_PRECISION_T** dimPPoint = pPoint[i];
 
 			setFileToLastLine(infile);
 
@@ -2157,7 +2469,7 @@ void getPrevResuts(ifstream* infile, int* bState, floatval_t** pBest, floatval_t
 					int index = (bState[i + 1] + j) % dimSize;
 
 					dimPBest[index] = res.f;
-					floatval_t* newX = dimPPoint[index];
+					MAX_PRECISION_T* newX = dimPPoint[index];
 
 					for(int k = 0; k < DIM; k++)
 					{
@@ -2165,7 +2477,7 @@ void getPrevResuts(ifstream* infile, int* bState, floatval_t** pBest, floatval_t
 					}
 
 #ifndef SILENT
-					cout << ", " << res.f.to_out_string(4);
+					cout << ", " << to_out_string(res.f,4);
 #endif /*!SILENT*/
 				}
 			}
@@ -2189,7 +2501,7 @@ void getPrevResuts(ifstream* infile, int* bState, floatval_t** pBest, floatval_t
 int main(int argc, char **argv)
 {
     int threadReturn;
-	floatval_t* pParams;
+	MAX_PRECISION_T* pParams;
 
 	int ierr, my_id;
 
@@ -2232,11 +2544,11 @@ int main(int argc, char **argv)
 	readyForCollection = s_state;
 
 	// Slave results
-	ierr = MPI_Alloc_mem(2*(1+DIM)*sizeof(floatval_t), MPI_INFO_NULL, s_res);
+	ierr = MPI_Alloc_mem(2*(1+DIM)*sizeof(MAX_PRECISION_T), MPI_INFO_NULL, s_res);
 	if(!checkMPIError(ierr))
 		return 0;
 	nodeBest = &s_res[0];
-	nodeX = new floatval_t*[2];
+	nodeX = new MAX_PRECISION_T*[2];
 	nodeX[0] = &s_res[2];
 	nodeX[1] = &s_res[2 + DIM];
 
@@ -2259,7 +2571,7 @@ int main(int argc, char **argv)
 	ierr = MPI_Win_create(&s_stats, 2*(2+NBINSOUT)*sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &stats_window);
 	if(!checkMPIError(ierr))
 		return 0;
-	ierr = MPI_Win_create(&s_res, 2*(1+DIM)*sizeof(floatval_t), sizeof(floatval_t), MPI_INFO_NULL, MPI_COMM_WORLD, &res_window);
+	ierr = MPI_Win_create(&s_res, 2*(1+DIM)*sizeof(MAX_PRECISION_T), sizeof(MAX_PRECISION_T), MPI_INFO_NULL, MPI_COMM_WORLD, &res_window);
 	if(!checkMPIError(ierr))
 		return 0;
 
@@ -2282,9 +2594,9 @@ int main(int argc, char **argv)
 	{
 		nruns = NRUNS;
 	}
-    params = new floatval_t[NPARAMS];
-    parameters = new parameter_t[NPARAMS];
-    boundaries = new boundary_t[BSETS];
+    params = new MAX_PRECISION_T[NPARAMS];
+    parameters = new parameter_t<MAX_PRECISION_T>[NPARAMS];
+    boundaries = new boundary_t<MAX_PRECISION_T>[BSETS];
 
     BOUNDS
     //cout << "Finished bounds." << endl;
@@ -2307,18 +2619,18 @@ int main(int argc, char **argv)
 	int bState[BSETS];
 
 
-	floatval_t** pBest = new floatval_t*[BSETS];
-	floatval_t*** pPoint = new floatval_t**[BSETS];
+	MAX_PRECISION_T** pBest = new MAX_PRECISION_T*[BSETS];
+	MAX_PRECISION_T*** pPoint = new MAX_PRECISION_T**[BSETS];
 
 	int stepCount = 1;
 
 	for(int i = BSETS - 1; i >= 0; i--)
 	{
-		pBest[i] = new floatval_t[stepCount];
-		pPoint[i] = new floatval_t*[stepCount];
+		pBest[i] = new MAX_PRECISION_T[stepCount];
+		pPoint[i] = new MAX_PRECISION_T*[stepCount];
 		for(int j = 0; j < stepCount; j++)
 		{
-			pPoint[i][j] = new floatval_t[DIM];
+			pPoint[i][j] = new MAX_PRECISION_T[DIM];
 		}
 		stepCount *= (boundaries[i].steps + 1);
 	}
@@ -2354,14 +2666,14 @@ int main(int argc, char **argv)
 #endif /*!SILENT*/
 	  		istringstream iss(lastLine);
 			string s;
-			pParams = new floatval_t[NPARAMS];
+			pParams = new MAX_PRECISION_T[NPARAMS];
 			for(int i = 0; i < NPARAMS; i++)
 			{
 				getline( iss, s, ',' );
 
-				floatval_t param = floatval_t(s.c_str());
+				MAX_PRECISION_T param = MAX_PRECISION_T(s.c_str());
 				pParams[i] = param;
-				parameter_t currentParam  = parameters[i];
+				parameter_t<MAX_PRECISION_T> currentParam  = parameters[i];
 
 				int iteration = (*(currentParam.findPos))(param,pParams,i);
 
@@ -2382,9 +2694,9 @@ int main(int argc, char **argv)
 					getline( iss, s, ',' );
 					if(!bSetComplete)
 					{
-						floatval_t bound = floatval_t(s.c_str());
+						MAX_PRECISION_T bound = MAX_PRECISION_T(s.c_str());
 						int iteration = 0;
-						if((bound - boundaries[i].startUpper) > EPS)
+						if((bound - boundaries[i].startUpper) > get_epsilon<MAX_PRECISION_T>())
 						{
 							iteration = to_int(nint((bound - boundaries[i].startUpper) / boundaries[i].incrementUpper));
 						}
@@ -2393,9 +2705,9 @@ int main(int argc, char **argv)
 						bState[i] = iteration;
 
 #ifndef SILENT
-						cout << "Read Bount as: " << bound.to_out_string(4) << endl;
-						cout << "Upper start: " << boundaries[i].startUpper.to_out_string(4) << endl;
-						cout << "Upper increment: " << boundaries[i].incrementUpper.to_out_string(4) << endl;
+						cout << "Read Bount as: " << to_out_string(bound,4) << endl;
+						cout << "Upper start: " << to_out_string(boundaries[i].startUpper,4) << endl;
+						cout << "Upper increment: " << to_out_string(boundaries[i].incrementUpper,4) << endl;
 						cout << iteration << endl;
 #endif /*!SILENT*/
 					}
@@ -2475,10 +2787,10 @@ int main(int argc, char **argv)
 
 	startLatch = new bool[nThreads];
 
-	results = new OptimizeResult[nThreads];
+	results = new OptimizeResult<MAX_PRECISION_T>[nThreads];
     for(int i=0; i<(nThreads); i++)
 	{
-        results[i].X = new floatval_t[DIM];
+        results[i].X = new MAX_PRECISION_T[DIM];
 		threadBins[i] = new int[NBINSOUT];
 		startLatch[i] = true;
     }

@@ -44,6 +44,7 @@ inline static void vecfree(void *memblock)
     free(memblock);
 }
 
+template <typename floatval_t>
 inline static void vecset(floatval_t *x, const floatval_t c, const int n)
 {
     int i;
@@ -53,6 +54,7 @@ inline static void vecset(floatval_t *x, const floatval_t c, const int n)
     }
 }
 
+template <typename floatval_t>
 inline static void veccpy(floatval_t *y, const floatval_t *x, const int n)
 {
     int i;
@@ -62,6 +64,7 @@ inline static void veccpy(floatval_t *y, const floatval_t *x, const int n)
     }
 }
 
+template <typename floatval_t>
 inline static void vecncpy(floatval_t *y, const floatval_t *x, const int n)
 {
     int i;
@@ -71,6 +74,7 @@ inline static void vecncpy(floatval_t *y, const floatval_t *x, const int n)
     }
 }
 
+template <typename floatval_t>
 inline static void vecadd(floatval_t *y, const floatval_t *x, const floatval_t c, const int n)
 {
     int i;
@@ -80,6 +84,7 @@ inline static void vecadd(floatval_t *y, const floatval_t *x, const floatval_t c
     }
 }
 
+template <typename floatval_t>
 inline static void vecdiff(floatval_t *z, const floatval_t *x, const floatval_t *y, const int n)
 {
     int i;
@@ -89,6 +94,7 @@ inline static void vecdiff(floatval_t *z, const floatval_t *x, const floatval_t 
     }
 }
 
+template <typename floatval_t>
 inline static void vecscale(floatval_t *y, const floatval_t c, const int n)
 {
     int i;
@@ -98,6 +104,7 @@ inline static void vecscale(floatval_t *y, const floatval_t c, const int n)
     }
 }
 
+template <typename floatval_t>
 inline static void vecmul(floatval_t *y, const floatval_t *x, const int n)
 {
     int i;
@@ -107,6 +114,7 @@ inline static void vecmul(floatval_t *y, const floatval_t *x, const int n)
     }
 }
 
+template <typename floatval_t>
 inline static void vecdot(floatval_t* s, const floatval_t *x, const floatval_t *y, const int n)
 {
     int i;
@@ -116,6 +124,7 @@ inline static void vecdot(floatval_t* s, const floatval_t *x, const floatval_t *
     }
 }
 
+template <typename floatval_t>
 inline static void subvecdot(floatval_t* s, const floatval_t *x, const floatval_t *y, const bool* exclude, const int n)
 {
     int i;
@@ -127,12 +136,14 @@ inline static void subvecdot(floatval_t* s, const floatval_t *x, const floatval_
     }
 }
 
+template <typename floatval_t>
 inline static void vec2norm(floatval_t* s, const floatval_t *x, const int n)
 {
     vecdot(s, x, x, n);
     *s = (floatval_t)sqrt(*s);
 }
 
+template <typename floatval_t>
 inline static void vec2norminv(floatval_t* s, const floatval_t *x, const int n)
 {
     vec2norm(s, x, n);

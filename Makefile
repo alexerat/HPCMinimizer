@@ -1,15 +1,15 @@
 CC=icpc
 LD=icpc
-CFLAGS=-c -O3 -ansi-alias -fno-exceptions
+CFLAGS=-c -O3 -fno-exceptions -std=c++11
 TFLAGS=
-PROFDIR=-prof-dir=./.Profiling
-ARCHFLAGS=-xCOMMON-AVX512
+PROFDIR=
+ARCHFLAGS=
 INCLUDES=-I./qd/include -I./arprec/include
 LFLAGS= -L./arprec/src/.libs
-SOURCES=localMinima.cpp lbfgs.cpp DE.cpp
-PROFFLAG=-prof-use
+SOURCES=lbfgs.cpp localMinima.cpp 
+PROFFLAG=
 QDOBJS=$(wildcard ./qd/src/*.o)
-OPTFLAG=-ipo
+OPTFLAG=
 OBJECTS=$(SOURCES:.cpp=.o) $(QDOBJS)
 EXECUTABLE=localMinima
 EXECUTABLE_MPI=localMinima_MPI
@@ -18,32 +18,32 @@ SUBDIRS=./qd/src/
 
 no_prof: PROFFLAG=
 
-profile: CFLAGS=-c -O3 -ansi-alias
+profile: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias
 profile: PROFFLAG=-prof-gen
 profile: OPTFLAG=
 
-debug: CFLAGS=-c -O0 -g -Wall -pedantic -DVERBOSE
-debug: LD=icpc
+debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic -DVERBOSE
+debug: LD=g++
 debug: OPTFLAG=
 debug: PROFFLAG=
 
-debug_det: CFLAGS=-c -O0 -g -Wall -pedantic -DVERBOSE -D DETERMINISTIC
+debug_det: CFLAGS=-c -O0 -fno-exceptions -g -Wall -pedantic -DVERBOSE -D DETERMINISTIC
 debug_det: OPTFLAG=
 debug_det: PROFFLAG=
 
-test: CFLAGS=-c -O0 -g -Wall -pedantic
-test: LD=icpc
+test: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic
+test: LD=g++
 test: OPTFLAG=
 test: PROFFLAG=
 
-det: CFLAGS=-c -O3 -ansi-alias -fno-exceptions -D DETERMINISTIC
+det: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -fno-exceptions -D DETERMINISTIC
 
 mpi: CC=mpicxx
-mpi: CFLAGS=-c -O3 -ansi-alias -fno-exceptions -D USE_MPI -cxx=icpc
+mpi: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -fno-exceptions -D USE_MPI -cxx=g++
 mpi: PROFFLAG=
 mpi: PROFDIR=-prof-dir=./.MPI-Profiling
 mpi_debug: CC=mpicxx
-mpi_debug: CFLAGS=-c -O0 -g -D USE_MPI -cxx=icpc
+mpi_debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -D USE_MPI -cxx=g++
 mpi_debug: OPTFLAG=
 mpi_debug: PROFFLAG=
 mpi_debug: LIBRARIERS=-pthread -l arprec -l irc -lm -lbfd -liberty -lunwind

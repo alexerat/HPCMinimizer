@@ -156,6 +156,8 @@ struct QD_API dd_real {
                  std::ostream &os = std::cerr) const;
 
   static dd_real debug_rand();
+
+  explicit operator double() const { return x[0]; }
 };
 
 
