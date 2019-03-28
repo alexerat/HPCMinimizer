@@ -2003,9 +2003,10 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 	        outfile << ",";
 	    }
 
+		/*NOTE: Extra out must bring its own leading comma*/
 		EXTRAOUT
 
-		outfile << "," << to_out_string(best,SIGDIG);
+		outfile << to_out_string(best,SIGDIG);
 
 	    for(int k = 0; k < DIM; k++)
 	    {
