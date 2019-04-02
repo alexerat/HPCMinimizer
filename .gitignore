@@ -31,7 +31,5 @@
 *.out
 *.app
 
-# Keep the libarprec to keep it working
-!libarprec.la
 
 

@@ -13,8 +13,8 @@ OPTFLAG=
 OBJECTS=$(SOURCES:.cpp=.o) $(QDOBJS)
 EXECUTABLE=localMinima
 EXECUTABLE_MPI=localMinima_MPI
-LIBRARIERS=-larprec -lpthread
-SUBDIRS=./qd/src/
+LIBRARIERS=-lpthread -ltensorflow
+SUBDIRS=./qd/src/ ./arprec/src/
 
 no_prof: PROFFLAG=
 
@@ -46,7 +46,7 @@ mpi_debug: CC=mpicxx
 mpi_debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -D USE_MPI -cxx=g++
 mpi_debug: OPTFLAG=
 mpi_debug: PROFFLAG=
-mpi_debug: LIBRARIERS=-pthread -l arprec -l irc -lm -lbfd -liberty -lunwind
+mpi_debug: LIBRARIERS=-pthread -l irc -lm -lbfd -liberty -lunwind
 
 
 .PHONY: clean $(SUBDIRS)

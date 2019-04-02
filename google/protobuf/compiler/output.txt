@@ -1,0 +1,783 @@
+rm -f *.o *~
+g++ -c -O3 -fno-exceptions -std=c++11 -DHAVE_PTHREAD -DHAVE_ZLIB -Woverloaded-virtual -Wno-sign-compare -Wno-unused-function -Wno-write-strings      -I../ -I../io/ -I../stubs/ -I../util/ main.cc -o main.o
+In file included from /usr/include/c++/4.8/random:50:0,
+                 from /usr/include/c++/4.8/bits/stl_algo.h:65,
+                 from /usr/include/c++/4.8/algorithm:62,
+                 from ../stubs/common.h:38,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/random.h:1586:48: error: could not convert ‘"default"’ from ‘const char [8]’ to ‘const string& {aka const std::basic_string<char>&}’
+     random_device(const std::string& __token = "default")
+                                                ^
+In file included from /usr/include/c++/4.8/array:38:0,
+                 from /usr/include/c++/4.8/tuple:39,
+                 from /usr/include/c++/4.8/functional:55,
+                 from /usr/include/c++/4.8/bits/stl_algo.h:66,
+                 from /usr/include/c++/4.8/algorithm:62,
+                 from ../stubs/common.h:38,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/stdexcept:57:12: error: field ‘_M_msg’ has incomplete type
+     string _M_msg;
+            ^
+/usr/include/c++/4.8/stdexcept:114:12: error: field ‘_M_msg’ has incomplete type
+     string _M_msg;
+            ^
+In file included from /usr/include/c++/4.8/bits/ios_base.h:41:0,
+                 from /usr/include/c++/4.8/ios:42,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_classes.h:307:12: error: ‘__gthread_once_t’ does not name a type
+     static __gthread_once_t _S_once;
+            ^
+/usr/include/c++/4.8/bits/locale_classes.h:344:13: error: ‘_Atomic_word’ does not name a type
+     mutable _Atomic_word  _M_refcount;
+             ^
+/usr/include/c++/4.8/bits/locale_classes.h:353:12: error: ‘__gthread_once_t’ does not name a type
+     static __gthread_once_t  _S_once;
+            ^
+/usr/include/c++/4.8/bits/locale_classes.h: In constructor ‘std::locale::facet::facet(std::size_t)’:
+/usr/include/c++/4.8/bits/locale_classes.h:370:40: error: class ‘std::locale::facet’ does not have any field named ‘_M_refcount’
+     facet(size_t __refs = 0) throw() : _M_refcount(__refs ? 1 : 0)
+                                        ^
+/usr/include/c++/4.8/bits/locale_classes.h: In member function ‘void std::locale::facet::_M_add_reference() const’:
+/usr/include/c++/4.8/bits/locale_classes.h:401:7: error: ‘__atomic_add_dispatch’ is not a member of ‘__gnu_cxx’
+     { __gnu_cxx::__atomic_add_dispatch(&_M_refcount, 1); }
+       ^
+/usr/include/c++/4.8/bits/locale_classes.h:401:41: error: ‘_M_refcount’ was not declared in this scope
+     { __gnu_cxx::__atomic_add_dispatch(&_M_refcount, 1); }
+                                         ^
+/usr/include/c++/4.8/bits/locale_classes.h: In member function ‘void std::locale::facet::_M_remove_reference() const’:
+/usr/include/c++/4.8/bits/locale_classes.h:408:11: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_refcount, -1) == 1)
+           ^
+/usr/include/c++/4.8/bits/locale_classes.h:408:51: error: ‘_M_refcount’ was not declared in this scope
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_refcount, -1) == 1)
+                                                   ^
+/usr/include/c++/4.8/bits/locale_classes.h: At global scope:
+/usr/include/c++/4.8/bits/locale_classes.h:456:12: error: ‘_Atomic_word’ does not name a type
+     static _Atomic_word  _S_refcount;
+            ^
+/usr/include/c++/4.8/bits/locale_classes.h:495:5: error: ‘_Atomic_word’ does not name a type
+     _Atomic_word   _M_refcount;
+     ^
+/usr/include/c++/4.8/bits/locale_classes.h: In member function ‘void std::locale::_Impl::_M_add_reference()’:
+/usr/include/c++/4.8/bits/locale_classes.h:510:7: error: ‘__atomic_add_dispatch’ is not a member of ‘__gnu_cxx’
+     { __gnu_cxx::__atomic_add_dispatch(&_M_refcount, 1); }
+       ^
+/usr/include/c++/4.8/bits/locale_classes.h:510:41: error: ‘_M_refcount’ was not declared in this scope
+     { __gnu_cxx::__atomic_add_dispatch(&_M_refcount, 1); }
+                                         ^
+/usr/include/c++/4.8/bits/locale_classes.h: In member function ‘void std::locale::_Impl::_M_remove_reference()’:
+/usr/include/c++/4.8/bits/locale_classes.h:517:11: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_refcount, -1) == 1)
+           ^
+/usr/include/c++/4.8/bits/locale_classes.h:517:51: error: ‘_M_refcount’ was not declared in this scope
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_refcount, -1) == 1)
+                                                   ^
+In file included from /usr/include/c++/4.8/ios:42:0,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/ios_base.h: At global scope:
+/usr/include/c++/4.8/bits/ios_base.h:232:14: error: field ‘_M_msg’ has incomplete type
+       string _M_msg;
+              ^
+/usr/include/c++/4.8/bits/ios_base.h:472:7: error: ‘_Atomic_word’ does not name a type
+       _Atomic_word  _M_refcount;  // 0 means one reference.
+       ^
+/usr/include/c++/4.8/bits/ios_base.h:547:14: error: ‘_Atomic_word’ does not name a type
+       static _Atomic_word _S_refcount;
+              ^
+/usr/include/c++/4.8/bits/ios_base.h: In constructor ‘std::ios_base::_Callback_list::_Callback_list(std::ios_base::event_callback, int, std::ios_base::_Callback_list*)’:
+/usr/include/c++/4.8/bits/ios_base.h:476:56: error: class ‘std::ios_base::_Callback_list’ does not have any field named ‘_M_refcount’
+       : _M_next(__cb), _M_fn(__fn), _M_index(__index), _M_refcount(0) { }
+                                                        ^
+/usr/include/c++/4.8/bits/ios_base.h: In member function ‘void std::ios_base::_Callback_list::_M_add_reference()’:
+/usr/include/c++/4.8/bits/ios_base.h:479:28: error: ‘__atomic_add_dispatch’ is not a member of ‘__gnu_cxx’
+       _M_add_reference() { __gnu_cxx::__atomic_add_dispatch(&_M_refcount, 1); }
+                            ^
+/usr/include/c++/4.8/bits/ios_base.h:479:62: error: ‘_M_refcount’ was not declared in this scope
+       _M_add_reference() { __gnu_cxx::__atomic_add_dispatch(&_M_refcount, 1); }
+                                                              ^
+/usr/include/c++/4.8/bits/ios_base.h: In member function ‘int std::ios_base::_Callback_list::_M_remove_reference()’:
+/usr/include/c++/4.8/bits/ios_base.h:487:21: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+         int __res = __gnu_cxx::__exchange_and_add_dispatch(&_M_refcount, -1);
+                     ^
+/usr/include/c++/4.8/bits/ios_base.h:487:61: error: ‘_M_refcount’ was not declared in this scope
+         int __res = __gnu_cxx::__exchange_and_add_dispatch(&_M_refcount, -1);
+                                                             ^
+In file included from /usr/include/c++/4.8/bits/basic_ios.h:37:0,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.h: In member function ‘std::string std::numpunct<_CharT>::grouping() const’:
+/usr/include/c++/4.8/bits/locale_facets.h:1752:7: error: return type ‘std::string {aka class std::basic_string<char>}’ is incomplete
+       { return this->do_grouping(); }
+       ^
+/usr/include/c++/4.8/bits/locale_facets.h: In member function ‘virtual std::string std::numpunct<_CharT>::do_grouping() const’:
+/usr/include/c++/4.8/bits/locale_facets.h:1820:7: error: return type ‘std::string {aka class std::basic_string<char>}’ is incomplete
+       { return _M_data->_M_grouping; }
+       ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc: In member function ‘_InIter std::num_get<_CharT, _InIter>::_M_extract_float(_InIter, _InIter, std::ios_base&, std::ios_base::iostate&, std::string&) const’:
+/usr/include/c++/4.8/bits/locale_facets.tcc:207:18: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+  __found_grouping.reserve(32);
+                  ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:278:10: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+    __xtrc.clear();
+          ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:292:27: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       if (__found_grouping.size())
+                           ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:315:27: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       if (__found_grouping.size() && !__found_dec)
+                           ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:351:27: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       if (__found_grouping.size())
+                           ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc: In member function ‘_InIter std::num_get<_CharT, _InIter>::_M_extract_int(_InIter, _InIter, std::ios_base&, std::ios_base::iostate&, _ValueT&) const’:
+/usr/include/c++/4.8/bits/locale_facets.tcc:463:20: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+    __found_grouping.reserve(32);
+                    ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:549:22: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+  if (__found_grouping.size())
+                      ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:562:55: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+  if ((!__sep_pos && !__found_zero && !__found_grouping.size())
+                                                       ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc: In member function ‘virtual _InIter std::num_get<_CharT, _InIter>::do_get(std::num_get<_CharT, _InIter>::iter_type, std::num_get<_CharT, _InIter>::iter_type, std::ios_base&, std::ios_base::iostate&, float&) const’:
+/usr/include/c++/4.8/bits/locale_facets.tcc:690:13: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       __xtrc.reserve(32);
+             ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:692:33: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       std::__convert_to_v(__xtrc.c_str(), __v, __err, _S_get_c_locale());
+                                 ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc: In member function ‘virtual _InIter std::num_get<_CharT, _InIter>::do_get(std::num_get<_CharT, _InIter>::iter_type, std::num_get<_CharT, _InIter>::iter_type, std::ios_base&, std::ios_base::iostate&, double&) const’:
+/usr/include/c++/4.8/bits/locale_facets.tcc:705:13: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       __xtrc.reserve(32);
+             ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:707:33: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       std::__convert_to_v(__xtrc.c_str(), __v, __err, _S_get_c_locale());
+                                 ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc: In member function ‘virtual _InIter std::num_get<_CharT, _InIter>::do_get(std::num_get<_CharT, _InIter>::iter_type, std::num_get<_CharT, _InIter>::iter_type, std::ios_base&, std::ios_base::iostate&, long double&) const’:
+/usr/include/c++/4.8/bits/locale_facets.tcc:737:13: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       __xtrc.reserve(32);
+             ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/bits/locale_facets.h:2608:0,
+                 from /usr/include/c++/4.8/bits/basic_ios.h:37,
+                 from /usr/include/c++/4.8/ios:44,
+                 from /usr/include/c++/4.8/ostream:38,
+                 from /usr/include/c++/4.8/iostream:39,
+                 from ../stubs/common.h:39,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/locale_facets.tcc:739:33: error: invalid use of incomplete type ‘std::string {aka class std::basic_string<char>}’
+       std::__convert_to_v(__xtrc.c_str(), __v, __err, _S_get_c_locale());
+                                 ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘std::string {aka class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from /usr/include/c++/4.8/memory:74:0,
+                 from ../stubs/common.h:41,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/ext/concurrence.h: At global scope:
+/usr/include/c++/4.8/ext/concurrence.h:124:5: error: ‘__gthread_mutex_t’ does not name a type
+     __gthread_mutex_t _M_mutex;
+     ^
+/usr/include/c++/4.8/ext/concurrence.h:169:5: error: ‘__gthread_mutex_t’ does not name a type
+     __gthread_mutex_t* gthread_mutex(void)
+     ^
+/usr/include/c++/4.8/ext/concurrence.h: In constructor ‘__gnu_cxx::__mutex::__mutex()’:
+/usr/include/c++/4.8/ext/concurrence.h:134:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:135:33: error: ‘_M_mutex’ was not declared in this scope
+  __GTHREAD_MUTEX_INIT_FUNCTION(&_M_mutex);
+                                 ^
+/usr/include/c++/4.8/ext/concurrence.h:135:41: error: ‘__GTHREAD_MUTEX_INIT_FUNCTION’ was not declared in this scope
+  __GTHREAD_MUTEX_INIT_FUNCTION(&_M_mutex);
+                                         ^
+/usr/include/c++/4.8/ext/concurrence.h: In destructor ‘__gnu_cxx::__mutex::~__mutex()’:
+/usr/include/c++/4.8/ext/concurrence.h:142:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:143:27: error: ‘_M_mutex’ was not declared in this scope
+  __gthread_mutex_destroy(&_M_mutex); 
+                           ^
+/usr/include/c++/4.8/ext/concurrence.h:143:35: error: ‘__gthread_mutex_destroy’ was not declared in this scope
+  __gthread_mutex_destroy(&_M_mutex); 
+                                   ^
+/usr/include/c++/4.8/ext/concurrence.h: In member function ‘void __gnu_cxx::__mutex::lock()’:
+/usr/include/c++/4.8/ext/concurrence.h:150:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:152:30: error: ‘_M_mutex’ was not declared in this scope
+    if (__gthread_mutex_lock(&_M_mutex) != 0)
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:152:38: error: ‘__gthread_mutex_lock’ was not declared in this scope
+    if (__gthread_mutex_lock(&_M_mutex) != 0)
+                                      ^
+/usr/include/c++/4.8/ext/concurrence.h: In member function ‘void __gnu_cxx::__mutex::unlock()’:
+/usr/include/c++/4.8/ext/concurrence.h:161:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:163:32: error: ‘_M_mutex’ was not declared in this scope
+    if (__gthread_mutex_unlock(&_M_mutex) != 0)
+                                ^
+/usr/include/c++/4.8/ext/concurrence.h:163:40: error: ‘__gthread_mutex_unlock’ was not declared in this scope
+    if (__gthread_mutex_unlock(&_M_mutex) != 0)
+                                        ^
+/usr/include/c++/4.8/ext/concurrence.h: At global scope:
+/usr/include/c++/4.8/ext/concurrence.h:179:5: error: ‘__gthread_recursive_mutex_t’ does not name a type
+     __gthread_recursive_mutex_t _M_mutex;
+     ^
+/usr/include/c++/4.8/ext/concurrence.h:224:5: error: ‘__gthread_recursive_mutex_t’ does not name a type
+     __gthread_recursive_mutex_t* gthread_recursive_mutex(void)
+     ^
+/usr/include/c++/4.8/ext/concurrence.h: In constructor ‘__gnu_cxx::__recursive_mutex::__recursive_mutex()’:
+/usr/include/c++/4.8/ext/concurrence.h:189:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:190:43: error: ‘_M_mutex’ was not declared in this scope
+  __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION(&_M_mutex);
+                                           ^
+/usr/include/c++/4.8/ext/concurrence.h:190:51: error: ‘__GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION’ was not declared in this scope
+  __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION(&_M_mutex);
+                                                   ^
+/usr/include/c++/4.8/ext/concurrence.h: In destructor ‘__gnu_cxx::__recursive_mutex::~__recursive_mutex()’:
+/usr/include/c++/4.8/ext/concurrence.h:197:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:198:37: error: ‘_M_mutex’ was not declared in this scope
+  __gthread_recursive_mutex_destroy(&_M_mutex);
+                                     ^
+/usr/include/c++/4.8/ext/concurrence.h:198:45: error: ‘__gthread_recursive_mutex_destroy’ was not declared in this scope
+  __gthread_recursive_mutex_destroy(&_M_mutex);
+                                             ^
+/usr/include/c++/4.8/ext/concurrence.h: In member function ‘void __gnu_cxx::__recursive_mutex::lock()’:
+/usr/include/c++/4.8/ext/concurrence.h:205:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:207:40: error: ‘_M_mutex’ was not declared in this scope
+    if (__gthread_recursive_mutex_lock(&_M_mutex) != 0)
+                                        ^
+/usr/include/c++/4.8/ext/concurrence.h:207:48: error: ‘__gthread_recursive_mutex_lock’ was not declared in this scope
+    if (__gthread_recursive_mutex_lock(&_M_mutex) != 0)
+                                                ^
+/usr/include/c++/4.8/ext/concurrence.h: In member function ‘void __gnu_cxx::__recursive_mutex::unlock()’:
+/usr/include/c++/4.8/ext/concurrence.h:216:30: error: ‘__gthread_active_p’ was not declared in this scope
+       if (__gthread_active_p())
+                              ^
+/usr/include/c++/4.8/ext/concurrence.h:218:42: error: ‘_M_mutex’ was not declared in this scope
+    if (__gthread_recursive_mutex_unlock(&_M_mutex) != 0)
+                                          ^
+/usr/include/c++/4.8/ext/concurrence.h:218:50: error: ‘__gthread_recursive_mutex_unlock’ was not declared in this scope
+    if (__gthread_recursive_mutex_unlock(&_M_mutex) != 0)
+                                                  ^
+In file included from /usr/include/c++/4.8/bits/shared_ptr.h:52:0,
+                 from /usr/include/c++/4.8/memory:82,
+                 from ../stubs/common.h:41,
+                 from ../stubs/time.h:33,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/shared_ptr_base.h: At global scope:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:201:7: error: ‘_Atomic_word’ does not name a type
+       _Atomic_word  _M_use_count;     // #shared
+       ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:202:7: error: ‘_Atomic_word’ does not name a type
+       _Atomic_word  _M_weak_count;    // #weak + (#shared != 0)
+       ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In constructor ‘std::_Sp_counted_base<_Lp>::_Sp_counted_base()’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:110:9: error: class ‘std::_Sp_counted_base<_Lp>’ does not have any field named ‘_M_use_count’
+       : _M_use_count(1), _M_weak_count(1) { }
+         ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:110:26: error: class ‘std::_Sp_counted_base<_Lp>’ does not have any field named ‘_M_weak_count’
+       : _M_use_count(1), _M_weak_count(1) { }
+                          ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_add_ref_copy()’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:131:9: error: ‘__atomic_add_dispatch’ is not a member of ‘__gnu_cxx’
+       { __gnu_cxx::__atomic_add_dispatch(&_M_use_count, 1); }
+         ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:131:43: error: ‘_M_use_count’ was not declared in this scope
+       { __gnu_cxx::__atomic_add_dispatch(&_M_use_count, 1); }
+                                           ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_release()’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:141:6: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+  if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, -1) == 1)
+      ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:141:46: error: ‘_M_use_count’ was not declared in this scope
+  if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, -1) == 1)
+                                              ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:151:10: error: ‘_GLIBCXX_READ_MEM_BARRIER’ was not declared in this scope
+          _GLIBCXX_READ_MEM_BARRIER;
+          ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:152:10: error: ‘_GLIBCXX_WRITE_MEM_BARRIER’ was not declared in this scope
+          _GLIBCXX_WRITE_MEM_BARRIER;
+          ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:157:10: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+      if (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count,
+          ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:157:50: error: ‘_M_weak_count’ was not declared in this scope
+      if (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count,
+                                                  ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_weak_add_ref()’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:168:9: error: ‘__atomic_add_dispatch’ is not a member of ‘__gnu_cxx’
+       { __gnu_cxx::__atomic_add_dispatch(&_M_weak_count, 1); }
+         ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:168:43: error: ‘_M_weak_count’ was not declared in this scope
+       { __gnu_cxx::__atomic_add_dispatch(&_M_weak_count, 1); }
+                                           ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_weak_release()’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:175:6: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+  if (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count, -1) == 1)
+      ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:175:46: error: ‘_M_weak_count’ was not declared in this scope
+  if (__gnu_cxx::__exchange_and_add_dispatch(&_M_weak_count, -1) == 1)
+                                              ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:182:10: error: ‘_GLIBCXX_READ_MEM_BARRIER’ was not declared in this scope
+          _GLIBCXX_READ_MEM_BARRIER;
+          ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:183:10: error: ‘_GLIBCXX_WRITE_MEM_BARRIER’ was not declared in this scope
+          _GLIBCXX_WRITE_MEM_BARRIER;
+          ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘long int std::_Sp_counted_base<_Lp>::_M_get_use_count() const’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:194:33: error: ‘_M_use_count’ was not declared in this scope
+         return __atomic_load_n(&_M_use_count, __ATOMIC_RELAXED);
+                                 ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:194:63: error: incompatible type for argument 1 of ‘__atomic_load_n’
+         return __atomic_load_n(&_M_use_count, __ATOMIC_RELAXED);
+                                                               ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_add_ref_lock() [with __gnu_cxx::_Lock_policy _Lp = (__gnu_cxx::_Lock_policy)0u]’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:210:11: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1) == 0)
+           ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:210:51: error: ‘_M_use_count’ was not declared in this scope
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1) == 0)
+                                                   ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_add_ref_lock() [with __gnu_cxx::_Lock_policy _Lp = (__gnu_cxx::_Lock_policy)1u]’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:223:11: error: ‘__exchange_and_add_dispatch’ is not a member of ‘__gnu_cxx’
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1) == 0)
+           ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:223:51: error: ‘_M_use_count’ was not declared in this scope
+       if (__gnu_cxx::__exchange_and_add_dispatch(&_M_use_count, 1) == 0)
+                                                   ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h: In member function ‘void std::_Sp_counted_base<_Lp>::_M_add_ref_lock() [with __gnu_cxx::_Lock_policy _Lp = (__gnu_cxx::_Lock_policy)2u]’:
+/usr/include/c++/4.8/bits/shared_ptr_base.h:236:7: error: ‘_Atomic_word’ was not declared in this scope
+       _Atomic_word __count = _M_get_use_count();
+       ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:236:20: error: expected ‘;’ before ‘__count’
+       _Atomic_word __count = _M_get_use_count();
+                    ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:239:8: error: ‘__count’ was not declared in this scope
+    if (__count == 0)
+        ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:244:44: error: ‘_M_use_count’ was not declared in this scope
+       while (!__atomic_compare_exchange_n(&_M_use_count, &__count, __count + 1,
+                                            ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:244:59: error: ‘__count’ was not declared in this scope
+       while (!__atomic_compare_exchange_n(&_M_use_count, &__count, __count + 1,
+                                                           ^
+/usr/include/c++/4.8/bits/shared_ptr_base.h:246:24: error: incompatible type for argument 1 of ‘__atomic_compare_exchange_n’
+        __ATOMIC_RELAXED));
+                        ^
+In file included from ../stubs/time.h:33:0,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+../stubs/common.h: In function ‘bool google::protobuf::internal::IsStructurallyValidUTF8(const string&)’:
+../stubs/common.h:137:37: error: invalid use of incomplete type ‘const string {aka const class std::basic_string<char>}’
+   return IsStructurallyValidUTF8(str.data(), static_cast<int>(str.length()));
+                                     ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘const string {aka const class std::basic_string<char>}’
+     class basic_string;
+           ^
+In file included from ../stubs/time.h:33:0,
+                 from /usr/include/sched.h:32,
+                 from /usr/include/pthread.h:23,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr-default.h:35,
+                 from /usr/include/x86_64-linux-gnu/c++/4.8/bits/gthr.h:148,
+                 from /usr/include/c++/4.8/ext/atomicity.h:35,
+                 from /usr/include/c++/4.8/bits/basic_string.h:39,
+                 from /usr/include/c++/4.8/string:52,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+../stubs/common.h:137:66: error: invalid use of incomplete type ‘const string {aka const class std::basic_string<char>}’
+   return IsStructurallyValidUTF8(str.data(), static_cast<int>(str.length()));
+                                                                  ^
+In file included from /usr/include/c++/4.8/string:39:0,
+                 from cpp/cpp_generator.h:40,
+                 from main.cc:33:
+/usr/include/c++/4.8/bits/stringfwd.h:57:11: error: declaration of ‘const string {aka const class std::basic_string<char>}’
+     class basic_string;
+           ^
+make: *** [main.o] Error 1

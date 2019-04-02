@@ -18,6 +18,10 @@
 #include <mpi.h>
 #endif /*USE_MPI*/
 
+#ifdef USE_ML
+#include <tensorflow/c/c_api.h>
+#endif
+
 #include "precision.h"
 #include "lbfgs.h"
 //#include "de.h"
@@ -2500,6 +2504,9 @@ void getPrevResuts(ifstream* infile, int* bState, MAX_PRECISION_T** pBest, MAX_P
 
 int main(int argc, char **argv)
 {
+	printf("Hello from TensorFlow C library version %s\n", TF_Version());
+
+
     int threadReturn;
 	MAX_PRECISION_T* pParams;
 
