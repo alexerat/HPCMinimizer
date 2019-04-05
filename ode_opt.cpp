@@ -41,21 +41,15 @@
 #include <cmath>
 #include <string>
 #include <cstring>
-#include <fstream>
-#include <sstream>
 #include <cstdlib>
-#include <sys/time.h>
-#include <time.h>
 #include <list>
 #include <vector>
 #include <algorithm>
 #include <utility>
 #include <map>
-#include <getopt.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include "precision.h"
+#include "function.h"
 
 typedef long integer;
 typedef MAX_PRECISION_T real;
@@ -104,8 +98,6 @@ const MAX_PRECISION_T _EPSILON = get_epsilon<MAX_PRECISION_T>();
 #define _AUTOVEC(x) (x ## _autovec)
 
 // ********************************************************
-//   field dimensionless defines
-#define _dimensionless_ndims 0
 // vector velocity defines
 #define _dimensionless_velocity_ncomponents 2
 // vector position defines
@@ -138,13 +130,13 @@ const MAX_PRECISION_T initDisp=MAX_PRECISION_T("0.5618549231638847");
 
 int numkicks=6;
 int j=0; //counter for kicks
-double tau[6][2];
+real tau[6][2];
 
 int done=0;
 
 int compare(const void *arr1, const void *arr2)
 {
-  return 2*(((double*)arr1)[0] > ((double*)arr2)[0])-1;
+  return 2*(((real*)arr1)[0] > ((real*)arr2)[0])-1;
 }
 
 // ********************************************************
@@ -173,28 +165,28 @@ real* _active_dimensionless_position = NULL;
 
 // ********************************************************
 //   segment 2 (RK89 adaptive-step integrator) globals
-real* _segment2_akafield_dimensionless_velocity;
-real* _segment2_akbfield_dimensionless_velocity;
-real* _segment2_akcfield_dimensionless_velocity;
-real* _segment2_akdfield_dimensionless_velocity;
-real* _segment2_akefield_dimensionless_velocity;
-real* _segment2_akffield_dimensionless_velocity;
-real* _segment2_akgfield_dimensionless_velocity;
-real* _segment2_akhfield_dimensionless_velocity;
-real* _segment2_akifield_dimensionless_velocity;
-real* _segment2_akjfield_dimensionless_velocity;
-real* _segment2_initial_dimensionless_velocity;
-real* _segment2_akafield_dimensionless_position;
-real* _segment2_akbfield_dimensionless_position;
-real* _segment2_akcfield_dimensionless_position;
-real* _segment2_akdfield_dimensionless_position;
-real* _segment2_akefield_dimensionless_position;
-real* _segment2_akffield_dimensionless_position;
-real* _segment2_akgfield_dimensionless_position;
-real* _segment2_akhfield_dimensionless_position;
-real* _segment2_akifield_dimensionless_position;
-real* _segment2_akjfield_dimensionless_position;
-real* _segment2_initial_dimensionless_position;
+real* evolution_akafield_dimensionless_velocity;
+real* evolution_akbfield_dimensionless_velocity;
+real* evolution_akcfield_dimensionless_velocity;
+real* evolution_akdfield_dimensionless_velocity;
+real* evolution_akefield_dimensionless_velocity;
+real* evolution_akffield_dimensionless_velocity;
+real* evolution_akgfield_dimensionless_velocity;
+real* evolution_akhfield_dimensionless_velocity;
+real* evolution_akifield_dimensionless_velocity;
+real* evolution_akjfield_dimensionless_velocity;
+real* evolution_initial_dimensionless_velocity;
+real* evolution_akafield_dimensionless_position;
+real* evolution_akbfield_dimensionless_position;
+real* evolution_akcfield_dimensionless_position;
+real* evolution_akdfield_dimensionless_position;
+real* evolution_akefield_dimensionless_position;
+real* evolution_akffield_dimensionless_position;
+real* evolution_akgfield_dimensionless_position;
+real* evolution_akhfield_dimensionless_position;
+real* evolution_akifield_dimensionless_position;
+real* evolution_akjfield_dimensionless_position;
+real* evolution_initial_dimensionless_position;
 
 // ********************************************************
 // FUNCTION PROTOTYPES
@@ -207,60 +199,49 @@ void _dimensionless_velocity_initialise();
 void _dimensionless_position_initialise();
 
 // ********************************************************
-//   segment 0 (Top level sequence) function prototypes
-void _segment0();
-
-// ********************************************************
 //   segment 1 (Filter) function prototypes
-void _segment1();
+void pi_pulse();
 
 // ********************************************************
 //   segment 2 (RK89 adaptive-step integrator) function prototypes
-inline void _segment2_calculate_delta_a(real _step);
-void _segment2();
-real _segment2_setup_sampling(bool* _next_sample_flag, long* _next_sample_counter);
-real _segment2_dimensionless_velocity_timestep_error(real* _checkfield);
-bool _segment2_dimensionless_velocity_reset(real* _reset_to);
-real _segment2_dimensionless_position_timestep_error(real* _checkfield);
-bool _segment2_dimensionless_position_reset(real* _reset_to);
+inline void evolution_calculate_delta_a(real _step);
+void evolution(real time_interval);
+real evolution_setup_sampling(bool* _next_sample_flag, long* _next_sample_counter);
+real evolution_dimensionless_velocity_timestep_error(real* _checkfield);
+bool evolution_dimensionless_velocity_reset(real* _reset_to);
+real evolution_dimensionless_position_timestep_error(real* _checkfield);
+bool evolution_dimensionless_position_reset(real* _reset_to);
 
-void _segment2_dimensionless_operators_evaluate_operator0(real _step);
-
-// ********************************************************
-//   segment 3 (Filter) function prototypes
-void _segment3();
+void evolution_dimensionless_operators_evaluate_operator0(real _step);
 
 // ********************************************************
 // MAIN ROUTINE
 // ********************************************************
-int run_ode()
+int run_ode(int* zVec, real* tVec, int dim)
 {
-  
-  // ******** Argument post-processing code *******
-  tau[0][0]=-2*M_PI*t1;           tau[0][1]=-n1;
-  tau[1][0]=-2*M_PI*t2;           tau[1][1]=-n2;
-  tau[2][0]=-2*M_PI*t3;           tau[2][1]=-n3;
-  tau[3][0]=2*M_PI*t3;            tau[3][1]=n3;
-  tau[4][0]=2*M_PI*t2;            tau[4][1]=n2;
-  tau[5][0]=2*M_PI*t1;            tau[5][1]=n1;
   int p=0;
-  real minimum=tau[0][0];
-  
-  for(p=1;p<numkicks;p++)
+  real* tau = new real[2*dim];
+  real minimum = tVec[0];
+
+  for(p = 0; p<dim; p++)
   {
-          minimum=min(tau[p][0],minimum);
-          printf("%lf\n",minimum);
-  }
-  for(p=0;p<numkicks;p++)
-  {
-          tau[p][0]-= minimum;
-  }
-  for(p=0;p<numkicks;p++)
-  {
-          printf("tau[%d][0]=%lf\n",p,tau[p][0]);
+    tau[2*p]=tVec[p];
+    tau[2*p + 1]=zVec[p];
+
+    minimum = min(tVec[p],minimum);
   }
   
-  qsort(tau,numkicks,sizeof(tau[0]),compare);
+  for(p=0;p<dim;p++)
+  {
+          tau[2*p]-= minimum;
+  }
+
+  for(p=0;p<dim;p++)
+  {
+          printf("tau[%d][0]=%lf\n",p,tau[2*p]);
+  }
+  
+  qsort(tau,numkicks,sizeof(tau)/2,compare);
   
   for(p=0;p<numkicks;p++)
   {
@@ -301,7 +282,16 @@ int run_ode()
   }
   
   /* Code that actually does stuff goes here */
-  _segment0();
+  t = 0.0;
+  
+  _active_dimensionless_velocity = _dimensionless_velocity;
+  _dimensionless_velocity_initialise();
+  _active_dimensionless_position = _dimensionless_position;
+  _dimensionless_position_initialise();
+
+  pi_pulse();
+  evolution();
+  pi_pulse();
   
   // Bing!
   _LOG(_SIMULATION_LOG_LEVEL, "\a");
@@ -329,23 +319,6 @@ inline void *xmds_malloc(size_t size)
 }
 
 // ********************************************************
-//   Default Simulation Driver function implementations
-void _segment0()
-{
-  t = 0.0;
-  
-  _active_dimensionless_velocity = _dimensionless_velocity;
-  _dimensionless_velocity_initialise();
-  _active_dimensionless_position = _dimensionless_position;
-  _dimensionless_position_initialise();
-
-  _segment1();
-  _segment2();
-  _segment3();
-}
-
-
-// ********************************************************
 //   field dimensionless function implementations
 // initialisation for vector velocity
 void _dimensionless_velocity_initialise()
@@ -361,8 +334,8 @@ void _dimensionless_velocity_initialise()
   #define t Dont_use_propagation_dimension_t_in_vector_element_CDATA_block___Use_a_computed_vector_instead
   
   // ********** Initialisation code ***************
-  v1=0;
-  v2=0;
+  v1=0.0;
+  v2=0.0;
   // **********************************************
   #undef t
   
@@ -395,15 +368,16 @@ void _dimensionless_position_initialise()
 
 // ********************************************************
 //   segment 1 (Filter) function implementations
-void _segment1()
+void pi_pulse()
 {
   long _dimensionless_velocity_index_pointer = 0;
   #define v1 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 0]
   #define v2 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 1]
   
   // ************** Filter code *****************
-  v1+=k*sz1*tau[0][1];
-  v2+=k*sz2*tau[0][1];
+  // Single Pi-pulse kick
+  v1+=k*sz1;
+  v2+=k*sz2;
   // **********************************************
   #undef v1
   #undef v2
@@ -411,16 +385,16 @@ void _segment1()
 
 // ********************************************************
 //   segment 2 (RK89 adaptive-step integrator) function implementations
-inline void _segment2_calculate_delta_a(real _step)
+inline void evolution_calculate_delta_a(real _step)
 {
   // Delta A propagation operator for field dimensionless
-  _segment2_dimensionless_operators_evaluate_operator0(_step);
+  evolution_dimensionless_operators_evaluate_operator0(_step);
   
 }
 
-void _segment2()
+void evolution(real time_interval)
 {
-  real _step = tau[1][0]/(real)1000000;
+  real _step = (time_interval)/(real)1000000;
   real _old_step = _step;
   real _min_step = _step;
   real _max_step = _step;
@@ -430,73 +404,66 @@ void _segment2()
   real _tolerance = real("1e-14");
   
   real _error, _last_norm_error = 1.0;
-  real _segment2_dimensionless_velocity_error;
-  real _segment2_dimensionless_position_error;
+  real evolution_dimensionless_velocity_error;
+  real evolution_dimensionless_position_error;
   
   bool _discard = false;
   bool _break_next = false;
-  
-  bool _next_sample_flag[4];
-  for (long _i0 = 0; _i0 < 4; _i0++)
-    _next_sample_flag[_i0] = false;
-  
-  long _next_sample_counter[2];
-  for (long _i0 = 0; _i0 < 2; _i0++)
-    _next_sample_counter[_i0] = 1;
+  bool _break = false;
   
   real _t_local = 0.0;
   
-  real _t_break_next = _segment2_setup_sampling(_next_sample_flag, _next_sample_counter);
+  real _t_break_next = t+time_interval;
   
   if ( (_t_local + _step)*(1.0 + _EPSILON) >= _t_break_next) {
     _break_next = true;
     _step = _t_break_next - _t_local;
   }
   
-  _segment2_akafield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akbfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akcfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akdfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akefield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akffield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akgfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akhfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akifield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akjfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_initial_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
-  _segment2_akafield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akbfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akcfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akdfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akefield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akffield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akgfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akhfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akifield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_akjfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  _segment2_initial_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
-  real* _akafield_dimensionless_velocity = _segment2_akafield_dimensionless_velocity;
-  real* _akbfield_dimensionless_velocity = _segment2_akbfield_dimensionless_velocity;
-  real* _akcfield_dimensionless_velocity = _segment2_akcfield_dimensionless_velocity;
-  real* _akdfield_dimensionless_velocity = _segment2_akdfield_dimensionless_velocity;
-  real* _akefield_dimensionless_velocity = _segment2_akefield_dimensionless_velocity;
-  real* _akffield_dimensionless_velocity = _segment2_akffield_dimensionless_velocity;
-  real* _akgfield_dimensionless_velocity = _segment2_akgfield_dimensionless_velocity;
-  real* _akhfield_dimensionless_velocity = _segment2_akhfield_dimensionless_velocity;
-  real* _akifield_dimensionless_velocity = _segment2_akifield_dimensionless_velocity;
-  real* _akjfield_dimensionless_velocity = _segment2_akjfield_dimensionless_velocity;
-  real* _initial_dimensionless_velocity = _segment2_initial_dimensionless_velocity;
-  real* _akafield_dimensionless_position = _segment2_akafield_dimensionless_position;
-  real* _akbfield_dimensionless_position = _segment2_akbfield_dimensionless_position;
-  real* _akcfield_dimensionless_position = _segment2_akcfield_dimensionless_position;
-  real* _akdfield_dimensionless_position = _segment2_akdfield_dimensionless_position;
-  real* _akefield_dimensionless_position = _segment2_akefield_dimensionless_position;
-  real* _akffield_dimensionless_position = _segment2_akffield_dimensionless_position;
-  real* _akgfield_dimensionless_position = _segment2_akgfield_dimensionless_position;
-  real* _akhfield_dimensionless_position = _segment2_akhfield_dimensionless_position;
-  real* _akifield_dimensionless_position = _segment2_akifield_dimensionless_position;
-  real* _akjfield_dimensionless_position = _segment2_akjfield_dimensionless_position;
-  real* _initial_dimensionless_position = _segment2_initial_dimensionless_position;
+  evolution_akafield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akbfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akcfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akdfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akefield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akffield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akgfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akhfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akifield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akjfield_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_initial_dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * _dimensionless_velocity_alloc_size);
+  evolution_akafield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akbfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akcfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akdfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akefield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akffield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akgfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akhfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akifield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_akjfield_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  evolution_initial_dimensionless_position = (real*) xmds_malloc(sizeof(real) * _dimensionless_position_alloc_size);
+  real* _akafield_dimensionless_velocity = evolution_akafield_dimensionless_velocity;
+  real* _akbfield_dimensionless_velocity = evolution_akbfield_dimensionless_velocity;
+  real* _akcfield_dimensionless_velocity = evolution_akcfield_dimensionless_velocity;
+  real* _akdfield_dimensionless_velocity = evolution_akdfield_dimensionless_velocity;
+  real* _akefield_dimensionless_velocity = evolution_akefield_dimensionless_velocity;
+  real* _akffield_dimensionless_velocity = evolution_akffield_dimensionless_velocity;
+  real* _akgfield_dimensionless_velocity = evolution_akgfield_dimensionless_velocity;
+  real* _akhfield_dimensionless_velocity = evolution_akhfield_dimensionless_velocity;
+  real* _akifield_dimensionless_velocity = evolution_akifield_dimensionless_velocity;
+  real* _akjfield_dimensionless_velocity = evolution_akjfield_dimensionless_velocity;
+  real* _initial_dimensionless_velocity = evolution_initial_dimensionless_velocity;
+  real* _akafield_dimensionless_position = evolution_akafield_dimensionless_position;
+  real* _akbfield_dimensionless_position = evolution_akbfield_dimensionless_position;
+  real* _akcfield_dimensionless_position = evolution_akcfield_dimensionless_position;
+  real* _akdfield_dimensionless_position = evolution_akdfield_dimensionless_position;
+  real* _akefield_dimensionless_position = evolution_akefield_dimensionless_position;
+  real* _akffield_dimensionless_position = evolution_akffield_dimensionless_position;
+  real* _akgfield_dimensionless_position = evolution_akgfield_dimensionless_position;
+  real* _akhfield_dimensionless_position = evolution_akhfield_dimensionless_position;
+  real* _akifield_dimensionless_position = evolution_akifield_dimensionless_position;
+  real* _akjfield_dimensionless_position = evolution_akjfield_dimensionless_position;
+  real* _initial_dimensionless_position = evolution_initial_dimensionless_position;
   
   
   // Runge Kutta method constants 
@@ -659,7 +626,7 @@ void _segment2()
       _active_dimensionless_position = _akafield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       
       // Step 2
@@ -691,7 +658,7 @@ void _segment2()
       _active_dimensionless_position = _akbfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 3
       
@@ -724,7 +691,7 @@ void _segment2()
       _active_dimensionless_position = _akcfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 4
       
@@ -761,7 +728,7 @@ void _segment2()
       _active_dimensionless_position = _akdfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 5
       
@@ -800,7 +767,7 @@ void _segment2()
       _active_dimensionless_position = _akefield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 6
       
@@ -837,7 +804,7 @@ void _segment2()
       _active_dimensionless_position = _akifield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 7
       
@@ -876,7 +843,7 @@ void _segment2()
       _active_dimensionless_position = _akjfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 8
       
@@ -913,7 +880,7 @@ void _segment2()
       _active_dimensionless_position = _akbfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 9
       
@@ -952,7 +919,7 @@ void _segment2()
       _active_dimensionless_position = _akcfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 10
       
@@ -993,7 +960,7 @@ void _segment2()
       _active_dimensionless_position = _akdfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 11
       
@@ -1038,7 +1005,7 @@ void _segment2()
       _active_dimensionless_position = _akefield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 12
       
@@ -1085,7 +1052,7 @@ void _segment2()
       _active_dimensionless_position = _akffield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 13
       
@@ -1134,7 +1101,7 @@ void _segment2()
       _active_dimensionless_position = _akgfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 14
       
@@ -1187,7 +1154,7 @@ void _segment2()
       _active_dimensionless_position = _akhfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Step 15 and 16 combined to reduce memory use 
       
@@ -1297,7 +1264,7 @@ void _segment2()
       _active_dimensionless_position = _akifield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       t += _a[15] * _step;
       
@@ -1305,7 +1272,7 @@ void _segment2()
       _active_dimensionless_position = _akjfield_dimensionless_position;
       
       // a_k=G[a_k, t]
-      _segment2_calculate_delta_a(_step);
+      evolution_calculate_delta_a(_step);
       
       // Take full step
       
@@ -1404,17 +1371,15 @@ void _segment2()
       _active_dimensionless_velocity = _dimensionless_velocity;
       _active_dimensionless_position = _dimensionless_position;
       
-      
-      
       _error = 0.0;
       
-      _segment2_dimensionless_velocity_error = _segment2_dimensionless_velocity_timestep_error(_akafield_dimensionless_velocity);
-      if (_segment2_dimensionless_velocity_error > _error)
-        _error = _segment2_dimensionless_velocity_error;
+      evolution_dimensionless_velocity_error = evolution_dimensionless_velocity_timestep_error(_akafield_dimensionless_velocity);
+      if (evolution_dimensionless_velocity_error > _error)
+        _error = evolution_dimensionless_velocity_error;
       
-      _segment2_dimensionless_position_error = _segment2_dimensionless_position_timestep_error(_akafield_dimensionless_position);
-      if (_segment2_dimensionless_position_error > _error)
-        _error = _segment2_dimensionless_position_error;
+      evolution_dimensionless_position_error = evolution_dimensionless_position_timestep_error(_akafield_dimensionless_position);
+      if (evolution_dimensionless_position_error > _error)
+        _error = evolution_dimensionless_position_error;
       
       _attempted_steps++;
       
@@ -1428,14 +1393,14 @@ void _segment2()
       } else {
         t -= _step;
   
-        if (_segment2_dimensionless_velocity_reset(_initial_dimensionless_velocity) == false) {
+        if (evolution_dimensionless_velocity_reset(_initial_dimensionless_velocity) == false) {
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
                              "         Non-finite number in integration vector \"velocity\" in segment 2.\n", t);
           
           goto _SEGMENT2_END;
         }
-        if (_segment2_dimensionless_position_reset(_initial_dimensionless_position) == false) {
+        if (evolution_dimensionless_position_reset(_initial_dimensionless_position) == false) {
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
                              "         Non-finite number in integration vector \"position\" in segment 2.\n", t);
@@ -1468,18 +1433,8 @@ void _segment2()
     } while (_discard);
     
     if (_break_next) {
-      if (_next_sample_flag[0]) {
-        _next_sample_counter[0]++;
-      }
-      if (_next_sample_flag[1]) {
-        _next_sample_counter[1]++;
-      }
-      if (_next_sample_flag[2])
-        _next_sample_flag[3] = true;
-      else {
-        _break_next = false;
-        _t_break_next = _segment2_setup_sampling(_next_sample_flag, _next_sample_counter);
-      }
+
+      _break = true;
     }
     
     if ( (_t_local + _step)*(1.0 + _EPSILON) > _t_break_next) {
@@ -1487,89 +1442,37 @@ void _segment2()
       _LOG(_SAMPLE_LOG_LEVEL, "Current timestep: %e\n", _old_step);
       _step = _t_break_next - _t_local;
     }
-  } while (!_next_sample_flag[3]);
+  } while (!_break);
   
   _SEGMENT2_END:;
-  xmds_free(_segment2_akafield_dimensionless_velocity);
-  xmds_free(_segment2_akbfield_dimensionless_velocity);
-  xmds_free(_segment2_akcfield_dimensionless_velocity);
-  xmds_free(_segment2_akdfield_dimensionless_velocity);
-  xmds_free(_segment2_akefield_dimensionless_velocity);
-  xmds_free(_segment2_akffield_dimensionless_velocity);
-  xmds_free(_segment2_akgfield_dimensionless_velocity);
-  xmds_free(_segment2_akhfield_dimensionless_velocity);
-  xmds_free(_segment2_akifield_dimensionless_velocity);
-  xmds_free(_segment2_akjfield_dimensionless_velocity);
-  xmds_free(_segment2_initial_dimensionless_velocity);
-  xmds_free(_segment2_akafield_dimensionless_position);
-  xmds_free(_segment2_akbfield_dimensionless_position);
-  xmds_free(_segment2_akcfield_dimensionless_position);
-  xmds_free(_segment2_akdfield_dimensionless_position);
-  xmds_free(_segment2_akefield_dimensionless_position);
-  xmds_free(_segment2_akffield_dimensionless_position);
-  xmds_free(_segment2_akgfield_dimensionless_position);
-  xmds_free(_segment2_akhfield_dimensionless_position);
-  xmds_free(_segment2_akifield_dimensionless_position);
-  xmds_free(_segment2_akjfield_dimensionless_position);
-  xmds_free(_segment2_initial_dimensionless_position);
+  xmds_free(evolution_akafield_dimensionless_velocity);
+  xmds_free(evolution_akbfield_dimensionless_velocity);
+  xmds_free(evolution_akcfield_dimensionless_velocity);
+  xmds_free(evolution_akdfield_dimensionless_velocity);
+  xmds_free(evolution_akefield_dimensionless_velocity);
+  xmds_free(evolution_akffield_dimensionless_velocity);
+  xmds_free(evolution_akgfield_dimensionless_velocity);
+  xmds_free(evolution_akhfield_dimensionless_velocity);
+  xmds_free(evolution_akifield_dimensionless_velocity);
+  xmds_free(evolution_akjfield_dimensionless_velocity);
+  xmds_free(evolution_initial_dimensionless_velocity);
+  xmds_free(evolution_akafield_dimensionless_position);
+  xmds_free(evolution_akbfield_dimensionless_position);
+  xmds_free(evolution_akcfield_dimensionless_position);
+  xmds_free(evolution_akdfield_dimensionless_position);
+  xmds_free(evolution_akefield_dimensionless_position);
+  xmds_free(evolution_akffield_dimensionless_position);
+  xmds_free(evolution_akgfield_dimensionless_position);
+  xmds_free(evolution_akhfield_dimensionless_position);
+  xmds_free(evolution_akifield_dimensionless_position);
+  xmds_free(evolution_akjfield_dimensionless_position);
+  xmds_free(evolution_initial_dimensionless_position);
   
   _LOG(_SEGMENT_LOG_LEVEL, "Segment 2: minimum timestep: %e maximum timestep: %e\n", _min_step, _max_step);
   _LOG(_SEGMENT_LOG_LEVEL, "  Attempted %li steps, %.2f%% steps failed.\n", _attempted_steps, (100.0*_unsuccessful_steps)/_attempted_steps);
 }
 
-
-real _segment2_setup_sampling(bool* _next_sample_flag, long* _next_sample_counter)
-{
-  // The numbers of the moment groups that need to be sampled at the next sampling point.
-  // An entry of N+1 means "reached end of integration interval"
-  long _momentGroupNumbersNeedingSamplingNext[3];
-  long _numberOfMomentGroupsToBeSampledNext = 1;
-  
-  long _previous_m = 1;
-  long _previous_M = 1;
-  
-  real _t_break_next = (real)tau[1][0];
-  _momentGroupNumbersNeedingSamplingNext[0] = 2;
-  
-  // initialise all flags to false
-  for (long _i0 = 0; _i0 < 3; _i0++)
-    _next_sample_flag[_i0] = false;
-  
-  /* Check if moment group needs sampling at the same time as another already discovered sample (or the final time).
-   * If so, add this moment group to the to-be-sampled list. If moment group demands sampling earlier than all
-   * previously noted moment groups, erase all previous ones from list and set the sample time to this earlier one.
-   */
-  if (_next_sample_counter[0] * _previous_M == _previous_m * 200) {
-    _momentGroupNumbersNeedingSamplingNext[_numberOfMomentGroupsToBeSampledNext] = 0;
-    _numberOfMomentGroupsToBeSampledNext++;
-  } else if (_next_sample_counter[0] * _previous_M < _previous_m * 200) {
-    _t_break_next = _next_sample_counter[0] * ((real)tau[1][0]) / ((real)200);
-    _numberOfMomentGroupsToBeSampledNext = 1;
-    _momentGroupNumbersNeedingSamplingNext[0] = 0;
-    _previous_M = 200;
-    _previous_m = _next_sample_counter[0];
-  }
-  
-  if (_next_sample_counter[1] * _previous_M == _previous_m * 200) {
-    _momentGroupNumbersNeedingSamplingNext[_numberOfMomentGroupsToBeSampledNext] = 1;
-    _numberOfMomentGroupsToBeSampledNext++;
-  } else if (_next_sample_counter[1] * _previous_M < _previous_m * 200) {
-    _t_break_next = _next_sample_counter[1] * ((real)tau[1][0]) / ((real)200);
-    _numberOfMomentGroupsToBeSampledNext = 1;
-    _momentGroupNumbersNeedingSamplingNext[0] = 1;
-    _previous_M = 200;
-    _previous_m = _next_sample_counter[1];
-  }
-  
-  // _momentGroupNumbersNeedingSamplingNext now contains the complete list of moment groups that need
-  // to be sampled at the next sampling point. Set their flags to true.
-  for (long _i0 = 0; _i0 < _numberOfMomentGroupsToBeSampledNext; _i0++)
-    _next_sample_flag[_momentGroupNumbersNeedingSamplingNext[_i0]] = true;
-  
-  return _t_break_next;
-}
-
-real _segment2_dimensionless_velocity_timestep_error(real* _checkfield)
+real evolution_dimensionless_velocity_timestep_error(real* _checkfield)
 {
   real _error = 1e-24;
   real _temp_error = 0.0;
@@ -1604,7 +1507,7 @@ real _segment2_dimensionless_velocity_timestep_error(real* _checkfield)
   return _error;
 }
 
-bool _segment2_dimensionless_velocity_reset(real* _reset_to_dimensionless_velocity)
+bool evolution_dimensionless_velocity_reset(real* _reset_to_dimensionless_velocity)
 {
   memcpy(_dimensionless_velocity, _reset_to_dimensionless_velocity, sizeof(real) * _dimensionless_velocity_alloc_size);
   
@@ -1627,14 +1530,12 @@ bool _segment2_dimensionless_velocity_reset(real* _reset_to_dimensionless_veloci
   return bNoNaNsPresent;
 }
 
-real _segment2_dimensionless_position_timestep_error(real* _checkfield)
+real evolution_dimensionless_position_timestep_error(real* _checkfield)
 {
-  real _error = 1e-24;
+  real _error = real(1e-24);
   real _temp_error = 0.0;
   real _temp_mod = 0.0;
 
-  
-  
   {
     long _dimensionless_position_index_pointer = 0;
     #define x1 _active_dimensionless_position[_dimensionless_position_index_pointer + 0]
@@ -1662,7 +1563,7 @@ real _segment2_dimensionless_position_timestep_error(real* _checkfield)
   return _error;
 }
 
-bool _segment2_dimensionless_position_reset(real* _reset_to_dimensionless_position)
+bool evolution_dimensionless_position_reset(real* _reset_to_dimensionless_position)
 {
   memcpy(_dimensionless_position, _reset_to_dimensionless_position, sizeof(real) * _dimensionless_position_alloc_size);
   
@@ -1686,7 +1587,7 @@ bool _segment2_dimensionless_position_reset(real* _reset_to_dimensionless_positi
 }
 
 // Delta A propagation operator for field dimensionless
-void _segment2_dimensionless_operators_evaluate_operator0(real _step)
+void evolution_dimensionless_operators_evaluate_operator0(real _step)
 {
   long _dimensionless_velocity_index_pointer = 0;
   #define v1 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 0]
@@ -1719,20 +1620,4 @@ void _segment2_dimensionless_operators_evaluate_operator0(real _step)
   #undef v2
   #undef x1
   #undef x2
-}
-
-// ********************************************************
-//   segment 3 (Filter) function implementations
-void _segment3()
-{
-  long _dimensionless_velocity_index_pointer = 0;
-  #define v1 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 0]
-  #define v2 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 1]
-  
-  // ************** Filter code *****************
-  v1+=k*sz1*tau[1][1];
-  v2+=k*sz2*tau[1][1];
-  // **********************************************
-  #undef v1
-  #undef v2
 }

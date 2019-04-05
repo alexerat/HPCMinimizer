@@ -5,7 +5,10 @@
             "includePath": [
                 "/usr/include",
                 "/usr/local/include",
-                "${workspaceFolder}"
+                "${workspaceFolder}",
+                "./arprec/include",
+                "./qd/include",
+                "./arprec/src"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -17,11 +20,7 @@
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
-            },
-            "macFrameworkPath": [
-                "/System/Library/Frameworks",
-                "/Library/Frameworks"
-            ]
+            }
         },
         {
             "name": "Linux",
