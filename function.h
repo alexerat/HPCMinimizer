@@ -2,6 +2,7 @@
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
+
 #include "precision.h"
 
 #define MAX_PRECISION_LEVEL 2

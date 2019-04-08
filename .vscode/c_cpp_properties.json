@@ -27,7 +27,9 @@
             "includePath": [
                 "/usr/include",
                 "/usr/local/include",
-                "${workspaceFolder}"
+                "${workspaceFolder}",
+                "${workspaceFolder}/arprec/include",
+                "${workspaceFolder}/qd/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
