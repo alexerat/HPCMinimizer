@@ -1,6 +1,5 @@
 // ********************************************************
 // simulation logging
-
 #define _SAMPLE_LOG_LEVEL             (1 << 0)
 #define _SEGMENT_LOG_LEVEL            (1 << 1)
 #define _PATH_LOG_LEVEL               (1 << 2)
@@ -10,15 +9,6 @@
 #define _NO_ERROR_TERMINATE_LOG_LEVEL (1 << 6)
 #define _ALL_LOG_LEVELS        _SAMPLE_LOG_LEVEL|_SEGMENT_LOG_LEVEL|_PATH_LOG_LEVEL|_SIMULATION_LOG_LEVEL|_WARNING_LOG_LEVEL|_ERROR_LOG_LEVEL|_NO_ERROR_TERMINATE_LOG_LEVEL
 #define _LOG_LEVELS_BEING_LOGGED (_ALL_LOG_LEVELS)
-
-#define real Re
-#define imag Im
-
-#include <complex>
-
-#undef real
-#undef imag
-
 
 #include <stdio.h>
 
@@ -36,7 +26,6 @@
 
 // ********************************************************
 // simulation includes
-
 #include "xpdeint_platform.h"
 #include <cmath>
 #include <string>
@@ -53,7 +42,6 @@
 
 typedef long integer;
 typedef MAX_PRECISION_T real;
-typedef std::complex<real> XMDSComplexType;
 
 #include "xpdeint.h"
 
@@ -90,10 +78,8 @@ const MAX_PRECISION_T _EPSILON = get_epsilon<MAX_PRECISION_T>();
       _a < _b ? _a : _b; })
 #endif
 
-
 // ********************************************************
 //   Auto-vectorisation defines
-
 #define _MAKE_AUTOVEC_VARIABLE(x) real* const __restrict__ x ## _autovec = (real*) x
 #define _AUTOVEC(x) (x ## _autovec)
 
@@ -103,34 +89,25 @@ const MAX_PRECISION_T _EPSILON = get_epsilon<MAX_PRECISION_T>();
 // vector position defines
 #define _dimensionless_position_ncomponents 2
 
-
 // ********************************************************
 // GLOBALS
 // ********************************************************
-
-
-// ********************************************************
 //   Simulation globals
-  
 real t;
 
 // ********************************************************
 //   'Globals' element globals
-
 const MAX_PRECISION_T a=MAX_PRECISION_T("0");
 const MAX_PRECISION_T q=MAX_PRECISION_T("0.8");
 const MAX_PRECISION_T trap=MAX_PRECISION_T("83.2666554779159"); // (2 pi)^2/beta^2
 const MAX_PRECISION_T coulomb=MAX_PRECISION_T("8.64309169165991e8"); //e^2/4 pi eps0
 const MAX_PRECISION_T delta=MAX_PRECISION_T("6241.146965412783");
 const MAX_PRECISION_T wrf=MAX_PRECISION_T("18.25011292873728");
-const MAX_PRECISION_T phi=MAX_PRECISION_T("3.141592653589793");
 const MAX_PRECISION_T eta=MAX_PRECISION_T("0.16");
 const MAX_PRECISION_T k=sqrt(MAX_PRECISION_T(2))*eta;
 const MAX_PRECISION_T initDisp=MAX_PRECISION_T("0.5618549231638847");
 
-int numkicks=6;
-int j=0; //counter for kicks
-real tau[6][2];
+real phi = 0.0;
 
 int done=0;
 
@@ -141,15 +118,8 @@ int compare(const void *arr1, const void *arr2)
 
 // ********************************************************
 //   Command line argument processing globals
-real t1 = 0.0; 
-real t2 = 0.0; 
-real t3 = 0.0; 
-real n1 = 0.0; 
-real n2 = 0.0; 
-real n3 = 0.0; 
 int sz1 = -1; 
 int sz2 = -1; 
-
 
 // ********************************************************
 //   field dimensionless globals
@@ -191,11 +161,8 @@ real* evolution_initial_dimensionless_position;
 // ********************************************************
 // FUNCTION PROTOTYPES
 // ********************************************************
-
-// ********************************************************
 //   field dimensionless function prototypes
 void _dimensionless_velocity_initialise();
-
 void _dimensionless_position_initialise();
 
 // ********************************************************
@@ -211,17 +178,19 @@ real evolution_dimensionless_velocity_timestep_error(real* _checkfield);
 bool evolution_dimensionless_velocity_reset(real* _reset_to);
 real evolution_dimensionless_position_timestep_error(real* _checkfield);
 bool evolution_dimensionless_position_reset(real* _reset_to);
-
 void evolution_dimensionless_operators_evaluate_operator0(real _step);
 
 // ********************************************************
 // MAIN ROUTINE
 // ********************************************************
-int run_ode(int* zVec, real* tVec, int dim)
+int run_ode(int* zVec, real* tVec, real rep_time, real phi_in, int dim)
 {
   int p=0;
+  int j=0;
   real* tau = new real[2*dim];
   real minimum = tVec[0];
+
+  phi = phi_in;
 
   for(p = 0; p<dim; p++)
   {
@@ -233,19 +202,19 @@ int run_ode(int* zVec, real* tVec, int dim)
   
   for(p=0;p<dim;p++)
   {
-          tau[2*p]-= minimum;
+    tau[2*p]-= minimum;
   }
 
   for(p=0;p<dim;p++)
   {
-          printf("tau[%d][0]=%lf\n",p,tau[2*p]);
+    printf("tau[%d][0]=%lf\n",p,tau[2*p]);
   }
   
   qsort(tau,numkicks,sizeof(tau)/2,compare);
   
   for(p=0;p<numkicks;p++)
   {
-          printf("tau[%d][0]=%lf, tau[%d][1]=%lf\n",p,tau[p][0],p,tau[p][1]);
+    printf("tau[%d][0]=%lf, tau[%d][1]=%lf\n",p,tau[p][0],p,tau[p][1]);
   }
   // **********************************************
     
@@ -255,13 +224,10 @@ int run_ode(int* zVec, real* tVec, int dim)
   _dimensionless_velocity = (real*) xmds_malloc(sizeof(real) * MAX(_dimensionless_velocity_alloc_size,1));
   _active_dimensionless_velocity = _dimensionless_velocity;
   
-  
   _dimensionless_position = (real*) xmds_malloc(sizeof(real) * MAX(_dimensionless_position_alloc_size,1));
   _active_dimensionless_position = _dimensionless_position;
   
-  
   // Run-time validation checks
-  
   if (tau[1][0] <= 0.0)
     _LOG(_ERROR_LOG_LEVEL, "ERROR: The interval for segment 2 is not positive!\n"
                            "Interval = %e\n", tau[1][0]);
@@ -276,7 +242,6 @@ int run_ode(int* zVec, real* tVec, int dim)
   }
   
   // Make all geometry-dependent transformations prepare plans, etc.
-  
   if (_allocated_temporary_array) {
     xmds_free(_max_vector_array);
   }
@@ -289,9 +254,18 @@ int run_ode(int* zVec, real* tVec, int dim)
   _active_dimensionless_position = _dimensionless_position;
   _dimensionless_position_initialise();
 
-  pi_pulse();
-  evolution();
-  pi_pulse();
+  for(p=0;p<numkicks;p++)
+  {
+    if(p>0)
+      evolution((tVec[p]-(zVec[p]/2)*re_time) - (tVec[p-1]+(zVec[p-1]/2)*re_time));
+
+    for(j=0;j<zVec[p];j++)
+    {
+      pi_pulse();
+      evolution(rep_time);
+    }
+  }
+  
   
   // Bing!
   _LOG(_SIMULATION_LOG_LEVEL, "\a");
@@ -309,7 +283,6 @@ int run_ode(int* zVec, real* tVec, int dim)
 // ********************************************************
 // FUNCTION IMPLEMENTATIONS
 // ********************************************************
-
 inline void *xmds_malloc(size_t size)
 {
   void *retPointer = _xmds_malloc(size);
@@ -323,7 +296,6 @@ inline void *xmds_malloc(size_t size)
 // initialisation for vector velocity
 void _dimensionless_velocity_initialise()
 {
-  
   long _dimensionless_velocity_index_pointer = 0;
   #define v1 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 0]
   #define v2 _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 1]
@@ -338,7 +310,6 @@ void _dimensionless_velocity_initialise()
   v2=0.0;
   // **********************************************
   #undef t
-  
   #undef v1
   #undef v2
 }
@@ -346,7 +317,6 @@ void _dimensionless_velocity_initialise()
 // initialisation for vector position
 void _dimensionless_position_initialise()
 {
-  
   long _dimensionless_position_index_pointer = 0;
   #define x1 _active_dimensionless_position[_dimensionless_position_index_pointer + 0]
   #define x2 _active_dimensionless_position[_dimensionless_position_index_pointer + 1]
@@ -361,7 +331,6 @@ void _dimensionless_position_initialise()
   x2=(initDisp);
   // **********************************************
   #undef t
-  
   #undef x1
   #undef x2
 }
@@ -389,10 +358,9 @@ inline void evolution_calculate_delta_a(real _step)
 {
   // Delta A propagation operator for field dimensionless
   evolution_dimensionless_operators_evaluate_operator0(_step);
-  
 }
 
-void evolution(real time_interval)
+void evolution(real time_interval, real phi)
 {
   real _step = (time_interval)/(real)1000000;
   real _old_step = _step;
@@ -412,7 +380,6 @@ void evolution(real time_interval)
   bool _break = false;
   
   real _t_local = 0.0;
-  
   real _t_break_next = t+time_interval;
   
   if ( (_t_local + _step)*(1.0 + _EPSILON) >= _t_break_next) {
@@ -464,7 +431,6 @@ void evolution(real time_interval)
   real* _akifield_dimensionless_position = evolution_akifield_dimensionless_position;
   real* _akjfield_dimensionless_position = evolution_akjfield_dimensionless_position;
   real* _initial_dimensionless_position = evolution_initial_dimensionless_position;
-  
   
   // Runge Kutta method constants 
   real _a_raw[16];
@@ -612,25 +578,18 @@ void evolution(real time_interval)
   _d[10] = _b[15][13]-_b[14][13]*_b[15][5]/_b[14][5];
   
   do {
-    
     do {
-      
-      
       // Step 1
-      
       memcpy(_akafield_dimensionless_velocity, _dimensionless_velocity, sizeof(real) * _dimensionless_velocity_alloc_size);
       memcpy(_akafield_dimensionless_position, _dimensionless_position, sizeof(real) * _dimensionless_position_alloc_size);
 
-      
       _active_dimensionless_velocity = _akafield_dimensionless_velocity;
       _active_dimensionless_position = _akafield_dimensionless_position;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step);
       
-      
       // Step 2
-      
       t += _a[1] * _step;
       
       {
@@ -641,7 +600,6 @@ void evolution(real time_interval)
         for (long _i0 = 0; _i0 < (1) * _dimensionless_velocity_ncomponents; _i0++) {
           _AUTOVEC(_akbfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[1][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -651,7 +609,6 @@ void evolution(real time_interval)
         for (long _i0 = 0; _i0 < (1) * _dimensionless_position_ncomponents; _i0++) {
           _AUTOVEC(_akbfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[1][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akbfield_dimensionless_velocity;
@@ -661,7 +618,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 3
-      
       t += _a[2] * _step;
       
       {
@@ -673,7 +629,6 @@ void evolution(real time_interval)
         for (long _i0 = 0; _i0 < (1) * _dimensionless_velocity_ncomponents; _i0++) {
           _AUTOVEC(_akcfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[2][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[2][1]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -684,7 +639,6 @@ void evolution(real time_interval)
         for (long _i0 = 0; _i0 < (1) * _dimensionless_position_ncomponents; _i0++) {
           _AUTOVEC(_akcfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[2][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[2][1]*_AUTOVEC(_akbfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akcfield_dimensionless_velocity;
@@ -694,7 +648,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 4
-      
       t += _a[3] * _step;
       
       {
@@ -708,7 +661,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akdfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[3][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[3][1]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0]
               + _b[3][2]*_AUTOVEC(_akcfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akdfield_dimensionless_position);
@@ -721,7 +673,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akdfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[3][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[3][1]*_AUTOVEC(_akbfield_dimensionless_position)[_i0]
               + _b[3][2]*_AUTOVEC(_akcfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akdfield_dimensionless_velocity;
@@ -731,7 +682,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 5
-      
       t += _a[4] * _step;
       
       {
@@ -746,7 +696,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akefield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[4][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[4][1]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0]
               + _b[4][2]*_AUTOVEC(_akcfield_dimensionless_velocity)[_i0] + _b[4][3]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -760,7 +709,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akefield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[4][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[4][1]*_AUTOVEC(_akbfield_dimensionless_position)[_i0]
               + _b[4][2]*_AUTOVEC(_akcfield_dimensionless_position)[_i0] + _b[4][3]*_AUTOVEC(_akdfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akefield_dimensionless_velocity;
@@ -770,7 +718,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 6
-      
       t += _a[5] * _step;
       
       {
@@ -784,7 +731,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akifield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[5][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[5][3]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0]
               + _b[5][4]*_AUTOVEC(_akefield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akdfield_dimensionless_position);
@@ -797,7 +743,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akifield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[5][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[5][3]*_AUTOVEC(_akdfield_dimensionless_position)[_i0]
               + _b[5][4]*_AUTOVEC(_akefield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akifield_dimensionless_velocity;
@@ -807,7 +752,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 7
-      
       t += _a[6] * _step;
       
       {
@@ -822,7 +766,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akjfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[6][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[6][3]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0]
               + _b[6][4]*_AUTOVEC(_akefield_dimensionless_velocity)[_i0] + _b[6][5]*_AUTOVEC(_akifield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akdfield_dimensionless_position);
@@ -836,7 +779,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akjfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[6][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[6][3]*_AUTOVEC(_akdfield_dimensionless_position)[_i0]
               + _b[6][4]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[6][5]*_AUTOVEC(_akifield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akjfield_dimensionless_velocity;
@@ -846,7 +788,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 8
-      
       t += _a[7] * _step;
       
       {
@@ -860,7 +801,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akbfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[7][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[7][5]*_AUTOVEC(_akifield_dimensionless_velocity)[_i0]
               + _b[7][6]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akjfield_dimensionless_position);
@@ -873,7 +813,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akbfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[7][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[7][5]*_AUTOVEC(_akifield_dimensionless_position)[_i0]
               + _b[7][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akbfield_dimensionless_velocity;
@@ -883,7 +822,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 9
-      
       t += _a[8] * _step;
       
       {
@@ -898,7 +836,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akcfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[8][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[8][5]*_AUTOVEC(_akifield_dimensionless_velocity)[_i0]
               + _b[8][6]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0]+ _b[8][7]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -912,7 +849,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akcfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[8][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[8][5]*_AUTOVEC(_akifield_dimensionless_position)[_i0]
               + _b[8][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[8][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akcfield_dimensionless_velocity;
@@ -922,7 +858,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 10
-      
       t += _a[9] * _step;
       
       {
@@ -938,7 +873,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akdfield_dimensionless_velocity)[_i0] = _AUTOVEC(_dimensionless_velocity)[_i0] + _b[9][0]*_AUTOVEC(_akafield_dimensionless_velocity)[_i0] + _b[9][5]*_AUTOVEC(_akifield_dimensionless_velocity)[_i0]
               + _b[9][6]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0]+ _b[9][7]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0]+ _b[9][8]*_AUTOVEC(_akcfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -953,7 +887,6 @@ void evolution(real time_interval)
           _AUTOVEC(_akdfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[9][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[9][5]*_AUTOVEC(_akifield_dimensionless_position)[_i0]
               + _b[9][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[9][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0]+ _b[9][8]*_AUTOVEC(_akcfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akdfield_dimensionless_velocity;
@@ -963,7 +896,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 11
-      
       t += _a[10] * _step;
       
       {
@@ -981,7 +913,6 @@ void evolution(real time_interval)
               + _b[10][6]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0]+ _b[10][7]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0] + _b[10][8]*_AUTOVEC(_akcfield_dimensionless_velocity)[_i0]
               + _b[10][9]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -998,7 +929,6 @@ void evolution(real time_interval)
               + _b[10][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[10][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0] + _b[10][8]*_AUTOVEC(_akcfield_dimensionless_position)[_i0]
               + _b[10][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akefield_dimensionless_velocity;
@@ -1008,7 +938,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 12
-      
       t += _a[11] * _step;
       
       {
@@ -1027,7 +956,6 @@ void evolution(real time_interval)
               + _b[11][6]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0] + _b[11][7]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0] + _b[11][8]*_AUTOVEC(_akcfield_dimensionless_velocity)[_i0]
               + _b[11][9]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0] + _b[11][10]*_AUTOVEC(_akefield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1045,7 +973,6 @@ void evolution(real time_interval)
               + _b[11][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0] + _b[11][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0] + _b[11][8]*_AUTOVEC(_akcfield_dimensionless_position)[_i0]
               + _b[11][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[11][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akffield_dimensionless_velocity;
@@ -1055,7 +982,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 13
-      
       t += _a[12] * _step;
       
       {
@@ -1075,7 +1001,6 @@ void evolution(real time_interval)
               + _b[12][6]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0]+ _b[12][7]*_AUTOVEC(_akbfield_dimensionless_velocity)[_i0] + _b[12][8]*_AUTOVEC(_akcfield_dimensionless_velocity)[_i0]
               + _b[12][9]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0] + _b[12][10]*_AUTOVEC(_akefield_dimensionless_velocity)[_i0] + _b[12][11]*_AUTOVEC(_akffield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1094,7 +1019,6 @@ void evolution(real time_interval)
               + _b[12][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[12][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0] + _b[12][8]*_AUTOVEC(_akcfield_dimensionless_position)[_i0]
               + _b[12][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[12][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[12][11]*_AUTOVEC(_akffield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akgfield_dimensionless_velocity;
@@ -1104,7 +1028,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 14
-      
       t += _a[13] * _step;
       
       {
@@ -1126,7 +1049,6 @@ void evolution(real time_interval)
               + _b[13][9]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0] + _b[13][10]*_AUTOVEC(_akefield_dimensionless_velocity)[_i0] + _b[13][11]*_AUTOVEC(_akffield_dimensionless_velocity)[_i0]
               + _b[13][12]*_AUTOVEC(_akgfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1147,7 +1069,6 @@ void evolution(real time_interval)
               + _b[13][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[13][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[13][11]*_AUTOVEC(_akffield_dimensionless_position)[_i0]
               + _b[13][12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _akhfield_dimensionless_velocity;
@@ -1157,7 +1078,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Step 15 and 16 combined to reduce memory use 
-      
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_velocity);
         _MAKE_AUTOVEC_VARIABLE(_akcfield_dimensionless_velocity);
@@ -1177,7 +1097,6 @@ void evolution(real time_interval)
               + _b[14][9]*_AUTOVEC(_akdfield_dimensionless_velocity)[_i0] + _b[14][10]*_AUTOVEC(_akefield_dimensionless_velocity)[_i0] + _b[14][11]*_AUTOVEC(_akffield_dimensionless_velocity)[_i0]
               + _b[14][12]*_AUTOVEC(_akgfield_dimensionless_velocity)[_i0] + _b[14][13]*_AUTOVEC(_akhfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1198,9 +1117,7 @@ void evolution(real time_interval)
               + _b[14][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[14][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[14][11]*_AUTOVEC(_akffield_dimensionless_position)[_i0]
               + _b[14][12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0] + _b[14][13]*_AUTOVEC(_akhfield_dimensionless_position)[_i0];
         }
-      
       }
-      
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_velocity);
         _MAKE_AUTOVEC_VARIABLE(_akcfield_dimensionless_velocity);
@@ -1227,7 +1144,6 @@ void evolution(real time_interval)
                 + _d[9]*_AUTOVEC(_akgfield_dimensionless_velocity)[_i0]
                 + _d[10]*_AUTOVEC(_akhfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1255,7 +1171,6 @@ void evolution(real time_interval)
                 + _d[9]*_AUTOVEC(_akgfield_dimensionless_position)[_i0]
                 + _d[10]*_AUTOVEC(_akhfield_dimensionless_position)[_i0];
         }
-      
       }
       
       t += _a[14] * _step;
@@ -1275,7 +1190,6 @@ void evolution(real time_interval)
       evolution_calculate_delta_a(_step);
       
       // Take full step
-      
       // ai = a
       memcpy(_initial_dimensionless_velocity, _dimensionless_velocity, sizeof(real) * _dimensionless_velocity_alloc_size);
       memcpy(_initial_dimensionless_position, _dimensionless_position, sizeof(real) * _dimensionless_position_alloc_size);
@@ -1300,7 +1214,6 @@ void evolution(real time_interval)
               + _c[12]*_AUTOVEC(_akgfield_dimensionless_velocity)[_i0] + _c[13]*_AUTOVEC(_akhfield_dimensionless_velocity)[_i0] + _c[14]*_AUTOVEC(_akifield_dimensionless_velocity)[_i0]
               + _c[15]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1321,9 +1234,7 @@ void evolution(real time_interval)
               + _c[12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0] + _c[13]*_AUTOVEC(_akhfield_dimensionless_position)[_i0] + _c[14]*_AUTOVEC(_akifield_dimensionless_position)[_i0]
               + _c[15]*_AUTOVEC(_akjfield_dimensionless_position)[_i0];
         }
-      
       }
-      
       // a* = a + etc
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_velocity);
@@ -1344,7 +1255,6 @@ void evolution(real time_interval)
               + _cs[11]*_AUTOVEC(_akffield_dimensionless_velocity)[_i0] + _cs[12]*_AUTOVEC(_akgfield_dimensionless_velocity)[_i0] + _cs[13]*_AUTOVEC(_akhfield_dimensionless_velocity)[_i0]
               + _cs[14]*_AUTOVEC(_akifield_dimensionless_velocity)[_i0] + _cs[15]*_AUTOVEC(_akjfield_dimensionless_velocity)[_i0];
         }
-      
       }
       {
         _MAKE_AUTOVEC_VARIABLE(_akbfield_dimensionless_position);
@@ -1365,7 +1275,6 @@ void evolution(real time_interval)
               + _cs[11]*_AUTOVEC(_akffield_dimensionless_position)[_i0] + _cs[12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0] + _cs[13]*_AUTOVEC(_akhfield_dimensionless_position)[_i0]
               + _cs[14]*_AUTOVEC(_akifield_dimensionless_position)[_i0] + _cs[15]*_AUTOVEC(_akjfield_dimensionless_position)[_i0];
         }
-      
       }
       
       _active_dimensionless_velocity = _dimensionless_velocity;
@@ -1477,8 +1386,6 @@ real evolution_dimensionless_velocity_timestep_error(real* _checkfield)
   real _error = 1e-24;
   real _temp_error = 0.0;
   real _temp_mod = 0.0;
-
-  
   
   {
     long _dimensionless_velocity_index_pointer = 0;
@@ -1503,7 +1410,6 @@ real evolution_dimensionless_velocity_timestep_error(real* _checkfield)
     #undef v1
     #undef v2
   }
-  
   return _error;
 }
 
@@ -1559,7 +1465,6 @@ real evolution_dimensionless_position_timestep_error(real* _checkfield)
     #undef x1
     #undef x2
   }
-  
   return _error;
 }
 
@@ -1610,8 +1515,6 @@ void evolution_dimensionless_operators_evaluate_operator0(real _step)
   // **********************************************
   
   #undef dt
-  
-  
   _active_dimensionless_position[_dimensionless_position_index_pointer + 1] = dx2_dt * _step;
   _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 0] = dv1_dt * _step;
   _active_dimensionless_velocity[_dimensionless_velocity_index_pointer + 1] = dv2_dt * _step;
