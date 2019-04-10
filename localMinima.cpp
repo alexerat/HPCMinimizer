@@ -2302,16 +2302,19 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 }
 
 // TODO: Make these things.
+int NSTAGES = 1;
 MAX_PRECISION_T* fullX;
 bool* bSetCovered;
 int* activeBounds;
 int nActiveBSETS;
+int* activeBState;
+dd_real* activePBest;
 
 // TODO: Make safe to reorderings of boundary sets
 // We do this intermingled with the boundary recursion, so we need to store all the previous bests
-void stageIteration()
+void stageIteration(int** bStates, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
 {
-	for(int i = 0; i < NUM_STAGES; i++)
+	for(int i = 0; i < NSTAGES; i++)
 	{
 		int nActiveX = 0;
 		// Check for size of current x
@@ -2333,6 +2336,7 @@ void stageIteration()
 		// Assign components of x from prev
 
 		// Run
+		boundaryRecursion(0, 0, bState, pBest, pPoint, false);
 
 		// Put results into full x
 
@@ -2340,7 +2344,7 @@ void stageIteration()
 	}
 }
 
-void parameterRecursion(int depth, int* paramState, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISION_T*** pPoint)
+void parameterRecursion(int depth, int* paramState, int** bStates, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
 {
 #ifndef SILENT
 	cout << "Running Parameter Recursion." << endl;
@@ -2352,9 +2356,11 @@ void parameterRecursion(int depth, int* paramState, int* bState, MAX_PRECISION_T
 			PARAMCOMPUTE(params);
 #endif /*PARAMSCONSTSCOUNT*/
 
-        boundaryRecursion(0, 0, bState, pBest, pPoint, false);
+		// Now we call the stage iteration
+		stageIteration(bStates, pBests, pPoints);
+
+		// TODO: Fix this, parameter recursion will require resets on alllll stages.
 		bState[0] = 0;
-		// TODO: Fix this
 		pBest[BSETS - 1][0] = 1e10;
     }
     else
@@ -2369,7 +2375,8 @@ void parameterRecursion(int depth, int* paramState, int* bState, MAX_PRECISION_T
 			cout << "Parameter at: " << depth << " is: " << to_out_string(params[depth],4) << endl;
 #endif /*!SILENT*/
 
-            parameterRecursion(depth + 1, paramState, bState, pBest, pPoint);
+			// Now we call the stage iteration
+            parameterRecursion(depth + 1, paramState, bStates, pBests, pPoints);
         }
 		paramState[depth] = 0;
     }
@@ -2671,23 +2678,46 @@ int main(int argc, char **argv)
 	int paramState[NPARAMS];
 
 
-	// TODO: This memory assignment needs changing for new code
-	int bState[BSETS];
+	// TEST: This memory assignment needs changing for new code
+	int currMaxBSet=0;
+	int* bSetsCovered = new int[NSTAGES];
+	int** bStates = new int*[NSTAGES];
 
-	MAX_PRECISION_T** pBest = new MAX_PRECISION_T*[BSETS];
-	MAX_PRECISION_T*** pPoint = new MAX_PRECISION_T**[BSETS];
+	MAX_PRECISION_T*** pBests = new MAX_PRECISION_T**[NSTAGES];
+	MAX_PRECISION_T**** pPoints = new MAX_PRECISION_T***[NSTAGES];
 
-	int stepCount = 1;
+	int dimCount = 0;
 
-	for(int i = BSETS - 1; i >= 0; i--)
+	for(int i = 0; i < NSTAGES; i++)
 	{
-		pBest[i] = new MAX_PRECISION_T[stepCount];
-		pPoint[i] = new MAX_PRECISION_T*[stepCount];
-		for(int j = 0; j < stepCount; j++)
+		bSetsCovered[i] = 0;
+
+		for(int k = 0; k < stageDims[i]; k++)
 		{
-			pPoint[i][j] = new MAX_PRECISION_T[DIM];
+			if(stageVars[i][k] > dimCount + boundaries[bSetsCovered[i]].dim && bSetsCovered[i] < BSETS)
+				bSetsCovered[i]++;
 		}
-		stepCount *= (boundaries[i].steps + 1);
+
+		pBests[i] = new MAX_PRECISION_T*[bSetsCovered[i]];
+		pPoints[i] = new MAX_PRECISION_T**[bSetsCovered[i]];
+
+		int stepCount = 1;
+
+		for(int j = bSetsCovered[i] - 1; j >= 0; j--)
+		{
+			pBests[i][j] = new MAX_PRECISION_T[stepCount];
+			pPoints[i][j] = new MAX_PRECISION_T*[stepCount];
+			for(int k = 0; k < stepCount; k++)
+			{
+				pPoints[i][j][k] = new MAX_PRECISION_T[DIM];
+			}
+			stepCount *= (boundaries[j].steps + 1);
+		}
+
+		for(int j = 0; j < BSETS; j++)
+		{
+			bStates[bSetsCovered[i]][j] = 0;
+		}
 	}
 
 	for(int i = 0; i < NPARAMS; i++)
@@ -2695,10 +2725,7 @@ int main(int argc, char **argv)
 		paramState[i] = 0;
 	}
 
-	for(int i = 0; i < BSETS; i++)
-	{
-		bState[i] = 0;
-	}
+	
 
 #ifdef TEST_START_POINTS
 	objTest = new objective_function(0);
@@ -2712,6 +2739,8 @@ int main(int argc, char **argv)
 
 	if(gotLastLine)
 	{
+// TODO: Remove this.
+#ifdef NEVER
 		infile.open("results.csv", std::ifstream::in );
 		if(infile.is_open())
 		{
@@ -2804,10 +2833,12 @@ int main(int argc, char **argv)
 		}
 		outfile << endl;
 		outfile << "=======================================================================================================================" << endl;
+#endif /* NEVER */
 	}
 	else
 	{
-		pBest[BSETS - 1][0] = 1e10;
+		for(int i = 0; i < NSTAGES; i++)
+			pBests[i][bSetsCovered[i] - 1][0] = 1e10;
 
 		outfile << "=======================================================================================================================" << endl;
 		outfile << "Running expermiment: " << EXPNAME << endl;
@@ -2880,7 +2911,7 @@ int main(int argc, char **argv)
 
 #endif /* !TEST_START_POINTS */
 
-    parameterRecursion(0, paramState, bState, pBest, pPoint);
+    parameterRecursion(0, paramState, bStates, pBests, pPoints);
 
 #ifndef TEST_START_POINTS
 	pthread_mutex_lock(&theadCoordLock);
@@ -2922,23 +2953,30 @@ int main(int argc, char **argv)
 	delete[] startLatch;
 #endif /* !TEST_START_POINTS */
 
-	stepCount = 1;
 
-	// TODO: Again this memory management needs fixing
-	for(int i = BSETS - 1; i >= 0; i--)
+	// TEST: Again this memory management needs fixing
+	for(int i = 0; i < NSTAGES; i++)
 	{
-		delete[] pBest[i];
+		int stepCount = 1;
 
-		for(int j = 0; j < stepCount; j++)
+		for(int j = bSetsCovered[i] - 1; j >= 0; j--)
 		{
-			delete[] pPoint[i][j];
+			for(int k = 0; k < stepCount; k++)
+			{
+				delete[] pPoints[i][j][k];
+			}
+
+			delete[] pBests[i][j];
+			delete[] pPoints[i][j];
+			stepCount *= (boundaries[j].steps + 1);
 		}
-		delete[] pPoint[i];
-		stepCount *= (boundaries[i].steps + 1);
+
+		delete[] pBests[i];
+		delete[] pPoints[i];
 	}
 
-	delete[] pBest;
-	delete[] pPoint;
+	delete[] pBests;
+	delete[] pPoints;
 
 	delete[] params;
 	delete[] parameters;
