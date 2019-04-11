@@ -18,6 +18,7 @@
 #include <mpi.h>
 #endif /*USE_MPI*/
 
+#include "preprocessor_trickery.h"
 #include "precision.h"
 #include "lbfgs.h"
 //#include "de.h"
@@ -161,65 +162,13 @@ struct OptimizeResult<MAX_PRECISION_T>* results;
 
 
 // TODO: Allow for multiple stages
-#define EMPTY()
-#define DEFER(id) id EMPTY()
-#define OBSTRUCT(id) id DEFER(EMPTY)()
-#define EXPAND(...) __VA_ARGS__
-#define CAT(a, ...) PRIMITIVE_CAT(a, __VA_ARGS__)
-#define PRIMITIVE_CAT(a, ...) a ## __VA_ARGS__
-
-#define CHECK_N(x, n, ...) n
-#define CHECK(...) CHECK_N(__VA_ARGS__, 0,)
-
-#define NOT(x) CHECK(PRIMITIVE_CAT(NOT_, x))
-#define NOT_0 ~, 1,
-
-#define COMPL(b) PRIMITIVE_CAT(COMPL_, b)
-#define COMPL_0 1
-#define COMPL_1 0
-
-#define BOOL(x) COMPL(NOT(x))
-
-#define IIF(c) PRIMITIVE_CAT(IIF_, c)
-#define IIF_0(t, ...) __VA_ARGS__
-#define IIF_1(t, ...) t
-
-#define IF(c) IIF(BOOL(c))
-
-
-#define EVAL(...)  EVAL1(EVAL1(EVAL1(__VA_ARGS__)))
-#define EVAL1(...) EVAL2(EVAL2(EVAL2(__VA_ARGS__)))
-#define EVAL2(...) EVAL3(EVAL3(EVAL3(__VA_ARGS__)))
-#define EVAL3(...) EVAL4(EVAL4(EVAL4(__VA_ARGS__)))
-#define EVAL4(...) EVAL5(EVAL5(EVAL5(__VA_ARGS__)))
-#define EVAL5(...) __VA_ARGS__
-
-#define WHILE(pred, op, ...) \
-    IF(pred(__VA_ARGS__)) \
-    ( \
-        OBSTRUCT(WHILE_INDIRECT) () \
-        ( \
-            pred, op, op(__VA_ARGS__) \
-        ), \
-        __VA_ARGS__ \
-    )
-#define WHILE_INDIRECT() WHILE
-
-
-#define NARGS_SEQ(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
-#define NARGS(...) NARGS_SEQ(__VA_ARGS__, 8, 7, 6, 5, 4, 3, 2, 1)
-
-#define IS_1(x) CHECK(PRIMITIVE_CAT(IS_1_, x))
-#define IS_1_1 ~, 1,
-
-#define PRED(x, ...) COMPL(IS_1(NARGS(__VA_ARGS__)))
-
-#define OP(x, y, ...) CAT(x, y), __VA_ARGS__ 
-#define M(...) CAT(__VA_ARGS__)
-
-M(EVAL(WHILE(PRED, OP, x, y, z))) //Expands to xyz
-
-
+#ifdef ROBUST
+#define IFDEF_ROBUST(...) __VA_ARGS__
+#define IFDEF_NROBUST(...)
+#else
+#define IFDEF_ROBUST(...)
+#define IFDEF_NROBUST(...) __VA_ARGS__
+#endif
 
 
 #define lbgfs_code(NUM) template <typename floatval_t> \
@@ -239,8 +188,7 @@ static floatval_t lbgfs_evaluate_##NUM( \
 	{ \
 		g[i] = 0.; \
 	} \
-	IF(ROBUST) \
-	( \
+	IFDEF_ROBUST( \
 		batch_x = new floatval_t[DIM]; \
 		g_sum = new floatval_t[DIM]; \
 		for(int i=0;i<n;i++) \
@@ -268,7 +216,8 @@ static floatval_t lbgfs_evaluate_##NUM( \
 		} \
 		delete[] batch_x; \
 		delete[] g_sum; \
-	, \
+	) \
+	IFDEF_NROBUST( \
 		fx = FUNCTION##NUM(X, params); \
 		DERIVATIVES##NUM(g, X, params, fx, step); \
 	) \
@@ -279,27 +228,13 @@ static floatval_t lbgfs_evaluate_##NUM( \
 
 lbgfs_code(1)
 
+// TODO: Make sure this is in the header
+int NSTAGES = 1;
 
-#define MYFUNC(DUMMY, NUM) lbgfs_evaluate_##NUM<double>
-#define GENFUNCS(...)                                          \
-WHILE( NARGS(__VA_ARGS__), P00_IGN, MYFUNC, __VA_ARGS__) \
-int (*function_table)(void)[] = { __VA_ARGS__ }
 
-GENFUNCS(toto, hui, gogo);
+#define M(i, _) lbgfs_code(i)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 
-#define FUNCTION_TABLE(F) \
-    F(f1, { some code }) \
-    F(f2, { some code }) \
-    F(f3, { some code }) \
-:
-
-    F(f99, { some code }) \
-    F(f100, { some code })
-
-#define DEFINE_FUNCTIONS(NAME, CODE)     int NAME() CODE
-#define FUNCTION_NAME_LIST(NAME, CODE)   NAME,
-
-FUNCTION_TABLE(DEFINE_FUNCTIONS)
 int (*function_table)(void)[] = { FUNCTION_TABLE(FUNCTION_NAME_LIST) };
 
 // The array of stage lgbfs evaluation functions
@@ -2346,7 +2281,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 }
 
 // TODO: Make these things.
-int NSTAGES = 1;
+
 
 
 // The description of the stages
