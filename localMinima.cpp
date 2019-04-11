@@ -2339,7 +2339,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		// Actually we just need to shelve and treat previous bests stage by stage
 
 		// Assign components of x from prev
-
+		
 		
 
 		// Run
@@ -2347,8 +2347,6 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		if(stageNum > 0)
 		{
 			startDepth = bSetsCovered[stageNum-1];
-
-			// Copy over bState
 		}
 			
 		boundaryRecursion(startDepth, dimCount, bState, pBests, pPoints, false, stageNum);
