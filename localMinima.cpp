@@ -69,6 +69,8 @@ MAX_PRECISION_T precompute[PARAMSCONSTSCOUNT];
 
 MAX_PRECISION_T* ubounds = NULL;
 MAX_PRECISION_T* lbounds = NULL;
+MAX_PRECISION_T* stepUp = NULL;
+MAX_PRECISION_T* stepDown = NULL;
 
 int nodeNum = 0;
 #ifdef USE_MPI
@@ -218,7 +220,7 @@ public:
 		ret = -1;
         m_x = new floatval_t[DIM];
 
-		// TODO: Fix the handling of bounds. The new code means these have to be adjusted for each stage
+		// TODO: Fix the handling of bounds. The new code means these have to be adjusted for each stage, but really we just need some details and hold the active versions of those, i.e. thew steps up and down
         localLower = new floatval_t[DIM];
         localUpper = new floatval_t[DIM];
 		bStepDown = new floatval_t[DIM];
@@ -791,6 +793,7 @@ protected:
         return reinterpret_cast<objective_function*>(instance)->lbgfs_evaluate(X, params, g, n, step);
     }
 
+	// TODO: Allow for multiple stages
     static floatval_t lbgfs_evaluate(
         const floatval_t *X,
         const floatval_t *params,
@@ -1033,6 +1036,7 @@ void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<flo
 	}
 }
 
+// TODO: This
 template<typename floatval_t>
 void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
@@ -1182,9 +1186,9 @@ void *run_multi(void *threadarg)
 	locResults_mp.X = new mp_real[DIM];
 #endif
 
-	for(int i = 0; i < nActiveBSETS; i++)
+	for(int i = 0; i < BSETS; i++)
 	{
-		if(boundaries[activeBounds[i]].intCast)
+		if(boundaries[i].intCast)
 		{
 			mustCast = true;
 		}
@@ -2025,12 +2029,13 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 	delete[] bestX;
 }
 
+// TODO: Fix this
 int getMult(int depth)
 {
 	int mult = 1;
-	for(int i = depth + 1; i < nActiveBSETS; i++)
+	for(int i = depth + 1; i < BSETS; i++)
 	{
-		mult *= (boundaries[activeBounds[i]].steps + 1);
+		mult *= (boundaries[i].steps + 1);
 	}
 	return mult;
 }
@@ -2082,25 +2087,19 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 	}
 }
 
-int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISION_T*** pPoint, bool isStart)
+int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints, bool isStart, int stageNum)
 {
 #ifndef SILENT
 	cout << "Running Boundary Recursion." << endl;
 #endif /*!SILENT*/
 	int mult = 1;
 
-	// TODO: Fix this for new code
-	if(depth == 0)
-	{
-		bestRes.f = 1e10;
-		bestRes.X = new MAX_PRECISION_T[DIM];
-		ubounds = new MAX_PRECISION_T[DIM];
-        lbounds = new MAX_PRECISION_T[DIM];
-	}
+	MAX_PRECISION_T** pBest = pBests[stageNum];
+	MAX_PRECISION_T*** pPoint = pPoints[stageNum];
 
 	if(BOUNDED)
 	{
-		if(depth == nActiveBSETS)
+		if(depth == bSetsCovered[stageNum])
 		{
 #ifdef TEST_START_POINTS
 			runExperiment(&bestRes);
@@ -2212,37 +2211,39 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 			cout << "Finished experiment." << endl;
 #endif /*!SILENT*/
 
-			// TODO: Fix this
 			pBest[BSETS - 1][0] = bestRes.f;
 			for(int k = 0; k < DIM; k++)
 			{
 				pPoint[BSETS - 1][0][k] = bestRes.X[k];
 			}
+
+			// Now do the next stages if present.
+			stageIteration(stageNum+1, dimCount, bState, pBests, pPoints);
 #endif /*!TEST_START_POINTS*/
 		}
 		else
 		{
 
-			int boundIndex = activeBounds[depth];
+
 #ifndef SILENT
 			cout << "Boundary start at boundary set: " << depth << " is: " << bState[depth] << endl;
 #endif /*!SILENT*/
 
-			for(int i = bState[depth]; i <= boundaries[boundIndex].steps; i++)
+			for(int i = bState[depth]; i <= boundaries[depth].steps; i++)
 	    	{
 				bState[depth] = i;
-				for(int j = 0; j < boundaries[boundIndex].dim; j++)
+				for(int j = 0; j < boundaries[depth].dim; j++)
 				{
-					lbounds[j + dimCount] = boundaries[boundIndex].startLower + boundaries[boundIndex].incrementLower * i;
-					ubounds[j + dimCount] = boundaries[boundIndex].startUpper + boundaries[boundIndex].incrementUpper * i;
+					lbounds[j + dimCount] = boundaries[depth].startLower + boundaries[depth].incrementLower * i;
+					ubounds[j + dimCount] = boundaries[depth].startUpper + boundaries[depth].incrementUpper * i;
 
-					if(boundaries[boundIndex].hasSym && j == 0)
+					if(boundaries[depth].hasSym && j == 0)
 					{
 						lbounds[j + dimCount] = 0.0;
 					}
 				}
 
-				mult = boundaryRecursion(depth + 1, dimCount + boundaries[boundIndex].dim, bState, pBest, pPoint, i == 0);
+				mult = boundaryRecursion(depth + 1, dimCount + boundaries[depth].dim, bState, pBests, pPoints, i == 0, stageNum);
 
 #ifndef TEST_START_POINTS
 				// Copy results to layer below.
@@ -2266,7 +2267,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
 #endif /*!TEST_START_POINTS*/
 			}
 			bState[depth] = 0;
-			mult *= (boundaries[boundIndex].steps + 1);
+			mult *= (boundaries[depth].steps + 1);
 
 #ifndef TEST_START_POINTS
 			int stepCount = 1;
@@ -2291,42 +2292,46 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T** pB
         runExperiment(&bestRes);
     }
 
-	if(depth == 0)
-	{
-		delete[] bestRes.X;
-		delete[] ubounds;
-		delete[] lbounds;
-	}
+
 
 	return mult;
 }
 
 // TODO: Make these things.
 int NSTAGES = 1;
-MAX_PRECISION_T* fullX;
-bool* bSetCovered;
-int* activeBounds;
-int nActiveBSETS;
-int* activeBState;
-dd_real* activePBest;
+
+// A set of integers for the number of variables in each stage
+int* stageDims;
+// THe variables to be used in each stage
+int** stageVars;
+// The set of full variables, we copy results onto this and use this as the initial positions.
+MAX_PRECISION_T* x0;
+
+// The maximum boundary set used in each optimisation
+int* bSetsCovered;
+
+
 
 // TODO: Make safe to reorderings of boundary sets
 // We do this intermingled with the boundary recursion, so we need to store all the previous bests
-void stageIteration(int** bStates, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
+void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
 {
-	for(int i = 0; i < NSTAGES; i++)
+	if(stageNum < NSTAGES)
 	{
-		int nActiveX = 0;
 		// Check for size of current x
-		for(int j = 0; j < FULLDIM; j++)
-		{
-			if(stageX[j])
-				nActiveX++;
-		}
+		DIM = stageDims[stageNum];
+		BSETS = bSetsCovered[stageNum];
 
 		// Allocate memory for x
 
 		// Allocate memory for bounds
+		bestRes.f = 1e10;
+		bestRes.X = new MAX_PRECISION_T[DIM];
+		ubounds = new MAX_PRECISION_T[DIM];
+        lbounds = new MAX_PRECISION_T[DIM];
+
+		stepUp = new MAX_PRECISION_T[DIM];
+		stepDown = new MAX_PRECISION_T[DIM];
 
 		// Count boundary sets covered.
 		// Are we just in the same boundary set? Is it a whole new one, or are we stradelling.
@@ -2335,16 +2340,33 @@ void stageIteration(int** bStates, MAX_PRECISION_T*** pBests, MAX_PRECISION_T***
 
 		// Assign components of x from prev
 
-		// Run
-		boundaryRecursion(0, 0, bState, pBest, pPoint, false);
+		
 
-		// Put results into full x
+		// Run
+		int startDepth = 0;
+		if(stageNum > 0)
+		{
+			startDepth = bSetsCovered[stageNum-1];
+
+			// Copy over bState
+		}
+			
+		boundaryRecursion(startDepth, dimCount, bState, pBests, pPoints, false, stageNum);
+
+		// Copy current x onto the full x
+		for(int k = 0; k < DIM; k++)
+		{
+			x0[stageVars[k]] = pPoints[stageNum][BSETS - 1][0][k];
+		}
 
 		// Free memory
+		delete[] bestRes.X;
+		delete[] ubounds;
+		delete[] lbounds;
 	}
 }
 
-void parameterRecursion(int depth, int* paramState, int** bStates, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
+void parameterRecursion(int depth, int* paramState, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
 {
 #ifndef SILENT
 	cout << "Running Parameter Recursion." << endl;
@@ -2357,11 +2379,12 @@ void parameterRecursion(int depth, int* paramState, int** bStates, MAX_PRECISION
 #endif /*PARAMSCONSTSCOUNT*/
 
 		// Now we call the stage iteration
-		stageIteration(bStates, pBests, pPoints);
+		stageIteration(0, 0, bState, pBests, pPoints);
 
-		// TODO: Fix this, parameter recursion will require resets on alllll stages.
+		// Test: Fix this, parameter recursion will require resets on alllll stages.
 		bState[0] = 0;
-		pBest[BSETS - 1][0] = 1e10;
+		for(int i = 0; i < NSTAGES; i++)
+			pBests[i][bSetsCovered[i] - 1][0] = 1e10;
     }
     else
     {
@@ -2376,7 +2399,7 @@ void parameterRecursion(int depth, int* paramState, int** bStates, MAX_PRECISION
 #endif /*!SILENT*/
 
 			// Now we call the stage iteration
-            parameterRecursion(depth + 1, paramState, bStates, pBests, pPoints);
+            parameterRecursion(depth + 1, paramState, bState, pBests, pPoints);
         }
 		paramState[depth] = 0;
     }
@@ -2680,8 +2703,8 @@ int main(int argc, char **argv)
 
 	// TEST: This memory assignment needs changing for new code
 	int currMaxBSet=0;
-	int* bSetsCovered = new int[NSTAGES];
-	int** bStates = new int*[NSTAGES];
+	
+	int* bState = new int[BSETS];
 
 	MAX_PRECISION_T*** pBests = new MAX_PRECISION_T**[NSTAGES];
 	MAX_PRECISION_T**** pPoints = new MAX_PRECISION_T***[NSTAGES];
@@ -2712,11 +2735,6 @@ int main(int argc, char **argv)
 				pPoints[i][j][k] = new MAX_PRECISION_T[DIM];
 			}
 			stepCount *= (boundaries[j].steps + 1);
-		}
-
-		for(int j = 0; j < BSETS; j++)
-		{
-			bStates[bSetsCovered[i]][j] = 0;
 		}
 	}
 
@@ -2911,7 +2929,7 @@ int main(int argc, char **argv)
 
 #endif /* !TEST_START_POINTS */
 
-    parameterRecursion(0, paramState, bStates, pBests, pPoints);
+    parameterRecursion(0, paramState, bState, pBests, pPoints);
 
 #ifndef TEST_START_POINTS
 	pthread_mutex_lock(&theadCoordLock);
@@ -2977,6 +2995,7 @@ int main(int argc, char **argv)
 
 	delete[] pBests;
 	delete[] pPoints;
+	delete[] bState;
 
 	delete[] params;
 	delete[] parameters;
