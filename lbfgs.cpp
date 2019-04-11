@@ -80,10 +80,10 @@ using std::endl;
 
 /* Forward function declarations. */
 
-template int lbfgs<double>(int n,double *x,double *ptr_fx,double *lowerbounds,double *upperbounds,double *extparams,lbfgs_evaluate_t<double> proc_evaluate,lbfgs_progress_t<double> proc_progress,void *instance,lbfgs_wspace_t<double> *wspace);
-template int lbfgs<dd_real>(int n,dd_real *x,dd_real *ptr_fx,dd_real *lowerbounds,dd_real *upperbounds,dd_real *extparams,lbfgs_evaluate_t<dd_real> proc_evaluate,lbfgs_progress_t<dd_real> proc_progress,void *instance,lbfgs_wspace_t<dd_real> *wspace);
-//template int lbfgs<qd_real>(int n,qd_real *x,qd_real *ptr_fx,qd_real *lowerbounds,qd_real *upperbounds,qd_real *extparams,lbfgs_evaluate_t<qd_real> proc_evaluate,lbfgs_progress_t<qd_real> proc_progress,void *instance,lbfgs_wspace_t<qd_real> *wspace);
-//template int lbfgs<mp_real>(int n,mp_real *x,mp_real *ptr_fx,mp_real *lowerbounds,mp_real *upperbounds,mp_real *extparams,lbfgs_evaluate_t<mp_real> proc_evaluate,lbfgs_progress_t<mp_real> proc_progress,void *instance,lbfgs_wspace_t<mp_real> *wspace);
+template int lbfgs<double>(int n,double *x,double *ptr_fx,double *lowerbounds,double *upperbounds,double *extparams,lbfgs_evaluate_t<double> proc_evaluate,lbfgs_progress_t<double> proc_progress,lbfgs_wspace_t<double> *wspace);
+template int lbfgs<dd_real>(int n,dd_real *x,dd_real *ptr_fx,dd_real *lowerbounds,dd_real *upperbounds,dd_real *extparams,lbfgs_evaluate_t<dd_real> proc_evaluate,lbfgs_progress_t<dd_real> proc_progress,lbfgs_wspace_t<dd_real> *wspace);
+//template int lbfgs<qd_real>(int n,qd_real *x,qd_real *ptr_fx,qd_real *lowerbounds,qd_real *upperbounds,qd_real *extparams,lbfgs_evaluate_t<qd_real> proc_evaluate,lbfgs_progress_t<qd_real> proc_progress,lbfgs_wspace_t<qd_real> *wspace);
+//template int lbfgs<mp_real>(int n,mp_real *x,mp_real *ptr_fx,mp_real *lowerbounds,mp_real *upperbounds,mp_real *extparams,lbfgs_evaluate_t<mp_real> proc_evaluate,lbfgs_progress_t<mp_real> proc_progress,lbfgs_wspace_t<mp_real> *wspace);
 
 template int lbfgs_init<double>(int n, lbfgs_wspace_t<double> *wspace, lbfgs_parameter_t<double> *param);
 template int lbfgs_init<dd_real>(int n, lbfgs_wspace_t<dd_real> *wspace, lbfgs_parameter_t<dd_real> *param);
@@ -443,7 +443,6 @@ int lbfgs(
     floatval_t *extparams,
     lbfgs_evaluate_t<floatval_t> proc_evaluate,
     lbfgs_progress_t<floatval_t> proc_progress,
-    void *instance,
     lbfgs_wspace_t<floatval_t> *wspace
     )
 {
@@ -478,14 +477,13 @@ int lbfgs(
     /* Construct a callback data. */
     callback_data_t<floatval_t> cd;
     cd.n = n;
-    cd.instance = instance;
     cd.proc_evaluate = proc_evaluate;
     cd.proc_progress = proc_progress;
 
     //cout << "Making first evaluation." << endl;
 
     /* Evaluate the function value and its gradient. */
-    fx = cd.proc_evaluate(cd.instance, x, extparams, g, cd.n, GSTEP);
+    fx = cd.proc_evaluate(x, extparams, g, cd.n, GSTEP);
     if (0. != param.orthantwise_c)
     {
         /* Compute the L1 norm of the variable and add it to the object value. */
@@ -691,7 +689,7 @@ int lbfgs(
         /* Report the progress. */
         if (cd.proc_progress)
         {
-            if ((ret = cd.proc_progress(cd.instance, x, g, fx, xnorm, gnorm, step, cd.n, k, ls)))
+            if ((ret = cd.proc_progress(x, g, fx, xnorm, gnorm, step, cd.n, k, ls)))
             {
                 goto lbfgs_exit;
             }
@@ -930,7 +928,7 @@ lbfgs_exit:
 
         if(recomp)
         {
-            fx = cd.proc_evaluate(cd.instance, x, extparams, g, cd.n, GSTEP);
+            fx = cd.proc_evaluate(x, extparams, g, cd.n, GSTEP);
         }
     }
 
@@ -1004,7 +1002,7 @@ static int line_search_backtracking(
         vecadd(x, s, *stp, n);
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(cd->instance, x, extparams, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, extparams, g, cd->n, GSTEP);
 
         ++count;
 
@@ -1131,7 +1129,7 @@ static int line_search_backtracking_owlqn(
         owlqn_project(x, wp, param->orthantwise_start, param->orthantwise_end, EPS);
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(cd->instance, x, extparams, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, extparams, g, cd->n, GSTEP);
 
         /* Compute the L1 norm of the variables and add it to the object value. */
         norm = owlqn_x1norm(x, param->orthantwise_start, param->orthantwise_end);
@@ -1368,7 +1366,7 @@ static int line_search_morethuente(
 #endif
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(cd->instance, x, extparams, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, extparams, g, cd->n, GSTEP);
         vecdot(&dg, g, s, n);
 
         ftest1 = finit + *stp * dgtest;

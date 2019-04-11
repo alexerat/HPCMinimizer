@@ -72,6 +72,11 @@ MAX_PRECISION_T* lbounds = NULL;
 MAX_PRECISION_T* stepUp = NULL;
 MAX_PRECISION_T* stepDown = NULL;
 
+// The set of full variables, we copy results onto this and use this as the initial positions.
+MAX_PRECISION_T* x0;
+// The current stage so the worker threads know which cost function to use
+int currStage=0;
+
 int nodeNum = 0;
 #ifdef USE_MPI
 	// floatval_t datatype
@@ -150,6 +155,246 @@ int detDebug = 0;
 struct OptimizeResult<MAX_PRECISION_T> bestRes;
 struct OptimizeResult<MAX_PRECISION_T>* results;
 
+
+
+// Use as: (*lbgfs_evaluates[index])();
+
+
+// TODO: Allow for multiple stages
+#define EMPTY()
+#define DEFER(id) id EMPTY()
+#define OBSTRUCT(id) id DEFER(EMPTY)()
+#define EXPAND(...) __VA_ARGS__
+#define CAT(a, ...) PRIMITIVE_CAT(a, __VA_ARGS__)
+#define PRIMITIVE_CAT(a, ...) a ## __VA_ARGS__
+
+#define CHECK_N(x, n, ...) n
+#define CHECK(...) CHECK_N(__VA_ARGS__, 0,)
+
+#define NOT(x) CHECK(PRIMITIVE_CAT(NOT_, x))
+#define NOT_0 ~, 1,
+
+#define COMPL(b) PRIMITIVE_CAT(COMPL_, b)
+#define COMPL_0 1
+#define COMPL_1 0
+
+#define BOOL(x) COMPL(NOT(x))
+
+#define IIF(c) PRIMITIVE_CAT(IIF_, c)
+#define IIF_0(t, ...) __VA_ARGS__
+#define IIF_1(t, ...) t
+
+#define IF(c) IIF(BOOL(c))
+
+
+#define EVAL(...)  EVAL1(EVAL1(EVAL1(__VA_ARGS__)))
+#define EVAL1(...) EVAL2(EVAL2(EVAL2(__VA_ARGS__)))
+#define EVAL2(...) EVAL3(EVAL3(EVAL3(__VA_ARGS__)))
+#define EVAL3(...) EVAL4(EVAL4(EVAL4(__VA_ARGS__)))
+#define EVAL4(...) EVAL5(EVAL5(EVAL5(__VA_ARGS__)))
+#define EVAL5(...) __VA_ARGS__
+
+#define WHILE(pred, op, ...) \
+    IF(pred(__VA_ARGS__)) \
+    ( \
+        OBSTRUCT(WHILE_INDIRECT) () \
+        ( \
+            pred, op, op(__VA_ARGS__) \
+        ), \
+        __VA_ARGS__ \
+    )
+#define WHILE_INDIRECT() WHILE
+
+
+#define NARGS_SEQ(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
+#define NARGS(...) NARGS_SEQ(__VA_ARGS__, 8, 7, 6, 5, 4, 3, 2, 1)
+
+#define IS_1(x) CHECK(PRIMITIVE_CAT(IS_1_, x))
+#define IS_1_1 ~, 1,
+
+#define PRED(x, ...) COMPL(IS_1(NARGS(__VA_ARGS__)))
+
+#define OP(x, y, ...) CAT(x, y), __VA_ARGS__ 
+#define M(...) CAT(__VA_ARGS__)
+
+M(EVAL(WHILE(PRED, OP, x, y, z))) //Expands to xyz
+
+
+
+
+#define lbgfs_code(NUM) template <typename floatval_t> \
+static floatval_t lbgfs_evaluate_##NUM( \
+	const floatval_t *X, \
+	const floatval_t *params, \
+	floatval_t *g, \
+	const int n, \
+	const floatval_t step \
+	) \
+{ \
+	floatval_t* batch_x; \
+	floatval_t fx = 0.; \
+	floatval_t fx_sum = 0.; \
+	floatval_t* g_sum; \
+	for(int i=0;i<n;i++) \
+	{ \
+		g[i] = 0.; \
+	} \
+	IF(ROBUST) \
+	( \
+		batch_x = new floatval_t[DIM]; \
+		g_sum = new floatval_t[DIM]; \
+		for(int i=0;i<n;i++) \
+		{ \
+			g_sum[i] = 0.; \
+		} \
+		for(int i=0;i<SAMPLES;i++) \
+		{ \
+			for(int j=0;j<n;j++) \
+			{ \
+				batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5); \
+			} \
+			fx = FUNCTION##NUM(batch_x, params); \
+			DERIVATIVES##NUM(g, batch_x, params, fx, step); \
+			for(int j=0;j<n;j++) \
+			{ \
+				g_sum[j] += g[j]; \
+			} \
+			fx_sum += fx; \
+		} \
+		fx = fx_sum / SAMPLES; \
+		for(int i=0;i<n;i++) \
+		{ \
+			g[i] = g_sum[i] / SAMPLES; \
+		} \
+		delete[] batch_x; \
+		delete[] g_sum; \
+	, \
+		fx = FUNCTION##NUM(X, params); \
+		DERIVATIVES##NUM(g, X, params, fx, step); \
+	) \
+	if(fx < 0.0) \
+		cout << "The cost function was negative!" << endl; \
+	return fx; \
+}
+
+lbgfs_code(1)
+
+
+#define MYFUNC(DUMMY, NUM) lbgfs_evaluate_##NUM<double>
+#define GENFUNCS(...)                                          \
+WHILE( NARGS(__VA_ARGS__), P00_IGN, MYFUNC, __VA_ARGS__) \
+int (*function_table)(void)[] = { __VA_ARGS__ }
+
+GENFUNCS(toto, hui, gogo);
+
+#define FUNCTION_TABLE(F) \
+    F(f1, { some code }) \
+    F(f2, { some code }) \
+    F(f3, { some code }) \
+:
+
+    F(f99, { some code }) \
+    F(f100, { some code })
+
+#define DEFINE_FUNCTIONS(NAME, CODE)     int NAME() CODE
+#define FUNCTION_NAME_LIST(NAME, CODE)   NAME,
+
+FUNCTION_TABLE(DEFINE_FUNCTIONS)
+int (*function_table)(void)[] = { FUNCTION_TABLE(FUNCTION_NAME_LIST) };
+
+// The array of stage lgbfs evaluation functions
+double (* lbgfs_evaluates_dbl [])(const double *,
+	const double *,
+	double *,
+	const int ,
+	const double ) = 
+{
+	lbgfs_evaluate_1<double>
+};
+
+template <typename floatval_t>
+static floatval_t de_evaluate(
+	const floatval_t *X,
+	const floatval_t *params,
+	const int n
+	)
+{
+	floatval_t* batch_x;
+	floatval_t fx = 0.;
+	floatval_t fx_sum = 0.;
+
+	if(ROBUST)
+	{
+		batch_x = new floatval_t[DIM];
+
+		for(int i=0;i<SAMPLES;i++)
+		{
+			for(int j=0;j<n;j++)
+			{
+				batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);
+			}
+
+			fx = FUNCTION(batch_x, params);
+
+			fx_sum += fx;
+		}
+
+		fx = fx_sum / SAMPLES;
+
+		delete[] batch_x;
+	}
+	else
+	{
+		fx = FUNCTION(X, params);
+	}
+
+	return fx;
+}
+
+template <typename floatval_t>
+static int progress(
+	const floatval_t *x,
+	const floatval_t *g,
+	const floatval_t fx,
+	const floatval_t xnorm,
+	const floatval_t gnorm,
+	const floatval_t step,
+	int n,
+	int k,
+	int ls
+	)
+{
+	cout << "Iteration " << k << ":" << endl;
+	cout << "  fx = " << to_out_string(fx,SIGDIG);
+
+	for(int j = 0; j < DIM; j++)
+	{
+		cout << ", x[" << j << "] = " << to_out_string(x[j],SIGDIG);
+	}
+
+	cout << endl;
+	cout << "  xnorm = " << to_out_string(xnorm,SIGDIG) << ", gnorm =" << to_out_string(gnorm,SIGDIG);
+	cout << ", step = " << to_out_string(step,SIGDIG) << endl;
+	cout << endl;
+
+	ofstream outfile;
+
+	outfile.open("progress.csv", ios::app );
+
+	outfile << k << "," << to_out_string(fx,SIGDIG) << ",";
+	for(int j = 0; j < DIM; j++)
+	{
+		outfile << to_out_string(x[j],SIGDIG) << ",";
+	}
+	for(int j = 0; j < DIM; j++)
+	{
+		outfile << to_out_string(g[j],SIGDIG) << ",";
+	}
+	outfile << to_out_string(step,SIGDIG) << "," << ls << endl;
+
+	return 0;
+}
+
 /**
  *
  *
@@ -163,8 +408,6 @@ protected:
     floatval_t* m_x;
     floatval_t* localLower;
     floatval_t* localUpper;
-	floatval_t* bStepDown;
-	floatval_t* bStepUp;
 
 	/* DE Workspace */
 	floatval_t* ini_upper;
@@ -218,13 +461,16 @@ public:
 		param.gstep = get_gstep<floatval_t>();
 
 		ret = -1;
+
+		
         m_x = new floatval_t[DIM];
 
-		// TODO: Fix the handling of bounds. The new code means these have to be adjusted for each stage, but really we just need some details and hold the active versions of those, i.e. thew steps up and down
+		// TODO: Fix the handling of bounds. The new code means these have to be adjusted for each stage, 
+		// but really we just need some details and hold the active versions of those, i.e. thew steps up and down
+		// evidently that means, don't do this here.
+	
         localLower = new floatval_t[DIM];
         localUpper = new floatval_t[DIM];
-		bStepDown = new floatval_t[DIM];
-		bStepUp = new floatval_t[DIM];
 
 		int dimCount = 0;
 		for (int i = 0;i < BSETS;i++)
@@ -284,6 +530,7 @@ public:
 	 */
     virtual ~objective_function()
     {
+		// TODO: Fix all this
         if (m_x != NULL)
         {
             delete[] m_x;
@@ -344,12 +591,13 @@ public:
 		if(RANDOMSEARCH)
 		{
 			// We need to do this for each boundary set. NOTE: There is a higher density of searching in the corners due to overlap. Resolving this is complicated.
-			for(int j = 0; j < nActiveBSETS; j++)
+			for(int j = 0; j < BSETS; j++)
 			{
-				int sect = rand() % (2*boundaries[activeBounds[j]].dim - (boundaries[activeBounds[j]].hasSym ? 1 : 0));
+				// TODO: We need some handling for this, we don't want the sym to happen when we are refining points
+				int sect = rand() % (2*boundaries[j].dim - (boundaries[j].hasSym ? 1 : 0));
 
 				/* Initialize the variables. */
-				for (int i = dimCount;i < (dimCount + boundaries[activeBounds[j]].dim);i++)
+				for (int i = dimCount;i < (dimCount + boundaries[j].dim);i++)
 				{
 					if(fabs(bStepDown[i]) < EPS && sect >= 2*i)
 							sect++;
@@ -392,7 +640,7 @@ public:
 				cout << endl;
 #endif /*VERBOSE*/
 
-				dimCount += boundaries[activeBounds[j]].dim;
+				dimCount += boundaries[j].dim;
 			}
 		}
 		else // Otherwise we pick points in a regular grid.
@@ -556,7 +804,8 @@ public:
 			// We need to do this for each boundary set. NOTE: There is a higher density of searching in the corners due to overlap. Resolving this is complicated.
 			for(int j = 0; j < nActiveBSETS; j++)
 			{
-				int sect = rand() % (2*boundaries[activeBounds[j]].dim - (boundaries[activeBounds[j]].hasSym ? 1 : 0));
+				// TODO: This sym handling needs fixing
+				int sect = rand() % (2*boundaries[j].dim - (boundaries[j].hasSym ? 1 : 0));
 				int upper = sect % 2;
 				sect = (sect / 2) + dimCount;
 
@@ -569,7 +818,7 @@ public:
 #endif /*VERBOSE*/
 
 				/* Initialize the variables. */
-				for (int i = dimCount;i < (dimCount + boundaries[activeBounds[j]].dim);i++)
+				for (int i = dimCount;i < (dimCount + boundaries[j].dim);i++)
 				{
 					bool fixed = !((bStepDown[i] > EPS && !upper) || (bStepUp[i] > EPS && upper));
 					if(sect + fixedCounter == i && !fixed)
@@ -621,7 +870,7 @@ public:
 				cout << endl;
 #endif /*VERBOSE*/
 
-				dimCount += boundaries[activeBounds[j]].dim;
+				dimCount += boundaries[j].dim;
 			}
 		}
 
@@ -768,6 +1017,7 @@ public:
         return ret;
     }
 
+	// TODO: Allow for multiple stages
 	static floatval_t evaluate(
         const floatval_t *X,
         const floatval_t *params
@@ -782,7 +1032,6 @@ public:
 
 protected:
     static floatval_t _lbgfs_evaluate(
-        void *instance,
         const floatval_t *X,
         const floatval_t *params,
         floatval_t *g,
@@ -790,166 +1039,15 @@ protected:
         const floatval_t step
         )
     {
-        return reinterpret_cast<objective_function*>(instance)->lbgfs_evaluate(X, params, g, n, step);
+        return reinterpret_cast<objective_function*>lbgfs_evaluate<floatval_t>(X, params, g, n, step);
     }
-
-	// TODO: Allow for multiple stages
-    static floatval_t lbgfs_evaluate(
-        const floatval_t *X,
-        const floatval_t *params,
-        floatval_t *g,
-        const int n,
-        const floatval_t step
-        )
-    {
-		floatval_t* batch_x;
-        floatval_t fx = 0.;
-		floatval_t fx_sum = 0.;
-		floatval_t* g_sum;
-
-		for(int i=0;i<n;i++)
-		{
-			g[i] = 0.;
-		}
-
-		if(ROBUST)
-		{
-			batch_x = new floatval_t[DIM];
-			g_sum = new floatval_t[DIM];
-
-			for(int i=0;i<n;i++)
-			{
-				g_sum[i] = 0.;
-			}
-
-			for(int i=0;i<SAMPLES;i++)
-			{
-				for(int j=0;j<n;j++)
-				{
-					batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);
-				}
-
-				fx = FUNCTION(batch_x, params);
-
-				// Derivatives
-				DERIVATIVES(g, batch_x, params, fx, step);
-
-				for(int j=0;j<n;j++)
-				{
-					g_sum[j] += g[j];
-				}
-
-				fx_sum += fx;
-			}
-
-			fx = fx_sum / SAMPLES;
-			for(int i=0;i<n;i++)
-			{
-				g[i] = g_sum[i] / SAMPLES;
-			}
-
-			delete[] batch_x;
-			delete[] g_sum;
-		}
-		else
-		{
-			fx = FUNCTION(X, params);
-
-			// Derivatives
-			DERIVATIVES(g, X, params, fx, step);
-
-			/*
-			cout << "At : ";
-
-			for(int k = 0; k < DIM; k++)
-			{
-				cout << to_out_string(X[k],7) << " ";
-			}
-
-			cout << endl << "Function is: " << to_out_string(fx,7);
-
-			cout << endl << "Dertivatives are: ";
-			for(int k = 0; k < DIM; k++)
-			{
-				cout << to_out_string(g[k],7) << " ";
-			}
-			cout << endl;
-
-			cout << "Params are : ";
-
-			for(int k = 0; k < NPARAMS; k++)
-			{
-				cout << to_out_string(params[k],7) << " ";
-			}
-			cout << endl;
-			*/
-		}
-
-
-		//if(abs(fx) < EPS)
-        //{
-        //    if(fx > 0.)
-        //    {
-        //        fx = EPS;
-        //    }
-        //    else
-        //    {
-        //        fx = -EPS;
-        //    }
-        //}
-
-		if(fx < 0.0)
-			cout << "The cost function was negative!" << endl;
-
-        return fx;
-    }
-
 	static floatval_t _de_evaluate(
-        void *instance,
         const floatval_t *X,
         const floatval_t *params,
         const int n
         )
     {
-        return reinterpret_cast<objective_function*>(instance)->de_evaluate(X, params, n);
-    }
-
-    static floatval_t de_evaluate(
-        const floatval_t *X,
-        const floatval_t *params,
-        const int n
-        )
-    {
-		floatval_t* batch_x;
-        floatval_t fx = 0.;
-		floatval_t fx_sum = 0.;
-
-		if(ROBUST)
-		{
-			batch_x = new floatval_t[DIM];
-
-			for(int i=0;i<SAMPLES;i++)
-			{
-				for(int j=0;j<n;j++)
-				{
-					batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);
-				}
-
-				fx = FUNCTION(batch_x, params);
-
-				fx_sum += fx;
-			}
-
-			fx = fx_sum / SAMPLES;
-
-			delete[] batch_x;
-		}
-		else
-		{
-			fx = FUNCTION(X, params);
-		}
-
-        return fx;
+        return reinterpret_cast<objective_function*>de_evaluate<floatval_t>(X, params, n);
     }
 
     static int _progress(
@@ -965,50 +1063,7 @@ protected:
         int ls
         )
     {
-        return reinterpret_cast<objective_function*>(instance)->progress(x, g, fx, xnorm, gnorm, step, n, k, ls);
-    }
-
-    int progress(
-        const floatval_t *x,
-        const floatval_t *g,
-        const floatval_t fx,
-        const floatval_t xnorm,
-        const floatval_t gnorm,
-        const floatval_t step,
-        int n,
-        int k,
-        int ls
-        )
-    {
-        cout << "Iteration " << k << ":" << endl;
-        cout << "  fx = " << to_out_string(fx,SIGDIG);
-
-		for(int j = 0; j < DIM; j++)
-		{
-			cout << ", x[" << j << "] = " << to_out_string(x[j],SIGDIG);
-		}
-
-        cout << endl;
-        cout << "  xnorm = " << to_out_string(xnorm,SIGDIG) << ", gnorm =" << to_out_string(gnorm,SIGDIG);
-        cout << ", step = " << to_out_string(step,SIGDIG) << endl;
-        cout << endl;
-
-		ofstream outfile;
-
-		outfile.open("progress.csv", ios::app );
-
-		outfile << k << "," << to_out_string(fx,SIGDIG) << ",";
-		for(int j = 0; j < DIM; j++)
-		{
-			outfile << to_out_string(x[j],SIGDIG) << ",";
-		}
-		for(int j = 0; j < DIM; j++)
-		{
-			outfile << to_out_string(g[j],SIGDIG) << ",";
-		}
-		outfile << to_out_string(step,SIGDIG) << "," << ls << endl;
-
-        return 0;
+        return reinterpret_cast<objective_function*>progress<floatval_t>(x, g, fx, xnorm, gnorm, step, n, k, ls);
     }
 };
 
@@ -1022,9 +1077,9 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 template<typename floatval_t>
 void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
-	if(locDepth == boundaries[activeBounds[depth]].dim)
+	if(locDepth == boundaries[depth].dim)
 	{
-		castBoundaries<floatval_t>(depth + 1, dimCount + boundaries[activeBounds[depth]].dim, obj, params, Xin, X, best, bestX);
+		castBoundaries<floatval_t>(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
 	}
 	else
 	{
@@ -1054,17 +1109,17 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 	}
 	else
 	{
-		if(boundaries[activeBounds[depth]].intCast)
+		if(boundaries[depth].intCast)
 		{
 			locCastRecurs(depth, 0, dimCount, obj, params, Xin, X, best, bestX);
 		}
 		else
 		{
-			for(int i = 0; i < boundaries[activeBounds[depth]].dim; i++)
+			for(int i = 0; i < boundaries[depth].dim; i++)
 			{
 				X[dimCount + i] = Xin[dimCount + i];
 			}
-			castBoundaries(depth + 1, dimCount + boundaries[activeBounds[depth]].dim, obj, params, Xin, X, best, bestX);
+			castBoundaries(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
 		}
 	}
 }
@@ -2029,7 +2084,6 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 	delete[] bestX;
 }
 
-// TODO: Fix this
 int getMult(int depth)
 {
 	int mult = 1;
@@ -2053,7 +2107,6 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 
 		int index = 0;
 
-		// TODO: Fix this
 		for(int i = depth + 1; i < BSETS; i++)
 		{
 			index += getMult(i) * bState[i];
@@ -2123,7 +2176,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 #ifndef SILENT
 			int stepCount = 1;
 
-			// TODO: Fix this
 			cout << "Before getting bests: " << endl;
 			for(int i = BSETS - 1; i >= 0; i--)
 			{
@@ -2137,8 +2189,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 
 			cout << "Getting adjacent results." << endl;
 #endif /*!SILENT*/
-
-			// TODO: FIx this
 			for(int j = 0; j < BSETS; j++)
 			{
 				// Only get layer previous result when we aren't at the start of that layer.
@@ -2247,7 +2297,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 
 #ifndef TEST_START_POINTS
 				// Copy results to layer below.
-				// TODO: Fix this
 				if(BSETS > 1 && depth > 0)
 				{
 					MAX_PRECISION_T* nextLevelBest = pBest[depth];
@@ -2273,7 +2322,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 			int stepCount = 1;
 #ifndef SILENT
 			cout << "After propagating bests: " << endl;
-			// TODO: Fix this
 			for(int i = BSETS - 1; i >= 0; i--)
 			{
 				for(int j = 0; j < stepCount; j++)
@@ -2300,16 +2348,11 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 // TODO: Make these things.
 int NSTAGES = 1;
 
-// A set of integers for the number of variables in each stage
-int* stageDims;
-// THe variables to be used in each stage
-int** stageVars;
-// The set of full variables, we copy results onto this and use this as the initial positions.
-MAX_PRECISION_T* x0;
 
-// The maximum boundary set used in each optimisation
-int* bSetsCovered;
-
+// The description of the stages
+stage_t* stages; 
+// int dim: the number of dims to optimise, int bSets: the maximum bset used, 
+// int vars[]: the variables to optimise over: MAX_PRECISION_T* pBSetOptSize[]: the area to search over in open boundary sets
 
 
 // TODO: Make safe to reorderings of boundary sets
@@ -2318,9 +2361,9 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 {
 	if(stageNum < NSTAGES)
 	{
-		// Check for size of current x
-		DIM = stageDims[stageNum];
-		BSETS = bSetsCovered[stageNum];
+		// Set the sizes for current stage
+		DIM = stages[stageNum].dim;
+		BSETS = stages[stageNum].bSets;
 
 		// Allocate memory for x
 
@@ -2330,6 +2373,10 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		ubounds = new MAX_PRECISION_T[DIM];
         lbounds = new MAX_PRECISION_T[DIM];
 
+		// TODO: Assign components of x from prev, actually we just use the bounds, but we need to assign all previous BSET bounds
+
+
+		// TODO: These need to be handled
 		stepUp = new MAX_PRECISION_T[DIM];
 		stepDown = new MAX_PRECISION_T[DIM];
 
@@ -2338,8 +2385,6 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		// This causes a very complex scenario for the previous bests. 
 		// Actually we just need to shelve and treat previous bests stage by stage
 
-		// Assign components of x from prev
-		
 		
 
 		// Run
@@ -2354,7 +2399,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		// Copy current x onto the full x
 		for(int k = 0; k < DIM; k++)
 		{
-			x0[stageVars[k]] = pPoints[stageNum][BSETS - 1][0][k];
+			x0[stages[stageNum].vars[k]] = pPoints[stageNum][BSETS - 1][0][k];
 		}
 
 		// Free memory
