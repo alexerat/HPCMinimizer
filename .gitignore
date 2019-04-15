@@ -33,6 +33,7 @@
 
 # VSCode
 .vscode/*
+.vscode/
 
 # Keep the libarprec to keep it working
 !libarprec.la
