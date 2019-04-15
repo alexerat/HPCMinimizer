@@ -26,7 +26,7 @@
 #define INC_PP_8 9
 #define INC_PP_9 9
 
-#define DEC(x) PRIMITIVE_CAT(DEC_, x)
+#define DEC_PP(x) PRIMITIVE_CAT_PP(DEC_PP_, x)
 #define DEC_PP_0 0
 #define DEC_PP_1 0
 #define DEC_PP_2 1
@@ -44,7 +44,7 @@
 #define NOT_PP(x) CHECK_PP(PRIMITIVE_CAT_PP(NOT_PP_, x))
 #define NOT_PP_0 ~, 1,
 
-#define COMPL_PP(b) PRIMITIVE_CAT_PP(COMPL_, b)
+#define COMPL_PP(b) PRIMITIVE_CAT_PP(COMPL_PP_, b)
 #define COMPL_PP_0 1
 #define COMPL_PP_1 0
 
@@ -55,6 +55,9 @@
 #define IIF_PP_1(t, ...) t
 
 #define IF_PP(c) IIF_PP(BOOL_PP(c))
+
+#define COMMA_PP() ,
+#define COMMA_IF_PP(n) IF_PP(n)(COMMA_PP, EAT_PP)()
 
 #define EAT_PP(...)
 #define EXPAND_PP(...) __VA_ARGS__
@@ -73,3 +76,5 @@
         ) \
     )
 #define REPEAT_INDIRECT_PP() REPEAT_PP
+
+

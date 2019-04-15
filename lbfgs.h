@@ -398,6 +398,7 @@ using lbfgs_evaluate_t = floatval_t (*)(
  *  @retval int         Zero to continue the optimization process. Returning a
  *                      non-zero value will cancel the optimization process.
  */
+// TODO: Move to a general code location
 template <typename floatval_t>
 using lbfgs_progress_t = int (*)(
     void *,

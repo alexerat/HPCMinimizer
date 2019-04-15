@@ -18,10 +18,11 @@
 #include <mpi.h>
 #endif /*USE_MPI*/
 
-#include "preprocessor_trickery.h"
+
 #include "precision.h"
 #include "lbfgs.h"
 //#include "de.h"
+#include "preprocessor_trickery.h"
 
 // TODO: Remove
 #include <unistd.h>
@@ -59,6 +60,15 @@ struct boundary_t
 	bool hasSym;
 };
 
+// The description of a stage for multistaging optimisations
+struct stage_t 
+{
+    int dim;
+    int bSets;    
+    int* vars;     
+    MAX_PRECISION_T* pBSetOptSize;   
+};
+
 int nruns = 0;
 bool startBound = true;
 
@@ -77,6 +87,10 @@ MAX_PRECISION_T* stepDown = NULL;
 MAX_PRECISION_T* x0;
 // The current stage so the worker threads know which cost function to use
 int currStage=0;
+// The current working dimension
+int DIM=0;
+// The current working number of boundary sets
+int BSETS=0;
 
 int nodeNum = 0;
 #ifdef USE_MPI
@@ -171,8 +185,7 @@ struct OptimizeResult<MAX_PRECISION_T>* results;
 #endif
 
 
-#define lbgfs_code(NUM) template <typename floatval_t> \
-static floatval_t lbgfs_evaluate_##NUM( \
+#define eval_code(NUM,floatval_t) static floatval_t lbgfs_evaluate_##NUM##_##floatval_t( \
 	const floatval_t *X, \
 	const floatval_t *params, \
 	floatval_t *g, \
@@ -226,65 +239,149 @@ static floatval_t lbgfs_evaluate_##NUM( \
 	return fx; \
 }
 
-lbgfs_code(1)
-
-// TODO: Make sure this is in the header
-int NSTAGES = 1;
 
 
-#define M(i, _) lbgfs_code(i)
-EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
+// TODO: Put in the DE version of below
 
-int (*function_table)(void)[] = { FUNCTION_TABLE(FUNCTION_NAME_LIST) };
+#define M(i, _) eval_code(i,double)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
 
-// The array of stage lgbfs evaluation functions
-double (* lbgfs_evaluates_dbl [])(const double *,
-	const double *,
-	double *,
-	const int ,
-	const double ) = 
+#define M(i, _) eval_code(i,dd_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#define M(i, _) eval_code(i,qd_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#define M(i, _) eval_code(i,mp_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#undef eval_code
+
+// General eval code (inc DE)
+#define eval_code(NUM,floatval_t) static floatval_t gen_evaluate_##NUM##_##floatval_t( \
+	const floatval_t *X,\
+	const floatval_t *params,\
+	const int n\
+	)\
+{\
+	floatval_t* batch_x;\
+	floatval_t fx = 0.;\
+	floatval_t fx_sum = 0.;\
+	IFDEF_ROBUST(\
+		batch_x = new floatval_t[DIM];\
+		for(int i=0;i<SAMPLES;i++) {\
+			for(int j=0;j<n;j++) {\
+				batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);\
+			}\
+			fx = FUNCTION##NUM(batch_x, params);\
+			fx_sum += fx;\
+		}\
+		fx = fx_sum / SAMPLES;\
+		delete[] batch_x;\
+	)\
+	IFDEF_NROBUST(\
+		fx = FUNCTION##NUM(X, params);\
+	)\
+	return fx;\
+}\
+
+#define M(i, _) eval_code(i,double)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#define M(i, _) eval_code(i,dd_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#define M(i, _) eval_code(i,qd_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#define M(i, _) eval_code(i,mp_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#undef eval_code
+
+// TODO: Move to header. Have the optimisation types ready to roll here.
+// These will be optimisation labels generated from the optimisation type codes
+#define OPT0 lbgfs
+#define OPT1 gen
+
+typedef void (*fptr)();
+
+#define funcptr_code(NUM,floatval_t) COMMA_IF_PP(NUM) reinterpret_cast<fptr>(CAT_PP(CAT_PP(OPT,NUM),_evaluate_##NUM##_##floatval_t))
+#define M(i, _) funcptr_code(i,double)
+
+// The array of stage evaluation functions
+void (* evaluates_dbl [])( ) = 
 {
-	lbgfs_evaluate_1<double>
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 
-template <typename floatval_t>
-static floatval_t de_evaluate(
-	const floatval_t *X,
-	const floatval_t *params,
-	const int n
-	)
+#undef M
+
+#define M(i, _) funcptr_code(i,dd_real)
+void (* evaluates_dd [])( ) = 
 {
-	floatval_t* batch_x;
-	floatval_t fx = 0.;
-	floatval_t fx_sum = 0.;
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
 
-	if(ROBUST)
-	{
-		batch_x = new floatval_t[DIM];
+#define M(i, _) funcptr_code(i,qd_real)
+void (* evaluates_qd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
 
-		for(int i=0;i<SAMPLES;i++)
-		{
-			for(int j=0;j<n;j++)
-			{
-				batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);
-			}
+#define M(i, _) funcptr_code(i,mp_real)
+void (* evaluates_mp [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
 
-			fx = FUNCTION(batch_x, params);
+#undef funcptr_code
 
-			fx_sum += fx;
-		}
+#define funcptr_code(NUM,floatval_t) COMMA_IF_PP(NUM) reinterpret_cast<fptr>(gen_evaluate_##NUM##_##floatval_t)
+#define M(i, _) funcptr_code(i,double)
 
-		fx = fx_sum / SAMPLES;
+// The array of stage generalized evaluation functions, used for int casting
+void (* evaluates_gen_dbl [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
 
-		delete[] batch_x;
-	}
-	else
-	{
-		fx = FUNCTION(X, params);
-	}
+#undef M
 
-	return fx;
-}
+#define M(i, _) funcptr_code(i,dd_real)
+void (* evaluates_gen_dd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+
+#define M(i, _) funcptr_code(i,qd_real)
+void (* evaluates_gen_qd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+
+#define M(i, _) funcptr_code(i,mp_real)
+void (* evaluates_gen_mp [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+
+#undef funcptr_code
+
 
 template <typename floatval_t>
 static int progress(
@@ -308,7 +405,9 @@ static int progress(
 	}
 
 	cout << endl;
-	cout << "  xnorm = " << to_out_string(xnorm,SIGDIG) << ", gnorm =" << to_out_string(gnorm,SIGDIG);
+	cout << "  xnorm = " << to_out_string(xnorm,SIGDIG);
+	if(g != NULL)
+		cout << ", gnorm =" << to_out_string(gnorm,SIGDIG);
 	cout << ", step = " << to_out_string(step,SIGDIG) << endl;
 	cout << endl;
 
@@ -321,14 +420,43 @@ static int progress(
 	{
 		outfile << to_out_string(x[j],SIGDIG) << ",";
 	}
-	for(int j = 0; j < DIM; j++)
+	
+	if(g != NULL)
 	{
-		outfile << to_out_string(g[j],SIGDIG) << ",";
+		for(int j = 0; j < DIM; j++)
+		{
+			outfile << to_out_string(g[j],SIGDIG) << ",";
+		}
 	}
+	
 	outfile << to_out_string(step,SIGDIG) << "," << ls << endl;
 
 	return 0;
 }
+
+// Code to distribute calls to get the stage evaluation to the correct function pointer
+template <typename floatval_t>
+inline fptr getEvalFunc(int stage);
+template<>
+inline fptr getEvalFunc<double>(int stage) { return evaluates_dbl[stage]; }
+template<>
+inline fptr getEvalFunc<dd_real>(int stage) { return evaluates_dd[stage]; }
+template<>
+inline fptr getEvalFunc<qd_real>(int stage) { return evaluates_qd[stage]; }
+template<>
+inline fptr getEvalFunc<mp_real>(int stage) { return evaluates_mp[stage]; }
+
+// Code to distribute calls to get integer cast evaluation to the correct function pointer
+template <typename floatval_t>
+inline fptr getCastEvalFunc(int stage);
+template<>
+inline fptr getCastEvalFunc<double>(int stage) { return evaluates_gen_dbl[stage]; }
+template<>
+inline fptr getCastEvalFunc<dd_real>(int stage) { return evaluates_gen_dd[stage]; }
+template<>
+inline fptr getCastEvalFunc<qd_real>(int stage) { return evaluates_gen_qd[stage]; }
+template<>
+inline fptr getCastEvalFunc<mp_real>(int stage) { return evaluates_gen_mp[stage]; }
 
 /**
  *
@@ -952,19 +1080,6 @@ public:
         return ret;
     }
 
-	// TODO: Allow for multiple stages
-	static floatval_t evaluate(
-        const floatval_t *X,
-        const floatval_t *params
-        )
-    {
-        floatval_t fx = 0.;
-
-		fx = FUNCTION(X, params);
-
-        return fx;
-    }
-
 protected:
     static floatval_t _lbgfs_evaluate(
         const floatval_t *X,
@@ -974,7 +1089,7 @@ protected:
         const floatval_t step
         )
     {
-        return reinterpret_cast<objective_function*>lbgfs_evaluate<floatval_t>(X, params, g, n, step);
+        return reinterpret_cast<lbfgs_evaluate_t<floatval_t>*>(getEvalFunc<floatval_t>(currStage))(X, params, g, n, step);
     }
 	static floatval_t _de_evaluate(
         const floatval_t *X,
@@ -982,7 +1097,7 @@ protected:
         const int n
         )
     {
-        return reinterpret_cast<objective_function*>de_evaluate<floatval_t>(X, params, n);
+        return reinterpret_cast<evaluate_t<floatval_t>*>(getEvalFunc<floatval_t>(currStage))(X, params, n);
     }
 
     static int _progress(
@@ -998,7 +1113,7 @@ protected:
         int ls
         )
     {
-        return reinterpret_cast<objective_function*>progress<floatval_t>(x, g, fx, xnorm, gnorm, step, n, k, ls);
+        return reinterpret_cast<lbfgs_progress_t<floatval_t>*>progress<floatval_t>(x, g, fx, xnorm, gnorm, step, n, k, ls);
     }
 };
 
@@ -1032,7 +1147,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 {
 	if(depth == nActiveBSETS)
 	{
-		floatval_t f = obj->evaluate(X, params);
+		floatval_t f = obj->evaluate(X, params, DIM);
 		if(f < *best)
 		{
 			*best = f;
@@ -1977,6 +2092,8 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 
 		outfile.open("results.csv", ios::app );
 
+		outfile << to_string(currStage) << ",";
+
 	    if(NPARAMS > 0)
 	    {
 	        outfile << to_out_string(params[0],4);
@@ -2087,7 +2204,7 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 
 	if(BOUNDED)
 	{
-		if(depth == bSetsCovered[stageNum])
+		if(depth == stages[stageNum].bSets)
 		{
 #ifdef TEST_START_POINTS
 			runExperiment(&bestRes);
@@ -2280,10 +2397,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 	return mult;
 }
 
-// TODO: Make these things.
-
-
-
 // The description of the stages
 stage_t* stages; 
 // int dim: the number of dims to optimise, int bSets: the maximum bset used, 
@@ -2299,6 +2412,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		// Set the sizes for current stage
 		DIM = stages[stageNum].dim;
 		BSETS = stages[stageNum].bSets;
+		currStage = stageNum;
 
 		// Allocate memory for x
 
@@ -2326,7 +2440,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		int startDepth = 0;
 		if(stageNum > 0)
 		{
-			startDepth = bSetsCovered[stageNum-1];
+			startDepth = stages[stageNum-1].bSets;
 		}
 			
 		boundaryRecursion(startDepth, dimCount, bState, pBests, pPoints, false, stageNum);
@@ -2362,7 +2476,7 @@ void parameterRecursion(int depth, int* paramState, int* bState, MAX_PRECISION_T
 		// Test: Fix this, parameter recursion will require resets on alllll stages.
 		bState[0] = 0;
 		for(int i = 0; i < NSTAGES; i++)
-			pBests[i][bSetsCovered[i] - 1][0] = 1e10;
+			pBests[i][stages[i].bSets - 1][0] = 1e10;
     }
     else
     {
@@ -2657,7 +2771,9 @@ int main(int argc, char **argv)
 	}
     params = new MAX_PRECISION_T[NPARAMS];
     parameters = new parameter_t<MAX_PRECISION_T>[NPARAMS];
-    boundaries = new boundary_t<MAX_PRECISION_T>[BSETS];
+
+	x0 = new MAX_PRECISION_T[FULLDIM];
+    boundaries = new boundary_t<MAX_PRECISION_T>[FULLBSETS];
 
     BOUNDS
     //cout << "Finished bounds." << endl;
@@ -2691,20 +2807,13 @@ int main(int argc, char **argv)
 
 	for(int i = 0; i < NSTAGES; i++)
 	{
-		bSetsCovered[i] = 0;
 
-		for(int k = 0; k < stageDims[i]; k++)
-		{
-			if(stageVars[i][k] > dimCount + boundaries[bSetsCovered[i]].dim && bSetsCovered[i] < BSETS)
-				bSetsCovered[i]++;
-		}
-
-		pBests[i] = new MAX_PRECISION_T*[bSetsCovered[i]];
-		pPoints[i] = new MAX_PRECISION_T**[bSetsCovered[i]];
+		pBests[i] = new MAX_PRECISION_T*[stages[i].bSets];
+		pPoints[i] = new MAX_PRECISION_T**[stages[i].bSets];
 
 		int stepCount = 1;
 
-		for(int j = bSetsCovered[i] - 1; j >= 0; j--)
+		for(int j = stages[i].bSets - 1; j >= 0; j--)
 		{
 			pBests[i][j] = new MAX_PRECISION_T[stepCount];
 			pPoints[i][j] = new MAX_PRECISION_T*[stepCount];
@@ -2834,7 +2943,7 @@ int main(int argc, char **argv)
 	else
 	{
 		for(int i = 0; i < NSTAGES; i++)
-			pBests[i][bSetsCovered[i] - 1][0] = 1e10;
+			pBests[i][stages[i].bSets - 1][0] = 1e10;
 
 		outfile << "=======================================================================================================================" << endl;
 		outfile << "Running expermiment: " << EXPNAME << endl;
@@ -2955,7 +3064,7 @@ int main(int argc, char **argv)
 	{
 		int stepCount = 1;
 
-		for(int j = bSetsCovered[i] - 1; j >= 0; j--)
+		for(int j = stages[i].bSets - 1; j >= 0; j--)
 		{
 			for(int k = 0; k < stepCount; k++)
 			{
