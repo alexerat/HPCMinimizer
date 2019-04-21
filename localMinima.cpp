@@ -2325,8 +2325,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 		}
 		else
 		{
-
-
 #ifndef SILENT
 			cout << "Boundary start at boundary set: " << depth << " is: " << bState[depth] << endl;
 #endif /*!SILENT*/
@@ -2399,8 +2397,6 @@ int boundaryRecursion(int depth, int dimCount, int* bState, MAX_PRECISION_T*** p
 
 // The description of the stages
 stage_t* stages; 
-// int dim: the number of dims to optimise, int bSets: the maximum bset used, 
-// int vars[]: the variables to optimise over: MAX_PRECISION_T* pBSetOptSize[]: the area to search over in open boundary sets
 
 
 // TODO: Make safe to reorderings of boundary sets
