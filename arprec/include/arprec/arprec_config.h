@@ -35,7 +35,7 @@
 
 /* Define to 1 to use the quad-double library. */
 #ifndef ARPREC_QD
-/* #undef ARPREC_QD */
+#define ARPREC_QD 1
 #endif
 
 #endif

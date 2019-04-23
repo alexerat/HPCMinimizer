@@ -237,6 +237,7 @@ std::string to_string(mp_real &x, int precision = mp::n_output_digits,
     bool showpos = false, bool uppercase = false, char fill = ' ');
 
 ARPREC_API double dble(const mp_real& a);
+inline double to_double(const mp_real& a) { return dble(a); };
 
 #if (ARPREC_QD)
 ARPREC_API dd_real to_dd_real(const mp_real &a);

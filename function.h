@@ -23,6 +23,12 @@
 // CHANGE: We now need to define the number of stages
 #define NSTAGES 1
 
+// CHANGE:
+// These will be optimisation labels generated from the optimisation type codes
+#define OPT0 lbgfs
+#define OPT1 gen
+
+
 #define BOUNDS boundary_t<MAX_PRECISION_T> b0;b0.startUpper=2.;b0.startLower=-2.;b0.steps=49;b0.incrementUpper=2.;b0.incrementLower=-2.;b0.intCast=true;b0.dim=1;b0.hasSym=true;boundaries[0]=b0;
 
 #define BUCKETORD 9
@@ -40,7 +46,8 @@
 #define EXTRAOUT
 
 /* 0: bgfs, 1: Genetic Evolution */
-#define ALGO 0
+// CHANGE: Removed, now in stages
+//#define ALGO 0
 
 /* These are the settings for a Genetic Evolution algorithm. */
 #define STRAT 3
