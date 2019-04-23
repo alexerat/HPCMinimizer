@@ -1,5 +1,3 @@
-
-
 #include <time.h>
 #include <stdlib.h>
 #include <string>
@@ -1693,9 +1691,80 @@ void *run_multi(void *threadarg)
 				return NULL;
 			}
 
-// TODO: We only do lower prcisions on the first stage.
+			// We only do lower prcisions on the first stage.
 #if (MAX_PRECISION_LEVEL > 1)
-			ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, NULL, false);
+			if(currStage == 0)
+			{
+				ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, NULL, false);
+			}
+			else
+			{
+#if (MAX_PRECISION_LEVEL > 2)
+				ret = obj_mp->run(&locResults_mp, item, params, locResults_mp.X, true);
+				if(ret < 0)
+				{
+					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+					{
+
+						if(REPORTFAILS)
+						{
+							cout << "Failure code was: " << ret << endl;
+						}
+						
+						threadFails[threadNum]++;
+					}
+				}
+				locResults.f = locResults_mp.f;
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults.X[i] = locResults_mp.X[i];
+				}
+#if (MAX_PRECISION_LEVEL > 3)
+#else /* MAX_PRECISION_LEVEL == 3, qd */
+				ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+				if(ret < 0)
+				{
+					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+					{
+
+						if(REPORTFAILS)
+						{
+							cout << "Failure code was: " << ret << endl;
+						}
+						
+						threadFails[threadNum]++;
+					}
+				}
+				locResults.f = locResults_qd.f;
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults.X[i] = locResults_qd.X[i];
+				}
+#endif
+#else /* MAX_PRECISION_LEVEL == 2, dd */
+				ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
+				if(ret < 0)
+				{
+					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+					{
+
+						if(REPORTFAILS)
+						{
+							cout << "Failure code was: " << ret << endl;
+						}
+						
+						threadFails[threadNum]++;
+					}
+				}
+
+				locResults.f = locResults_dd.f;
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults.X[i] = locResults_dd.X[i];
+				}
+#endif
+			}
+			
 #else
 			ret = obj_dbl->run(&locResults_dbl, item, params, NULL, false);
 #endif
@@ -1714,143 +1783,144 @@ void *run_multi(void *threadarg)
 				}
 			}
 
+			if(currStage == 0)
+			{
 #if (MAX_PRECISION_LEVEL > 1)
-			for(int i = 0; i < DIM; i++)
-			{
-				locResults_dd.X[i] = locResults_dbl.X[i];
-
-				if(locResults_dd.X[i] - lbounds[i] < get_delta<dd_real>())
-				{
-					locResults_dd.X[i] = lbounds[i];
-				}
-				else if(ubounds[i] - locResults_dd.X[i] < get_delta<dd_real>())
-				{
-					locResults_dd.X[i] = ubounds[i];
-				}
-			}
-
-			if(locResults_dbl.f < results[threadNum].f || locResults_dbl.f < get_delta<double>()*1e5)
-			{
-#if (MAX_PRECISION_LEVEL > 2)
-				ret = obj_dd->run(&locResults_dd, item, locParams_dd, locResults_dd.X, true);
-#else
-				ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
-#endif
-				
-				locResults.f = locResults_dd.f;
 				for(int i = 0; i < DIM; i++)
 				{
-					locResults.X[i] = locResults_dd.X[i];
-				}
-			}
-			else
-			{
-				locResults_dd.f = dd_real(locResults_dbl.f);
-				for(int i = 0; i < DIM; i++)
-				{
-					locResults_dd.X[i] = dd_real(locResults_dbl.X[i]);
-				}
-			}
+					locResults_dd.X[i] = locResults_dbl.X[i];
 
-			if(ret < 0)
-			{
-				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
-				{
-
-					if(REPORTFAILS)
+					if(locResults_dd.X[i] - lbounds[i] < get_delta<dd_real>())
 					{
-						cout << "Failure code was: " << ret << endl;
+						locResults_dd.X[i] = lbounds[i];
 					}
-
-					threadFails[threadNum]++;
+					else if(ubounds[i] - locResults_dd.X[i] < get_delta<dd_real>())
+					{
+						locResults_dd.X[i] = ubounds[i];
+					}
 				}
-			}
+
+				if(locResults_dbl.f < results[threadNum].f || locResults_dbl.f < get_delta<double>()*1e5)
+				{
 #if (MAX_PRECISION_LEVEL > 2)
-			for(int i = 0; i < DIM; i++)
-			{
-				locResults_qd.X[i] = locResults_dd.X[i];
-			}
-
-			if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<dd_real>()*1e5)
-			{
-#if (MAX_PRECISION_LEVEL > 3)
-				ret = obj_qd->run(&locResults_qd, item, locParams_qd, locResults_qd.X, true);
+					ret = obj_dd->run(&locResults_dd, item, locParams_dd, locResults_dd.X, true);
 #else
-				ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+					ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
 #endif
-				
-				locResults.f = locResults_qd.f;
-				for(int i = 0; i < DIM; i++)
-				{
-					locResults.X[i] = locResults_qd.X[i];
-				}
-			}
-			else
-			{
-				locResults_qd.f = dd_real(locResults_dd.f);
-				for(int i = 0; i < DIM; i++)
-				{
-					locResults_qd.X[i] = dd_real(locResults_dd.X[i]);
-
 					
-				}
-			}
-
-			if(ret < 0)
-			{
-				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
-				{
-
-					if(REPORTFAILS)
+					locResults.f = locResults_dd.f;
+					for(int i = 0; i < DIM; i++)
 					{
-						cout << "Failure code was: " << ret << endl;
+						locResults.X[i] = locResults_dd.X[i];
 					}
-
-					threadFails[threadNum]++;
 				}
-			}
+				else
+				{
+					locResults_dd.f = dd_real(locResults_dbl.f);
+					for(int i = 0; i < DIM; i++)
+					{
+						locResults_dd.X[i] = dd_real(locResults_dbl.X[i]);
+					}
+				}
+
+				if(ret < 0)
+				{
+					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+					{
+
+						if(REPORTFAILS)
+						{
+							cout << "Failure code was: " << ret << endl;
+						}
+
+						threadFails[threadNum]++;
+					}
+				}
+#if (MAX_PRECISION_LEVEL > 2)
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults_qd.X[i] = locResults_dd.X[i];
+				}
+
+				if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<dd_real>()*1e5)
+				{
 #if (MAX_PRECISION_LEVEL > 3)
-			for(int i = 0; i < DIM; i++)
-			{
-				locResults_mp.X[i] = locResults_qd.X[i];
-			}
-
-			if(locResults_qd.f < results[threadNum].f || locResults_qd.f < get_delta<qd_real>()*1e5)
-			{
-
-				ret = obj_mp->run(&locResults_mp, item, params, locResults_qd.X, true);
-				
-				locResults.f = locResults_mp.f;
-				for(int i = 0; i < DIM; i++)
-				{
-					locResults.X[i] = locResults_mp.X[i];
-				}
-			}
-			else
-			{
-				locResults_mp.f = dd_real(locResults_qd.f);
-				for(int i = 0; i < DIM; i++)
-				{
-					locResults_mp.X[i] = dd_real(locResults_qd.X[i]);
-				}
-			}
-
-			if(ret < 0)
-			{
-				if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
-				{
-
-					if(REPORTFAILS)
+					ret = obj_qd->run(&locResults_qd, item, locParams_qd, locResults_qd.X, true);
+#else
+					ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+#endif
+					
+					locResults.f = locResults_qd.f;
+					for(int i = 0; i < DIM; i++)
 					{
-						cout << "Failure code was: " << ret << endl;
+						locResults.X[i] = locResults_qd.X[i];
 					}
-
-					threadFails[threadNum]++;
 				}
-			}
+				else
+				{
+					locResults_qd.f = dd_real(locResults_dd.f);
+					for(int i = 0; i < DIM; i++)
+					{
+						locResults_qd.X[i] = dd_real(locResults_dd.X[i]);
+					}
+				}
+
+				if(ret < 0)
+				{
+					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+					{
+
+						if(REPORTFAILS)
+						{
+							cout << "Failure code was: " << ret << endl;
+						}
+
+						threadFails[threadNum]++;
+					}
+				}
+#if (MAX_PRECISION_LEVEL > 3)
+				for(int i = 0; i < DIM; i++)
+				{
+					locResults_mp.X[i] = locResults_qd.X[i];
+				}
+
+				if(locResults_qd.f < results[threadNum].f || locResults_qd.f < get_delta<qd_real>()*1e5)
+				{
+
+					ret = obj_mp->run(&locResults_mp, item, params, locResults_mp.X, true);
+					
+					locResults.f = locResults_mp.f;
+					for(int i = 0; i < DIM; i++)
+					{
+						locResults.X[i] = locResults_mp.X[i];
+					}
+				}
+				else
+				{
+					locResults_mp.f = dd_real(locResults_qd.f);
+					for(int i = 0; i < DIM; i++)
+					{
+						locResults_mp.X[i] = dd_real(locResults_qd.X[i]);
+					}
+				}
+
+				if(ret < 0)
+				{
+					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
+					{
+
+						if(REPORTFAILS)
+						{
+							cout << "Failure code was: " << ret << endl;
+						}
+
+						threadFails[threadNum]++;
+					}
+				}
 #endif // (MAX_PRECISION_LEVEL > 3)
 #endif // (MAX_PRECISION_LEVEL > 2)
 #endif // (MAX_PRECISION_LEVEL > 1)
+			}
 
 			if(locResults.f < 0.0)
 			{
@@ -2258,9 +2328,8 @@ int find_minima(OptimizeResult<MAX_PRECISION_T>* bestResult, OptimizeResult<MAX_
 		delete[] nodeDone;
 #endif /*USE_MPI*/
 		/* Output the search statistics */
-
-		// TODO: Fix for staging, each stage will get it's own stats.
-		outfile.open("stats.csv", ios::app );
+		string fName = "stats_" + to_string(currStage) + ".csv";
+		outfile.open(fName, ios::app );
 
 		outfile << workNumber << "," << fails;
 		if(prevBest->f > bestResult->f)
@@ -2406,10 +2475,9 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 		cout << endl;
 #endif /*!SILENT*/
 
-		// TODO: Fix outputting, each stage will get it's own results file
 		// Final stage will output full results.
-
-		outfile.open("results.csv", ios::app );
+		string fName = "results_" + to_string(currStage) + ".csv";
+		outfile.open(fName, ios::app );
 
 		outfile << to_string(currStage) << ",";
 
@@ -2434,9 +2502,6 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 	        }
 	        outfile << ",";
 	    }
-
-		/*NOTE: Extra out must bring its own leading comma*/
-		EXTRAOUT
 
 		outfile << to_out_string(best,SIGDIG);
 
@@ -2823,6 +2888,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 	MAX_PRECISION_T* pstepUp;
 	MAX_PRECISION_T* pstepDown;
 	int pbSetStartDepth;
+	ofstream outfile;
 
 	if(stageNum < NSTAGES)
 	{
@@ -2888,7 +2954,46 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 	}
 	else
 	{
-		// TODO: Final stage will output full results in results.csv with no _stageNum.
+		// Final stage will output full results.
+		outfile.open("results.csv", ios::app );
+
+		outfile << to_string(currStage) << ",";
+
+	    if(NPARAMS > 0)
+	    {
+	        outfile << to_out_string(params[0],4);
+
+	        for(int i=1; i<NPARAMS; i++)
+	        {
+	            outfile << "," << to_out_string(params[i],4);
+	        }
+
+	        outfile << ",";
+	    }
+
+	    if(BOUNDED)
+	    {
+	        outfile << to_out_string(lbounds[0],4) << "," << to_out_string(ubounds[0],4);
+	        for(int k = 1; k < DIM; k++)
+	        {
+	            outfile << "," << to_out_string(lbounds[k],4) << "," << to_out_string(ubounds[k],4);
+	        }
+	        outfile << ",";
+	    }
+
+		/*NOTE: Extra out must bring its own leading comma*/
+		EXTRAOUT
+
+		outfile << to_out_string(pBests[stageNum][BSETS - 1][0],SIGDIG);
+
+	    for(int k = 0; k < FULLDIM; k++)
+	    {
+	        outfile << "," << to_out_string(x0[k],SIGDIG);
+	    }
+
+	    outfile << endl;
+
+	    outfile.close();
 
 		for(int k = 0; k < FULLDIM; k++)
 		{
