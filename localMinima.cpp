@@ -32,6 +32,13 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+template<typename floatval_t> 
+using evaluate_t = floatval_t (*)(
+    const floatval_t *,
+    const floatval_t *,
+    const int
+    );
+
 template<typename floatval_t>
 struct OptimizeResult
 {
@@ -47,13 +54,15 @@ struct parameter_t
 	int (*findPos)(floatval_t value, floatval_t* params, int depth);
 };
 
+typedef void (*fptr)();
+
 template <typename floatval_t>
 struct boundary_t
 {
-	floatval_t startLower;
-	floatval_t incrementLower;
-	floatval_t startUpper;
-	floatval_t incrementUpper;
+	floatval_t (*startLower)(floatval_t* x0);
+	floatval_t (*incrementLower)(floatval_t* x0);
+	floatval_t (*startUpper)(floatval_t* x0);
+	floatval_t (*incrementUpper)(floatval_t* x0);
 	int steps;
 	int dim;
 	bool intCast;
@@ -67,8 +76,9 @@ struct stage_t
     int dim;
     int bSets;    
 	int algorithm;
-    int* vars;     
-    floatval_t* pBSetOptSize;   
+    const int* vars;     
+	// Not very clear, but this will be an array of function pointers, allows for bounds to be functions of prev stage x's
+    floatval_t (*(*pBSetOptSize))(floatval_t* x0);   
 };
 
 int nruns = 0;
@@ -164,7 +174,6 @@ int ALGO = -1;
 parameter_t<MAX_PRECISION_T>* parameters;
 boundary_t<MAX_PRECISION_T>* boundaries;
 // The description of the stages
-// TODO: Add this to the function header.
 stage_t<MAX_PRECISION_T>* stages; 
 
 int* threadMinBin;
@@ -179,6 +188,8 @@ int detDebug = 0;
 
 struct OptimizeResult<MAX_PRECISION_T> bestRes;
 struct OptimizeResult<MAX_PRECISION_T>* results;
+
+void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints);
 
 // Use as: (*lbgfs_evaluates[index])();
 
@@ -747,11 +758,11 @@ public:
         {
             delete[] localUpper;
         }
-		if (bStepDown != NULL)
+		if (localBStepDown != NULL)
         {
             delete[] localBStepDown;
         }
-        if (bStepUp != NULL)
+        if (localBStepUp != NULL)
         {
             delete[] localBStepUp;
         }
@@ -956,9 +967,9 @@ public:
 				/* Initialize the variables. */
 				for (int i = dimCount;i < (dimCount + currBSetDIMS[j]);i++)
 				{
-					if(fabs(bStepDown[i]) < EPS && sect >= 2*i)
+					if(fabs(localBStepDown[i]) < EPS && sect >= 2*i)
 							sect++;
-					if(fabs(bStepUp[i]) < EPS && sect > 2*i)
+					if(fabs(localBStepUp[i]) < EPS && sect > 2*i)
 							sect++;
 
 #ifdef VERBOSE
@@ -969,9 +980,9 @@ public:
 					if((sect / 2) == i)
 					{
 						if((sect % 2))
-							m_x[i] = localUpper[i] - bStepUp[i]*rnd_uni<floatval_t>();
+							m_x[i] = localUpper[i] - localBStepUp[i]*rnd_uni<floatval_t>();
 						else
-							m_x[i] = localLower[i] - bStepDown[i]*rnd_uni<floatval_t>();
+							m_x[i] = localLower[i] - localBStepDown[i]*rnd_uni<floatval_t>();
 
 					}
 					else
@@ -1152,7 +1163,8 @@ public:
 		else
 		{
 			// We need to do this for each boundary set. NOTE: There is a higher density of searching in the corners due to overlap. Resolving this is complicated.
-			for(int j = 0; j < nActiveBSETS; j++)
+			// TODO: 0 was nActiveBSETS
+			for(int j = 0; j < 0; j++)
 			{
 				// TODO: This sym handling needs fixing
 				int sect = rand() % (2*boundaries[j].dim - (boundaries[j].hasSym ? 1 : 0));
@@ -1170,18 +1182,18 @@ public:
 				/* Initialize the variables. */
 				for (int i = dimCount;i < (dimCount + boundaries[j].dim);i++)
 				{
-					bool fixed = !((bStepDown[i] > EPS && !upper) || (bStepUp[i] > EPS && upper));
+					bool fixed = !((localBStepDown[i] > EPS && !upper) || (localBStepUp[i] > EPS && upper));
 					if(sect + fixedCounter == i && !fixed)
 					{
 						if(upper)
 						{
-							m_x[i] = (localUpper[i] - POPSPREAD) - (bStepUp[i] - 2*POPSPREAD)*rnd_uni<floatval_t>();
+							m_x[i] = (localUpper[i] - POPSPREAD) - (localBStepUp[i] - 2*POPSPREAD)*rnd_uni<floatval_t>();
 							ini_lower[i] = m_x[i] - POPSPREAD;
 							ini_upper[i] = m_x[i] + POPSPREAD;
 						}
 						else
 						{
-							m_x[i] = (localLower[i] + POPSPREAD) - (bStepDown[i] - 2*POPSPREAD)*rnd_uni<floatval_t>();
+							m_x[i] = (localLower[i] + POPSPREAD) - (localBStepDown[i] - 2*POPSPREAD)*rnd_uni<floatval_t>();
 							ini_lower[i] = m_x[i] - POPSPREAD;
 							ini_upper[i] = m_x[i] + POPSPREAD;
 						}
@@ -1316,11 +1328,11 @@ public:
 	        */
 #ifdef OPT_PROGRESS
 			if(workNumber % SAMPLE_SPACING == 0)
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, _progress, this, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, _progress, &wspace);
 			else
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, this, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, &wspace);
 #else /*OPT_PROGRESS*/
-	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, this, &wspace);
+	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, &wspace);
 #endif /*!OPT_PROGRESS*/
 
 	       /* Report the result. */
@@ -1367,6 +1379,16 @@ public:
         return ret;
     }
 
+	static floatval_t evaluate(
+        const floatval_t *X,
+        const floatval_t *params,
+        const int n
+        )
+    {
+        return (reinterpret_cast<evaluate_t<floatval_t>>(getCastEvalFunc<floatval_t>(currStage)))(X, params, n);
+    }
+	
+
 protected:
     static floatval_t _lbgfs_evaluate(
         const floatval_t *X,
@@ -1376,7 +1398,7 @@ protected:
         const floatval_t step
         )
     {
-        return reinterpret_cast<lbfgs_evaluate_t<floatval_t>*>(getEvalFunc<floatval_t>(currStage))(X, params, g, n, step);
+        return (reinterpret_cast<lbfgs_evaluate_t<floatval_t>>(getEvalFunc<floatval_t>(currStage)))(X, params, g, n, step);
     }
 	static floatval_t _de_evaluate(
         const floatval_t *X,
@@ -1428,7 +1450,7 @@ void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<flo
 	}
 }
 
-// TODO: This
+// TODO: This still needs fixing
 template<typename floatval_t>
 void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
@@ -2718,22 +2740,22 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 				// TEST: Set the boundaries around alredy minimized variables. Search only an isolated region.
 				while(currDimIdx < DIM && stages[currStage].vars[currDimIdx] < dimCount + boundaries[depth].dim)
 				{
-					if(x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth] > boundaries[depth].startUpper + boundaries[depth].incrementUpper * bState[depth])
+					if(x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth](x0) > boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * bState[depth])
 					{
-						lbounds[currDimIdx] = boundaries[depth].startUpper + boundaries[depth].incrementUpper * bState[depth] - 2*stages[currStage].pBSetOptSize[depth];
-						ubounds[currDimIdx] = boundaries[depth].startUpper + boundaries[depth].incrementUpper * bState[depth];
+						lbounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * bState[depth] - 2*stages[currStage].pBSetOptSize[depth](x0);
+						ubounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * bState[depth];
 
 						
 					}
-					else if(x0[stages[currStage].vars[currDimIdx]] - stages[currStage].pBSetOptSize[depth] < boundaries[depth].startLower + boundaries[depth].incrementLower * bState[depth])
+					else if(x0[stages[currStage].vars[currDimIdx]] - stages[currStage].pBSetOptSize[depth](x0) < boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * bState[depth])
 					{
-						lbounds[currDimIdx] = boundaries[depth].startLower + boundaries[depth].incrementLower * bState[depth];
-						ubounds[currDimIdx] = boundaries[depth].startLower + boundaries[depth].incrementLower * bState[depth] + 2*stages[currStage].pBSetOptSize[depth];
+						lbounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * bState[depth];
+						ubounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * bState[depth] + 2*stages[currStage].pBSetOptSize[depth](x0);
 					}
 					else
 					{
-						lbounds[currDimIdx] = x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth];
-						ubounds[currDimIdx] = x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth];
+						lbounds[currDimIdx] = x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth](x0);
+						ubounds[currDimIdx] = x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth](x0);
 					}
 
 					stepUp[currDimIdx] = ubounds[currDimIdx] - x0[stages[currStage].vars[currDimIdx]];
@@ -2791,8 +2813,8 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 
 					while(currDimIdx < DIM && stages[currStage].vars[currDimIdx] < dimCount + boundaries[depth].dim)
 					{
-						lbounds[currDimIdx] = boundaries[depth].startLower + boundaries[depth].incrementLower * i;
-						ubounds[currDimIdx] = boundaries[depth].startUpper + boundaries[depth].incrementUpper * i;
+						lbounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * i;
+						ubounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * i;
 
 						// If this is the first boundary in this set and we have the sym option, then just searh upper region
 						if(boundaries[depth].hasSym && currDimIdx == dimCount)
@@ -2800,8 +2822,8 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 							lbounds[currDimIdx] = 0.0;
 						}
 
-						stepUp[currDimIdx] = boundaries[depth].incrementUpper;
-						stepDown[currDimIdx] =  boundaries[depth].incrementLower;
+						stepUp[currDimIdx] = boundaries[depth].incrementUpper(x0);
+						stepDown[currDimIdx] =  boundaries[depth].incrementLower(x0);
 
 						// Propagate these to lower precisions
 #if (MAX_PRECISION_LEVEL > 1)
@@ -3320,6 +3342,8 @@ int main(int argc, char **argv)
 
 	x0 = new MAX_PRECISION_T[FULLDIM];
     boundaries = new boundary_t<MAX_PRECISION_T>[FULLBSETS];
+
+	STAGES
 
     BOUNDS
     //cout << "Finished bounds." << endl;

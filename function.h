@@ -20,16 +20,49 @@
 // CHANGE: Remove the bsets setting, this is now dynamic based on stage, replace with FULLBSETS
 #define FULLBSETS 1
 
+// CHANGE: The starts and increments are now given as functions of x0
+// CHNAGE: Make const definitions, also be careful to use the correct assignment ordering
+
+/*
+floatval_t (*startLower)(floatval_t* x0);
+floatval_t (*incrementLower)(floatval_t* x0);
+floatval_t (*startUpper)(floatval_t* x0);
+floatval_t (*incrementUpper)(floatval_t* x0);
+int steps;
+int dim;
+bool intCast;
+bool hasSym;
+*/
+MAX_PRECISION_T su0(MAX_PRECISION_T* x0) { return 2.0; }
+MAX_PRECISION_T sl0(MAX_PRECISION_T* x0) { return -2.0; }
+MAX_PRECISION_T iu0(MAX_PRECISION_T* x0) { return 2.0; }
+MAX_PRECISION_T il0(MAX_PRECISION_T* x0) { return -2.0; }
+#define BOUNDS const boundary_t<MAX_PRECISION_T> b0={&sl0,&il0,&su0,&iu0,49,1,true,true};boundaries[0]=b0;
+
 // CHANGE: We now need to define the number of stages
-#define NSTAGES 1
+#define NSTAGES 2
+
+/*
+int dim;
+int bSets;    
+int algorithm;
+int* vars;     
+// Not very clear, but this will be an array of function pointers, allows for bounds to be functions of prev stage x's
+floatval_t (*(*pBSetOptSize))(floatval_t* x0);   
+*/
+// CHANGE: Define stages in header
+const int s0vars[1] = {0};
+MAX_PRECISION_T os00(MAX_PRECISION_T* x0) { return 10.0; }
+MAX_PRECISION_T (*os0[1])(MAX_PRECISION_T* x0) = { &os00 }; 
+const int s1vars[1] = {0};
+MAX_PRECISION_T os10(MAX_PRECISION_T* x0) { return 10.0; }
+MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 }; 
+#define STAGES const stage_t<MAX_PRECISION_T> s0 = {1,1,0,s0vars,os0};const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};
 
 // CHANGE:
 // These will be optimisation labels generated from the optimisation type codes
 #define OPT0 lbgfs
-#define OPT1 gen
-
-
-#define BOUNDS boundary_t<MAX_PRECISION_T> b0;b0.startUpper=2.;b0.startLower=-2.;b0.steps=49;b0.incrementUpper=2.;b0.incrementLower=-2.;b0.intCast=true;b0.dim=1;b0.hasSym=true;boundaries[0]=b0;
+#define OPT1 lbgfs
 
 #define BUCKETORD 9
 #define NBINSOUT 5
@@ -75,5 +108,8 @@
 
 #define PARAMCOMPUTE(params) ({})
 
-#define FUNCTION0(x, params) ({0.;})
-#define DERIVATIVES0(g, x, params, f, step) ({g[0]=0.;})
+#define FUNCTION0(x, params) ({pow(x[0]-7.0,2);})
+#define DERIVATIVES0(g, x, params, f, step) ({g[0]=2.0*(x[0]-7.0);})
+
+#define FUNCTION1(x, params) ({pow(x[0]-10.0,2);})
+#define DERIVATIVES1(g, x, params, f, step) ({g[0]=2.0*(x[0]-10.0);})

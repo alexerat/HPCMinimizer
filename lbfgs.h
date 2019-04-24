@@ -370,7 +370,6 @@ struct lbfgs_parameter_t {
  */
 template<typename floatval_t> 
 using lbfgs_evaluate_t = floatval_t (*)(
-    void *,
     const floatval_t *,
     const floatval_t *,
     floatval_t *,
@@ -401,7 +400,6 @@ using lbfgs_evaluate_t = floatval_t (*)(
 // TODO: Move to a general code location
 template <typename floatval_t>
 using lbfgs_progress_t = int (*)(
-    void *,
     const floatval_t *,
     const floatval_t *,
     const floatval_t,
@@ -540,7 +538,6 @@ int lbfgs(
     floatval_t *extparams,
     lbfgs_evaluate_t<floatval_t> proc_evaluate,
     lbfgs_progress_t<floatval_t> proc_progress,
-    void *instance,
     lbfgs_wspace_t<floatval_t> *wspace
     );
 
