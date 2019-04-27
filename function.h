@@ -33,14 +33,14 @@ int dim;
 bool intCast;
 bool hasSym;
 */
-MAX_PRECISION_T su0(MAX_PRECISION_T* x0) { return 2.0; }
-MAX_PRECISION_T sl0(MAX_PRECISION_T* x0) { return -2.0; }
-MAX_PRECISION_T iu0(MAX_PRECISION_T* x0) { return 2.0; }
-MAX_PRECISION_T il0(MAX_PRECISION_T* x0) { return -2.0; }
-#define BOUNDS const boundary_t<MAX_PRECISION_T> b0={&sl0,&il0,&su0,&iu0,49,1,true,true};boundaries[0]=b0;
+MAX_PRECISION_T su0(MAX_PRECISION_T* x0) { return 20.0; }
+MAX_PRECISION_T sl0(MAX_PRECISION_T* x0) { return -20.0; }
+MAX_PRECISION_T iu0(MAX_PRECISION_T* x0) { return 20.0; }
+MAX_PRECISION_T il0(MAX_PRECISION_T* x0) { return -20.0; }
+#define BOUNDS const boundary_t<MAX_PRECISION_T> b0={&sl0,&il0,&su0,&iu0,0,1,false,false};boundaries[0]=b0;
 
 // CHANGE: We now need to define the number of stages
-#define NSTAGES 2
+#define NSTAGES 1
 
 /*
 int dim;
@@ -52,12 +52,12 @@ floatval_t (*(*pBSetOptSize))(floatval_t* x0);
 */
 // CHANGE: Define stages in header
 const int s0vars[1] = {0};
-MAX_PRECISION_T os00(MAX_PRECISION_T* x0) { return 10.0; }
+MAX_PRECISION_T os00(MAX_PRECISION_T* x0) { return 1.0; }
 MAX_PRECISION_T (*os0[1])(MAX_PRECISION_T* x0) = { &os00 }; 
 const int s1vars[1] = {0};
-MAX_PRECISION_T os10(MAX_PRECISION_T* x0) { return 10.0; }
+MAX_PRECISION_T os10(MAX_PRECISION_T* x0) { return 1.0; }
 MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 }; 
-#define STAGES const stage_t<MAX_PRECISION_T> s0 = {1,1,0,s0vars,os0};const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};
+#define STAGES const stage_t<MAX_PRECISION_T> s0 = {1,1,0,s0vars,os0};stages[0]=s0;/*const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};stages[1]=s1;*/
 
 // CHANGE:
 // These will be optimisation labels generated from the optimisation type codes
@@ -73,7 +73,7 @@ MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 };
 #define MAXIT 50
 #define SIGDIG 9
 
-#define DYNDENSITY 1000*(1 + bState[0])
+#define DYNDENSITY 2*(1 + bState[0])
 
 #define NEXTRADATA 0
 #define EXTRAOUT
@@ -108,8 +108,8 @@ MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 };
 
 #define PARAMCOMPUTE(params) ({})
 
-#define FUNCTION0(x, params) ({pow(x[0]-7.0,2);})
-#define DERIVATIVES0(g, x, params, f, step) ({g[0]=2.0*(x[0]-7.0);})
+#define FUNCTION0(x, params) (__extension__({pow(x[0]-10.0,2);}))
+#define DERIVATIVES0(g, x, params, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
 
-#define FUNCTION1(x, params) ({pow(x[0]-10.0,2);})
-#define DERIVATIVES1(g, x, params, f, step) ({g[0]=2.0*(x[0]-10.0);})
+#define FUNCTION1(x, params) (__extension__({pow(x[0]-10.0,2);}))
+#define DERIVATIVES1(g, x, params, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))

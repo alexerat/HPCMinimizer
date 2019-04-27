@@ -13,7 +13,11 @@
 #include <arprec/mp_real.h>
 #include <arprec/mp_complex.h>
 #include <arprec/mp_int.h>
+#ifdef ARPREC_QD
+#include <qd/fpu.h>
+#else
 #include <arprec/fpu.h>
+#endif
 
 #if !(ARPREC_INLINE)
 #include <arprec/mp_inline.h>

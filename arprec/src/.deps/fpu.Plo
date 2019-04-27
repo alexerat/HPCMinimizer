@@ -1,7 +1,0 @@
-fpu.lo: fpu.cpp /usr/include/stdc-predef.h ../config.h ../include/arprec/fpu.h
-
-/usr/include/stdc-predef.h:
-
-../config.h:
-
-../include/arprec/fpu.h:

@@ -437,11 +437,11 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/home/alex/minimizer/arprec'
+ac_pwd='/home/alex/minimizer_code/arprec'
 srcdir='.'
 INSTALL='/usr/bin/install -c'
 MKDIR_P='/bin/mkdir -p'
-AWK='mawk'
+AWK='gawk'
 test -n "$AWK" || AWK=awk
 # The default lists apply if the user does not specify any file.
 ac_need_defaults=:
@@ -662,8 +662,8 @@ postuninstall_cmds=''
 finish_cmds='PATH="\$PATH:/sbin" ldconfig -n $libdir'
 finish_eval=''
 hardcode_into_libs='yes'
-sys_lib_search_path_spec='/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin'
-sys_lib_dlsearch_path_spec='/lib /usr/lib /usr/lib/x86_64-linux-gnu/libfakeroot /usr/local/lib /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/mesa-egl /usr/lib/x86_64-linux-gnu/mesa '
+sys_lib_search_path_spec='/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin'
+sys_lib_dlsearch_path_spec='/lib /usr/lib /usr/lib/x86_64-linux-gnu/libfakeroot /usr/local/lib /usr/local/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/local/lib/openmpi '
 hardcode_action='immediate'
 enable_dlopen='unknown'
 enable_dlopen_self='unknown'
@@ -763,14 +763,14 @@ hardcode_action_CXX='immediate'
 hardcode_action_FC='immediate'
 compiler_lib_search_dirs_CXX=''
 compiler_lib_search_dirs_FC=''
-predep_objects_CXX='-mIPOPT_obj_output_file_name=/tmp/ipo_icpcCpULUV.o -mGLOB_obj_output_file=/tmp/ipo_icpcCpULUV.o'
-predep_objects_FC='-mIPOPT_obj_output_file_name=/tmp/ipo_ifort2dRBTc.o -mGLOB_obj_output_file=/tmp/ipo_ifort2dRBTc.o'
+predep_objects_CXX='-mIPOPT_obj_output_file_name=/tmp/ipo_icpclINlK2.o -mGLOB_obj_output_file=/tmp/ipo_icpclINlK2.o'
+predep_objects_FC='-mIPOPT_obj_output_file_name=/tmp/ipo_ifortSgPhAr.o -mGLOB_obj_output_file=/tmp/ipo_ifortSgPhAr.o'
 postdep_objects_CXX='/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/7/crtbeginS.o /usr/lib/gcc/x86_64-linux-gnu/7/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crtn.o'
 postdep_objects_FC='/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/7/crtbeginS.o /usr/lib/gcc/x86_64-linux-gnu/7/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/crtn.o'
 predeps_CXX=''
 predeps_FC=''
-postdeps_CXX='-L/opt/intel/clck/2018.1/lib/intel64 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/ipp/lib/intel64 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/mkl/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/../tbb/lib/intel64_lin/gcc4.4 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin -L/usr/lib/gcc/x86_64-linux-gnu/7/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/ -L/lib/x86_64-linux-gnu/ -L/lib/../lib64 -L/lib/../lib/ -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/../lib/ -L/opt/intel/clck/2018.1/lib/intel64/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/ipp/lib/intel64/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/mkl/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/../tbb/lib/intel64_lin/gcc4.4/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../ -L/lib64 -L/lib/ -L/usr/lib -limf -lsvml -lirng -lstdc++ -lm -lipgo -ldecimal -lcilkrts -lstdc++ -lgcc -lgcc_s -lintlc -lsvml -lc -lgcc -lgcc_s -lirc_s -ldl -lc'
-postdeps_FC='-L/opt/intel/clck/2018.1/lib/intel64 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/ipp/lib/intel64 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/mkl/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/../tbb/lib/intel64_lin/gcc4.4 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin -L/usr/lib/gcc/x86_64-linux-gnu/7/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/ -L/lib/x86_64-linux-gnu/ -L/lib/../lib64 -L/lib/../lib/ -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/../lib/ -L/opt/intel/clck/2018.1/lib/intel64/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/ipp/lib/intel64/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/mkl/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/../tbb/lib/intel64_lin/gcc4.4/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../ -L/lib64 -L/lib/ -L/usr/lib -lifport -lifcoremt -limf -lsvml -lm -lipgo -lintlc -lpthread -lsvml -lc -lgcc -lgcc_s -lirc_s -ldl -lc'
+postdeps_CXX='-L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib -L/opt/intel/compilers_and_libraries_2019.0.117/linux/ipp/lib/intel64 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/mkl/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/../tbb/lib/intel64_lin/gcc4.4 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin -L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib/../lib/ -L/usr/lib/gcc/x86_64-linux-gnu/7/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/ -L/lib/x86_64-linux-gnu/ -L/lib/../lib64 -L/lib/../lib/ -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/../lib/ -L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/ipp/lib/intel64/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/mkl/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/../tbb/lib/intel64_lin/gcc4.4/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../ -L/lib64 -L/lib/ -L/usr/lib -limf -lsvml -lirng -lstdc++ -lm -lipgo -ldecimal -lcilkrts -lstdc++ -lgcc -lgcc_s -lintlc -lsvml -lc -lgcc -lgcc_s -lirc_s -ldl -lc'
+postdeps_FC='-L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib -L/opt/intel/compilers_and_libraries_2019.0.117/linux/ipp/lib/intel64 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/mkl/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/../tbb/lib/intel64_lin/gcc4.4 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin -L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib/../lib/ -L/usr/lib/gcc/x86_64-linux-gnu/7/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/ -L/lib/x86_64-linux-gnu/ -L/lib/../lib64 -L/lib/../lib/ -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/../lib/ -L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/ipp/lib/intel64/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/mkl/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/../tbb/lib/intel64_lin/gcc4.4/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../ -L/lib64 -L/lib/ -L/usr/lib -lifport -lifcoremt -limf -lsvml -lm -lipgo -lintlc -lpthread -lsvml -lc -lgcc -lgcc_s -lirc_s -ldl -lc'
 compiler_lib_search_path_CXX=''
 compiler_lib_search_path_FC=''
 
@@ -952,16 +952,17 @@ S["HAVE_FORTRAN_TRUE"]=""
 S["ETIME"]="etime"
 S["module_ext"]="mod"
 S["ax_f90_modflag"]="-I "
-S["FCLIBS"]=" -L/opt/intel/clck/2018.1/lib/intel64 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/ipp/lib/intel64 -L/opt/intel/compilers_and_libraries_201"\
-"8.1.163/linux/compiler/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2018.1.163/linux/mkl/lib/intel64_lin -L/opt/intel/compilers_and_librarie"\
-"s_2018.1.163/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/lib/intel64_lin -L/opt/intel/compilers_and_libr"\
-"aries_2018.1.163/linux/daal/../tbb/lib/intel64_lin/gcc4.4 -L/usr/lib/gcc/x86_64-linux-gnu/7/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux"\
-"-gnu/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../../lib/ -L/lib/x86_64-linux-gnu/ -L/lib/../lib64 -L/lib/../lib/ -L/usr/lib/x86_64-linux-gnu/ -L/usr"\
-"/lib/../lib/ -L/opt/intel/clck/2018.1/lib/intel64/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/ipp/lib/intel64/ -L/opt/intel/compilers_and"\
-"_libraries_2018.1.163/linux/compiler/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/mkl/lib/intel64_lin/ -L/opt/intel/compil"\
-"ers_and_libraries_2018.1.163/linux/tbb/lib/intel64/gcc4.7/ -L/opt/intel/compilers_and_libraries_2018.1.163/linux/daal/lib/intel64_lin/ -L/opt/intel/"\
-"compilers_and_libraries_2018.1.163/linux/daal/../tbb/lib/intel64_lin/gcc4.4/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../ -L/lib64 -L/lib/ -L/usr/lib"\
-" -lifport -lifcoremt -limf -lsvml -lm -lipgo -lirc -lpthread -lirc_s -ldl "
+S["FCLIBS"]=" -L/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib -L/opt/intel/compilers_and_libraries_2019.0.117/linux/ipp/lib/inte"\
+"l64 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/mkl/lib/int"\
+"el64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7 -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/lib"\
+"/intel64_lin -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/../tbb/lib/intel64_lin/gcc4.4 -L/opt/intel//compilers_and_libraries_2019.0.1"\
+"17/linux/mpi/intel64/libfabric/lib/../lib/ -L/usr/lib/gcc/x86_64-linux-gnu/7/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../../x86_64-linux-gnu/ -L/usr/li"\
+"b/gcc/x86_64-linux-gnu/7/../../../../lib/ -L/lib/x86_64-linux-gnu/ -L/lib/../lib64 -L/lib/../lib/ -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib/../lib/ -L"\
+"/opt/intel//compilers_and_libraries_2019.0.117/linux/mpi/intel64/libfabric/lib/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/ipp/lib/intel6"\
+"4/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/compiler/lib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/mkl/lib/int"\
+"el64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/tbb/lib/intel64/gcc4.7/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/l"\
+"ib/intel64_lin/ -L/opt/intel/compilers_and_libraries_2019.0.117/linux/daal/../tbb/lib/intel64_lin/gcc4.4/ -L/usr/lib/gcc/x86_64-linux-gnu/7/../../.."\
+"/ -L/lib64 -L/lib/ -L/usr/lib -lifport -lifcoremt -limf -lsvml -lm -lipgo -lirc -lpthread -lirc_s -ldl "
 S["ac_ct_FC"]="ifort"
 S["FCFLAGS"]="-O2 -FR -FR -assume protect_parens,minus0 -prec-div -prec-sqrt -no-ftz -axSSSE3"
 S["FC"]="ifort"
@@ -998,20 +999,20 @@ S["build_cpu"]="x86_64"
 S["build"]="x86_64-unknown-linux-gnu"
 S["am__untar"]="${AMTAR} xf -"
 S["am__tar"]="${AMTAR} chof - \"$$tardir\""
-S["AMTAR"]="${SHELL} /home/alex/minimizer/arprec/config/missing --run tar"
+S["AMTAR"]="${SHELL} /home/alex/minimizer_code/arprec/config/missing --run tar"
 S["am__leading_dot"]="."
 S["SET_MAKE"]=""
-S["AWK"]="mawk"
+S["AWK"]="gawk"
 S["mkdir_p"]="/bin/mkdir -p"
 S["MKDIR_P"]="/bin/mkdir -p"
 S["INSTALL_STRIP_PROGRAM"]="$(install_sh) -c -s"
 S["STRIP"]="strip"
-S["install_sh"]="${SHELL} /home/alex/minimizer/arprec/config/install-sh"
-S["MAKEINFO"]="${SHELL} /home/alex/minimizer/arprec/config/missing --run makeinfo"
-S["AUTOHEADER"]="${SHELL} /home/alex/minimizer/arprec/config/missing --run autoheader"
-S["AUTOMAKE"]="${SHELL} /home/alex/minimizer/arprec/config/missing --run automake-1.11"
-S["AUTOCONF"]="${SHELL} /home/alex/minimizer/arprec/config/missing --run autoconf"
-S["ACLOCAL"]="${SHELL} /home/alex/minimizer/arprec/config/missing --run aclocal-1.11"
+S["install_sh"]="${SHELL} /home/alex/minimizer_code/arprec/config/install-sh"
+S["MAKEINFO"]="${SHELL} /home/alex/minimizer_code/arprec/config/missing --run makeinfo"
+S["AUTOHEADER"]="${SHELL} /home/alex/minimizer_code/arprec/config/missing --run autoheader"
+S["AUTOMAKE"]="${SHELL} /home/alex/minimizer_code/arprec/config/missing --run automake-1.11"
+S["AUTOCONF"]="${SHELL} /home/alex/minimizer_code/arprec/config/missing --run autoconf"
+S["ACLOCAL"]="${SHELL} /home/alex/minimizer_code/arprec/config/missing --run aclocal-1.11"
 S["VERSION"]="2.2.13"
 S["PACKAGE"]="arprec"
 S["CYGPATH_W"]="echo"
@@ -1038,6 +1039,7 @@ S["infodir"]="${datarootdir}/info"
 S["docdir"]="${datarootdir}/doc/${PACKAGE_TARNAME}"
 S["oldincludedir"]="/usr/include"
 S["includedir"]="${prefix}/include"
+S["runstatedir"]="${localstatedir}/run"
 S["localstatedir"]="${prefix}/var"
 S["sharedstatedir"]="${prefix}/com"
 S["sysconfdir"]="${prefix}/etc"

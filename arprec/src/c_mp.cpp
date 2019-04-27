@@ -20,7 +20,12 @@
 #include <arprec/mp_real.h>
 #include <arprec/mp_complex.h>
 #include <arprec/c_mp.h>
+
+#ifdef ARPREC_QD
+#include <qd/fpu.h>
+#else
 #include <arprec/fpu.h>
+#endif
 
 #ifdef CRAY_STRINGS
 #include <fortran.h>

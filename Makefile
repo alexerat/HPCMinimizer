@@ -1,20 +1,20 @@
-CC=icpc
-LD=icpc
+CC=g++
+LD=g++
 CFLAGS=-c -O3 -fno-exceptions -std=c++11
 TFLAGS=
 PROFDIR=
 ARCHFLAGS=
 INCLUDES=-I./qd/include -I./arprec/include
-LFLAGS= -L./arprec/src/.libs
+LFLAGS=
 SOURCES=lbfgs.cpp localMinima.cpp 
 PROFFLAG=
-QDOBJS=$(wildcard ./qd/src/*.o)
+QDOBJS=$(wildcard ./qd/src/*.o) $(wildcard ./arprec/src/*.o)
 OPTFLAG=
 OBJECTS=$(SOURCES:.cpp=.o) $(QDOBJS)
 EXECUTABLE=localMinima
 EXECUTABLE_MPI=localMinima_MPI
-LIBRARIERS=-larprec -lpthread
-SUBDIRS=./qd/src/
+LIBRARIERS=-lpthread
+SUBDIRS=./qd/src/ ./arprec/src/
 
 no_prof: PROFFLAG=
 
@@ -46,7 +46,7 @@ mpi_debug: CC=mpicxx
 mpi_debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -D USE_MPI -cxx=g++
 mpi_debug: OPTFLAG=
 mpi_debug: PROFFLAG=
-mpi_debug: LIBRARIERS=-pthread -l arprec -l irc -lm -lbfd -liberty -lunwind
+mpi_debug: LIBRARIERS=-pthread -l irc -lm -lbfd -liberty -lunwind
 
 
 .PHONY: clean $(SUBDIRS)
@@ -76,7 +76,7 @@ test_starts: TFLAGS=-DTEST_START_POINTS -DFHEADER=\"tests/singleBSet.h\"
 test_starts: build
 
 $(SUBDIRS):
-	$(MAKE) ARCHFLAGS=$(ARCHFLAGS) OPTFLAG=$(OPTFLAG) PROFFLAG=$(PROFFLAG) -C $@
+	$(MAKE) CC=$(CC) ARCHFLAGS=$(ARCHFLAGS) OPTFLAG=$(OPTFLAG) PROFFLAG=$(PROFFLAG) -C $@ $(MAKECMDGOALS)
 
 $(EXECUTABLE): $(OBJECTS)
 	$(LD) $(LFLAGS) $(OBJECTS) -o $@ $(LIBRARIERS)

@@ -90,6 +90,8 @@ MAX_PRECISION_T* params;
 MAX_PRECISION_T precompute[PARAMSCONSTSCOUNT];
 #endif /*PARAMSCONSTSCOUNT*/
 
+OptimizeResult<MAX_PRECISION_T>* currBestRes;
+
 MAX_PRECISION_T* ubounds = NULL;
 MAX_PRECISION_T* lbounds = NULL;
 MAX_PRECISION_T* stepUp = NULL;
@@ -186,7 +188,6 @@ bool* startLatch;
 int detDebug = 0;
 #endif /*DETERMINISTIC*/
 
-struct OptimizeResult<MAX_PRECISION_T> bestRes;
 struct OptimizeResult<MAX_PRECISION_T>* results;
 
 void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints);
@@ -522,7 +523,7 @@ inline double getBStepDown<double>(int idx)
 #else
 	return stepDown[idx]; 
 #endif
-};
+}
 template<>
 inline dd_real getBStepDown<dd_real>(int idx) 
 { 
@@ -531,7 +532,7 @@ inline dd_real getBStepDown<dd_real>(int idx)
 #else
 	return stepDown[idx]; 
 #endif
-};
+}
 template<>
 inline qd_real getBStepDown<qd_real>(int idx) 
 { 
@@ -540,7 +541,7 @@ inline qd_real getBStepDown<qd_real>(int idx)
 #else
 	return stepDown[idx]; 
 #endif
-};
+}
 #if (MAX_PRECISION_LEVEL > 3)
 template<>
 inline mp_real getBStepDown<mp_real>(int idx) { return stepDown[idx]; };
@@ -557,7 +558,7 @@ inline double getBStepUp<double>(int idx)
 #else
 	return stepUp[idx]; 
 #endif
-};
+}
 template<>
 inline dd_real getBStepUp<dd_real>(int idx) 
 { 
@@ -566,7 +567,7 @@ inline dd_real getBStepUp<dd_real>(int idx)
 #else
 	return stepUp[idx]; 
 #endif
-};
+}
 template<>
 inline qd_real getBStepUp<qd_real>(int idx) 
 { 
@@ -575,7 +576,7 @@ inline qd_real getBStepUp<qd_real>(int idx)
 #else
 	return stepUp[idx]; 
 #endif
-};
+}
 #if (MAX_PRECISION_LEVEL > 3)
 template<>
 inline mp_real getBStepUp<mp_real>(int idx) { return stepUp[idx]; };
@@ -592,7 +593,7 @@ inline double getLowerBounds<double>(int idx)
 #else
 	return lbounds[idx]; 
 #endif
-};
+}
 template<>
 inline dd_real getLowerBounds<dd_real>(int idx) 
 { 
@@ -601,7 +602,7 @@ inline dd_real getLowerBounds<dd_real>(int idx)
 #else
 	return lbounds[idx]; 
 #endif
-};
+}
 template<>
 inline qd_real getLowerBounds<qd_real>(int idx) 
 { 
@@ -610,7 +611,7 @@ inline qd_real getLowerBounds<qd_real>(int idx)
 #else
 	return lbounds[idx]; 
 #endif
-};
+}
 #if (MAX_PRECISION_LEVEL > 3)
 template<>
 inline mp_real getLowerBounds<mp_real>(int idx) { return lbounds[idx]; };
@@ -627,7 +628,7 @@ inline double getUpperBounds<double>(int idx)
 #else
 	return ubounds[idx]; 
 #endif
-};
+}
 template<>
 inline dd_real getUpperBounds<dd_real>(int idx) 
 { 
@@ -636,7 +637,7 @@ inline dd_real getUpperBounds<dd_real>(int idx)
 #else
 	return ubounds[idx]; 
 #endif
-};
+}
 template<>
 inline qd_real getUpperBounds<qd_real>(int idx) 
 { 
@@ -645,7 +646,7 @@ inline qd_real getUpperBounds<qd_real>(int idx)
 #else
 	return ubounds[idx]; 
 #endif
-};
+}
 #if (MAX_PRECISION_LEVEL > 3)
 template<>
 inline mp_real getUpperBounds<mp_real>(int idx) { return ubounds[idx]; };
@@ -661,6 +662,15 @@ class objective_function
 {
 public:
 	bool initialized;
+	// TODO: Make proper getters, we never set outside class
+	// These are used to select random points appropriately
+	// The number of currently active BSETS
+	int NactiveBSETS;
+	// The current active BSETS
+	int* activeBSETS;
+	// The current working DIM's for each active bSet
+	int* currBSetDIMS;
+
 protected:
 	// Local optimisation variables
     floatval_t* m_x = NULL;
@@ -690,14 +700,6 @@ protected:
 	lbfgs_wspace_t<floatval_t> wspace;
 
 	const floatval_t EPS = get_epsilon<floatval_t>();
-
-	// These are used to select random points appropriately
-	// The number of currently active BSETS
-	int NactiveBSETS;
-	// The current active BSETS
-	int* activeBSETS;
-	// The current working DIM's for each active bSet
-	int* currBSetDIMS;
 
 	// Thecurrent DIM memory allocation
 	int pDIM = 0;
@@ -766,6 +768,10 @@ public:
         {
             delete[] localBStepUp;
         }
+		if(activeBSETS != NULL)
+		{
+			delete[] activeBSETS;
+		}
 
 		if(ALGO == 0)
 		{
@@ -790,6 +796,7 @@ public:
     // Set/reset memory for new stage if necessary and set boundaries
 	int setup()
 	{
+		// TODO: Instead of constant re-allocation, just set at FULLDIM size
 		// If the dimensions have changed or the optimisation algorithm changed, reallocate the memory for the new DIM
 		if(DIM != pDIM || PALGO != ALGO)
 		{
@@ -1154,20 +1161,19 @@ public:
 			// TODO: Fix for boundary sets.
 			for (int i = 0;i < DIM;i++)
 			{
-				m_x[i] = (floatval_t)bestRes.X[i];
+				m_x[i] = (floatval_t)currBestRes->X[i];
 
-				ini_lower[i] = (floatval_t)(bestRes.X[i] - POPSPREAD);
-				ini_upper[i] = (floatval_t)(bestRes.X[i] + POPSPREAD);
+				ini_lower[i] = (floatval_t)(currBestRes->X[i] - POPSPREAD);
+				ini_upper[i] = (floatval_t)(currBestRes->X[i] + POPSPREAD);
 			}
 		}
 		else
 		{
 			// We need to do this for each boundary set. NOTE: There is a higher density of searching in the corners due to overlap. Resolving this is complicated.
-			// TODO: 0 was nActiveBSETS
-			for(int j = 0; j < 0; j++)
+			for(int j = 0; j < NactiveBSETS; j++)
 			{
-				// TODO: This sym handling needs fixing
-				int sect = rand() % (2*boundaries[j].dim - (boundaries[j].hasSym ? 1 : 0));
+				// TODO: This sym handling needs fixing, just don't do it if not using the whole BSET or it isn't the first use of the BSET
+				int sect = rand() % (2*currBSetDIMS[j] - (boundaries[activeBSETS[j]].hasSym ? 1 : 0));
 				int upper = sect % 2;
 				sect = (sect / 2) + dimCount;
 
@@ -1180,7 +1186,7 @@ public:
 #endif /*VERBOSE*/
 
 				/* Initialize the variables. */
-				for (int i = dimCount;i < (dimCount + boundaries[j].dim);i++)
+				for (int i = dimCount;i < (dimCount + currBSetDIMS[j]);i++)
 				{
 					bool fixed = !((localBStepDown[i] > EPS && !upper) || (localBStepUp[i] > EPS && upper));
 					if(sect + fixedCounter == i && !fixed)
@@ -1232,7 +1238,7 @@ public:
 				cout << endl;
 #endif /*VERBOSE*/
 
-				dimCount += boundaries[j].dim;
+				dimCount += currBSetDIMS[j];
 			}
 		}
 
@@ -1422,7 +1428,7 @@ protected:
         int ls
         )
     {
-        return reinterpret_cast<lbfgs_progress_t<floatval_t>*>progress<floatval_t>(x, g, fx, xnorm, gnorm, step, n, k, ls);
+        return reinterpret_cast<lbfgs_progress_t<floatval_t>*>(progress<floatval_t>)(x, g, fx, xnorm, gnorm, step, n, k, ls);
     }
 };
 
@@ -1436,9 +1442,9 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 template<typename floatval_t>
 void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
-	if(locDepth == boundaries[depth].dim)
+	if(locDepth == obj->currBSetDIMS[depth])
 	{
-		castBoundaries<floatval_t>(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
+		castBoundaries<floatval_t>(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, Xin, X, best, bestX);
 	}
 	else
 	{
@@ -1450,11 +1456,10 @@ void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<flo
 	}
 }
 
-// TODO: This still needs fixing
 template<typename floatval_t>
 void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
-	if(depth == nActiveBSETS)
+	if(depth == obj->NactiveBSETS)
 	{
 		floatval_t f = obj->evaluate(X, params, DIM);
 		if(f < *best)
@@ -1468,17 +1473,18 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 	}
 	else
 	{
-		if(boundaries[depth].intCast)
+		
+		if(boundaries[obj->activeBSETS[depth]].intCast)
 		{
 			locCastRecurs(depth, 0, dimCount, obj, params, Xin, X, best, bestX);
 		}
 		else
 		{
-			for(int i = 0; i < boundaries[depth].dim; i++)
+			for(int i = 0; i < obj->currBSetDIMS[depth]; i++)
 			{
 				X[dimCount + i] = Xin[dimCount + i];
 			}
-			castBoundaries(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
+			castBoundaries(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, Xin, X, best, bestX);
 		}
 	}
 }
@@ -1543,8 +1549,8 @@ void *run_multi(void *threadarg)
 	int ret;
 
 	MAX_PRECISION_T bestCast;
-	MAX_PRECISION_T* bestCastX = new MAX_PRECISION_T[DIM];
-	MAX_PRECISION_T* XCast = new MAX_PRECISION_T[DIM];
+	MAX_PRECISION_T* bestCastX = new MAX_PRECISION_T[FULLDIM];
+	MAX_PRECISION_T* XCast = new MAX_PRECISION_T[FULLDIM];
 
 
 	if(!obj_dbl->initialized)
@@ -1588,16 +1594,16 @@ void *run_multi(void *threadarg)
 		numWorks = nruns % nThreads;
 	}
 
-	locResults_dbl.X = new double[DIM];
+	locResults_dbl.X = new double[FULLDIM];
 
 #if (MAX_PRECISION_LEVEL > 1)
-	locResults_dd.X = new dd_real[DIM];
+	locResults_dd.X = new dd_real[FULLDIM];
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	locResults_qd.X = new qd_real[DIM];
+	locResults_qd.X = new qd_real[FULLDIM];
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
-	locResults_mp.X = new mp_real[DIM];
+	locResults_mp.X = new mp_real[FULLDIM];
 #endif
 
 	for(int i = 0; i < BSETS; i++)
@@ -1722,6 +1728,7 @@ void *run_multi(void *threadarg)
 			else
 			{
 #if (MAX_PRECISION_LEVEL > 2)
+#if (MAX_PRECISION_LEVEL > 3)
 				ret = obj_mp->run(&locResults_mp, item, params, locResults_mp.X, true);
 				if(ret < 0)
 				{
@@ -1741,7 +1748,6 @@ void *run_multi(void *threadarg)
 				{
 					locResults.X[i] = locResults_mp.X[i];
 				}
-#if (MAX_PRECISION_LEVEL > 3)
 #else /* MAX_PRECISION_LEVEL == 3, qd */
 				ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
 				if(ret < 0)
@@ -1824,6 +1830,10 @@ void *run_multi(void *threadarg)
 
 				if(locResults_dbl.f < results[threadNum].f || locResults_dbl.f < get_delta<double>()*1e5)
 				{
+#ifdef VERBOSE
+					cout << "Increasing precision to double-double" << endl;
+					cout << "===============================================================" << endl;
+#endif
 #if (MAX_PRECISION_LEVEL > 2)
 					ret = obj_dd->run(&locResults_dd, item, locParams_dd, locResults_dd.X, true);
 #else
@@ -1866,6 +1876,10 @@ void *run_multi(void *threadarg)
 
 				if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<dd_real>()*1e5)
 				{
+#ifdef VERBOSE
+					cout << "Increasing precision to qaud-double" << endl;
+					cout << "===============================================================" << endl;
+#endif					
 #if (MAX_PRECISION_LEVEL > 3)
 					ret = obj_qd->run(&locResults_qd, item, locParams_qd, locResults_qd.X, true);
 #else
@@ -1908,7 +1922,10 @@ void *run_multi(void *threadarg)
 
 				if(locResults_qd.f < results[threadNum].f || locResults_qd.f < get_delta<qd_real>()*1e5)
 				{
-
+#ifdef VERBOSE
+					cout << "Increasing precision to multi-precision" << endl;
+					cout << "===============================================================" << endl;
+#endif	
 					ret = obj_mp->run(&locResults_mp, item, params, locResults_mp.X, true);
 					
 					locResults.f = locResults_mp.f;
@@ -2109,12 +2126,32 @@ void *run_multi(void *threadarg)
 
 	delete[] bestCastX;
 	delete[] XCast;
+
+
 	delete[] locResults_dbl.X;
 	delete obj_dbl;
 
 #if (MAX_PRECISION_LEVEL > 1)
 	delete[] locResults_dd.X;
 	delete obj_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	delete[] locResults_qd.X;
+	delete obj_qd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	delete[] locResults_mp.X;
+	delete obj_mp;
+#endif
+
+#if (MAX_PRECISION_LEVEL > 1)
+	delete[] locParams_dbl;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	delete[] locParams_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	delete[] locParams_qd;
 #endif
 
 	pthread_exit(NULL);
@@ -2598,8 +2635,9 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 	}
 }
 
-int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints, bool isStart, int stageNum)
+int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints, struct OptimizeResult<MAX_PRECISION_T>* bestRes, bool isStart, int stageNum)
 {
+	int initDimIdx = currDimIdx;
 #ifndef SILENT
 	cout << "Running Boundary Recursion." << endl;
 #endif /*!SILENT*/
@@ -2678,10 +2716,10 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 			cout << "Setting Bests, current best is: " << to_out_string(currBest,4) << endl;
 #endif /*!SILENT*/
 
-			bestRes.f = currBest;
+			bestRes->f = currBest;
 			for(int k = 0; k < DIM; k++)
 			{
-				bestRes.X[k] = point[k];
+				bestRes->X[k] = point[k];
 			}
 
 			delete[] res.X;
@@ -2707,22 +2745,22 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 			cout << "Running experiment." << endl;
 #endif /*!SILENT*/
 
-			cout << "Previous best is: " << to_out_string(bestRes.f,5) << " at: ";
+			cout << "Previous best is: " << to_out_string(bestRes->f,5) << " at: ";
 			for(int k = 0; k < DIM; k++)
 			{
-				cout << to_out_string(bestRes.X[k],5) << ", ";
+				cout << to_out_string(bestRes->X[k],5) << ", ";
 			}
 			cout << endl;
 
-			runExperiment(&bestRes);
+			runExperiment(bestRes);
 #ifndef SILENT
 			cout << "Finished experiment." << endl;
 #endif /*!SILENT*/
 
-			pBest[BSETS - 1][0] = bestRes.f;
+			pBest[BSETS - 1][0] = bestRes->f;
 			for(int k = 0; k < DIM; k++)
 			{
-				pPoint[BSETS - 1][0][k] = bestRes.X[k];
+				pPoint[BSETS - 1][0][k] = bestRes->X[k];
 			}
 
 			// Now do the next stages if present.
@@ -2783,7 +2821,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 					currDimIdx++;
 				}
 
-				mult = boundaryRecursion(depth + 1, dimCount + boundaries[depth].dim, currDimIdx, bState, pBests, pPoints, false, stageNum);
+				mult = boundaryRecursion(depth + 1, dimCount + boundaries[depth].dim, currDimIdx, bState, pBests, pPoints, bestRes, false, stageNum);
 #ifndef TEST_START_POINTS
 				// Copy results to layer below.
 				if(BSETS > 1 && depth > 0)
@@ -2811,10 +2849,22 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 				{
 					bState[depth] = i;
 
+					cout << "HERE SUCCESSFULLY" << endl;
+
+					cout << "BSTATE " << bState[0] << endl;
+
+					cout << "INDEX " << i << endl;
+
+					cout << "currDimIdx " << currDimIdx << endl;
+
 					while(currDimIdx < DIM && stages[currStage].vars[currDimIdx] < dimCount + boundaries[depth].dim)
 					{
+						cout << "LOOPING TO SET BOUNDS" << endl;
+
 						lbounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * i;
 						ubounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * i;
+
+						cout << "BOUND LOWER IS " << to_out_string(lbounds[currDimIdx],4) << endl;
 
 						// If this is the first boundary in this set and we have the sym option, then just searh upper region
 						if(boundaries[depth].hasSym && currDimIdx == dimCount)
@@ -2847,8 +2897,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 						currDimIdx++;
 					}
 					
-
-					mult = boundaryRecursion(depth + 1, dimCount + boundaries[depth].dim, currDimIdx, bState, pBests, pPoints, i == 0, stageNum);
+					mult = boundaryRecursion(depth + 1, dimCount + boundaries[depth].dim, currDimIdx, bState, pBests, pPoints, bestRes, i == 0, stageNum);
 
 #ifndef TEST_START_POINTS
 					// Copy results to layer below.
@@ -2868,6 +2917,9 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 							}
 						}
 					}
+					cout << "END OF FOR LOOP" << endl;
+
+					currDimIdx = initDimIdx;
 #endif /*!TEST_START_POINTS*/
 				}
 				bState[depth] = 0;
@@ -2894,7 +2946,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 	}
 	else
     {
-        runExperiment(&bestRes);
+        runExperiment(bestRes);
     }
 
 
@@ -2905,12 +2957,34 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 // We do this intermingled with the boundary recursion, so we need to store all the previous bests
 void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** pBests, MAX_PRECISION_T**** pPoints)
 {
+	struct OptimizeResult<MAX_PRECISION_T> bestRes;
+
 	MAX_PRECISION_T* pubounds;
 	MAX_PRECISION_T* plbounds;
 	MAX_PRECISION_T* pstepUp;
 	MAX_PRECISION_T* pstepDown;
 	int pbSetStartDepth;
+	int pCurrStage;
 	ofstream outfile;
+
+#if (MAX_PRECISION_LEVEL > 1)
+	double* pstepDown_dbl;
+	double* pstepUp_dbl;
+	double* plbounds_dbl;
+	double* pubounds_dbl;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+	dd_real* pstepDown_dd;
+	dd_real* pstepUp_dd;
+	dd_real* plbounds_dd;
+	dd_real* pubounds_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+	qd_real* pstepDown_qd;
+	qd_real* pstepUp_qd;
+	qd_real* plbounds_qd;
+	qd_real* pubounds_qd;
+#endif
 
 	if(stageNum < NSTAGES)
 	{
@@ -2920,6 +2994,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		PALGO = ALGO;
 		ALGO = stages[stageNum].algorithm;
 
+		pCurrStage = currStage;
 		currStage = stageNum;
 
 		// Allocate memory for x
@@ -2927,6 +3002,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		// Allocate memory for bounds
 		bestRes.f = 1e10;
 		bestRes.X = new MAX_PRECISION_T[DIM];
+		currBestRes = &bestRes;
 
 		// Count boundary sets covered.
 		// Are we just in the same boundary set? Is it a whole new one, or are we stradelling.
@@ -2942,6 +3018,25 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		pstepUp = stepUp;
 		pstepDown = stepDown;
 
+#if (MAX_PRECISION_LEVEL > 1)
+		pstepDown_dbl = stepDown_dbl;
+		pstepUp_dbl = stepUp_dbl;
+		plbounds_dbl = lbounds_dbl;
+		pubounds_dbl = ubounds_dbl;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+		pstepDown_dd= stepDown_dd;
+		pstepUp_dd = stepUp_dd;
+		plbounds_dd = lbounds_dd;
+		pubounds_dd = ubounds_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+		pstepDown_qd= stepDown_qd;
+		pstepUp_qd = stepUp_qd;
+		plbounds_qd = lbounds_qd;
+		pubounds_qd = ubounds_qd;
+#endif
+
 		if(stageNum > 0)
 		{
 			bSetStartDepth = stages[stageNum-1].bSets;
@@ -2951,9 +3046,29 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
         lbounds = new MAX_PRECISION_T[DIM];
 		stepUp = new MAX_PRECISION_T[DIM];
 		stepDown = new MAX_PRECISION_T[DIM];
+
+#if (MAX_PRECISION_LEVEL > 1)
+		stepDown_dbl = new double[DIM];
+		stepUp_dbl = new double[DIM];
+		lbounds_dbl = new double[DIM];
+		ubounds_dbl = new double[DIM];
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+		stepDown_dd = new dd_real[DIM];
+		stepUp_dd = new dd_real[DIM];
+		lbounds_dd = new dd_real[DIM];
+		ubounds_dd = new dd_real[DIM];
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+		stepDown_qd = new qd_real[DIM];
+		stepUp_qd = new qd_real[DIM];
+		lbounds_qd = new qd_real[DIM];
+		ubounds_qd = new qd_real[DIM];
+#endif
 			
 		// Run
-		boundaryRecursion(0, dimCount, 0, bState, pBests, pPoints, false, stageNum);
+		cout << "Doing a boundary recursion from the satage iteration." << endl;
+		boundaryRecursion(0, dimCount, 0, bState, pBests, pPoints, &bestRes, false, stageNum);
 
 		// Copy current x onto the full x
 		for(int k = 0; k < DIM; k++)
@@ -2968,11 +3083,51 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		delete[] stepUp;
 		delete[] stepDown;
 
+#if (MAX_PRECISION_LEVEL > 1)
+		delete[] stepDown_dbl;
+		delete[] stepUp_dbl;
+		delete[] lbounds_dbl;
+		delete[] ubounds_dbl;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+		delete[] stepDown_dd;
+		delete[] stepUp_dd;
+		delete[] lbounds_dd;
+		delete[] ubounds_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+		delete[] stepDown_qd;
+		delete[] stepUp_qd;
+		delete[] lbounds_qd;
+		delete[] ubounds_qd;
+#endif
+
 		ubounds = pubounds;
 		lbounds = plbounds;
 		stepUp = pstepUp;
 		stepDown = pstepDown;
 		bSetStartDepth = pbSetStartDepth;
+
+#if (MAX_PRECISION_LEVEL > 1)
+		stepDown_dbl = pstepDown_dbl;
+		stepUp_dbl = pstepUp_dbl;
+		lbounds_dbl = plbounds_dbl;
+		ubounds_dbl = pubounds_dbl;
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+		stepDown_dd = pstepDown_dd;
+		stepUp_dd = pstepUp_dd;
+		lbounds_dd = plbounds_dd;
+		ubounds_dd = pubounds_dd;
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+		stepDown_qd = pstepDown_qd;
+		stepUp_qd = pstepUp_qd;
+		lbounds_qd = plbounds_qd;
+		ubounds_qd = pubounds_qd;
+#endif
+
+		currStage = pCurrStage;
 	}
 	else
 	{
@@ -3006,7 +3161,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		/*NOTE: Extra out must bring its own leading comma*/
 		EXTRAOUT
 
-		outfile << to_out_string(pBests[stageNum][BSETS - 1][0],SIGDIG);
+		outfile << to_out_string(pBests[NSTAGES-1][BSETS - 1][0],SIGDIG);
 
 	    for(int k = 0; k < FULLDIM; k++)
 	    {
@@ -3342,6 +3497,7 @@ int main(int argc, char **argv)
 
 	x0 = new MAX_PRECISION_T[FULLDIM];
     boundaries = new boundary_t<MAX_PRECISION_T>[FULLBSETS];
+	stages = new stage_t<MAX_PRECISION_T>[NSTAGES];
 
 	STAGES
 
@@ -3362,13 +3518,15 @@ int main(int argc, char **argv)
         infile.close();
     }
 
-	int paramState[NPARAMS];
+	int* paramState;
 
+	if(NPARAMS > 0)
+		paramState = new int[NPARAMS];
 
 	// TEST: This memory assignment needs changing for new code
 	int currMaxBSet=0;
 	
-	int* bState = new int[BSETS];
+	int* bState = new int[FULLBSETS];
 
 	MAX_PRECISION_T*** pBests = new MAX_PRECISION_T**[NSTAGES];
 	MAX_PRECISION_T**** pPoints = new MAX_PRECISION_T***[NSTAGES];
@@ -3389,7 +3547,7 @@ int main(int argc, char **argv)
 			pPoints[i][j] = new MAX_PRECISION_T*[stepCount];
 			for(int k = 0; k < stepCount; k++)
 			{
-				pPoints[i][j][k] = new MAX_PRECISION_T[DIM];
+				pPoints[i][j][k] = new MAX_PRECISION_T[stages[i].dim];
 			}
 			stepCount *= (boundaries[j].steps + 1);
 		}
@@ -3527,6 +3685,7 @@ int main(int argc, char **argv)
     outfile.close();
 
 	nThreads = get_nprocs();
+	nThreads=1;
 
 #ifdef OPT_PROGRESS
 	nThreads = 1;
@@ -3552,7 +3711,7 @@ int main(int argc, char **argv)
 	results = new OptimizeResult<MAX_PRECISION_T>[nThreads];
     for(int i=0; i<(nThreads); i++)
 	{
-        results[i].X = new MAX_PRECISION_T[DIM];
+        results[i].X = new MAX_PRECISION_T[FULLDIM];
 		threadBins[i] = new int[NBINSOUT];
 		startLatch[i] = true;
     }
@@ -3578,9 +3737,6 @@ int main(int argc, char **argv)
 		pthread_mutex_lock(&theadCoordLock);
 		if(threadStartCount >= (nThreads))
 			ready = true;
-#ifndef SILENT
-		cout << "Still waiting...." << endl;
-#endif /*!SILENT*/
 		pthread_mutex_unlock(&theadCoordLock);
 	}
 

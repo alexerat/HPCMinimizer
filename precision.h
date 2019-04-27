@@ -40,9 +40,9 @@ template<typename floatval_t>
 inline floatval_t get_conv_epsilon();
 
 template<>
-inline float get_conv_epsilon<float>() { return 1e-5; }
+inline float get_conv_epsilon<float>() { return 1e-4; }
 template<>
-inline double get_conv_epsilon<double>() { return 1e-10; }
+inline double get_conv_epsilon<double>() { return 1e-8; }
 template<>
 inline dd_real get_conv_epsilon<dd_real>() { return dd_real("1e-16"); }
 template<>
@@ -58,9 +58,9 @@ template<typename floatval_t>
 inline floatval_t get_delta();
 
 template<>
-inline float get_delta<float>() { return 1e-5; }
+inline float get_delta<float>() { return 1e-4; }
 template<>
-inline double get_delta<double>() { return 1e-10; }
+inline double get_delta<double>() { return 1e-8; }
 template<>
 inline dd_real get_delta<dd_real>() { return dd_real("1e-16"); }
 template<>
@@ -76,15 +76,15 @@ template<typename floatval_t>
 inline floatval_t get_gstep();
 
 template<>
-inline float get_gstep<float>() { return 1e-2; }
+inline float get_gstep<float>() { return 1e-5; }
 template<>
-inline double get_gstep<double>() { return 1e-4; }
+inline double get_gstep<double>() { return 1e-8; }
 template<>
-inline dd_real get_gstep<dd_real>() { return dd_real("1e-8"); }
+inline dd_real get_gstep<dd_real>() { return dd_real("1e-12"); }
 template<>
-inline qd_real get_gstep<qd_real>() { return qd_real("1e-16"); }
+inline qd_real get_gstep<qd_real>() { return qd_real("1e-24"); }
 template<>
-inline mp_real get_gstep<mp_real>() { return mp_real("1e-32"); }
+inline mp_real get_gstep<mp_real>() { return mp_real("1e-50"); }
 
 /**
  * 	Minimum step definition for various precisions.
@@ -94,15 +94,15 @@ template<typename floatval_t>
 inline floatval_t get_min_step();
 
 template<>
-inline float get_min_step<float>() { return 1e-6; }
+inline float get_min_step<float>() { return 1.0e-10; }
 template<>
-inline double get_min_step<double>() { return 1e-14; }
+inline double get_min_step<double>() { return 1.0e-20; }
 template<>
-inline dd_real get_min_step<dd_real>() { return dd_real("1e-28"); }
+inline dd_real get_min_step<dd_real>() { return dd_real("1.0e-40"); }
 template<>
-inline qd_real get_min_step<qd_real>() { return qd_real("1e-56"); }
+inline qd_real get_min_step<qd_real>() { return qd_real("1.0e-80"); }
 template<>
-inline mp_real get_min_step<mp_real>() { return mp_real("1e-112"); }
+inline mp_real get_min_step<mp_real>() { return mp_real("1.0e-160"); }
 
 /**
  * 	Maximum step definition for various precisions.
@@ -112,15 +112,15 @@ template<typename floatval_t>
 inline floatval_t get_max_step();
 
 template<>
-inline float get_max_step<float>() { return 1e7; }
+inline float get_max_step<float>() { return 1e20; }
 template<>
-inline double get_max_step<double>() { return 1e7; }
+inline double get_max_step<double>() { return 1e20; }
 template<>
-inline dd_real get_max_step<dd_real>() { return dd_real(1e7); }
+inline dd_real get_max_step<dd_real>() { return dd_real(1e20); }
 template<>
-inline qd_real get_max_step<qd_real>() { return qd_real(1e7); }
+inline qd_real get_max_step<qd_real>() { return qd_real(1e20); }
 template<>
-inline mp_real get_max_step<mp_real>() { return mp_real(1e7); }
+inline mp_real get_max_step<mp_real>() { return mp_real(1e20); }
 
 
 /**

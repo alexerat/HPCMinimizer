@@ -212,12 +212,12 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
     defparam.max_iterations = 50;
     defparam.linesearch = LBFGS_LINESEARCH_MORETHUENTE;
     defparam.max_linesearch = 50;
-    defparam.min_step = floatval_t(1e-16);
+    defparam.min_step = get_epsilon<floatval_t>();
     defparam.max_step = floatval_t(1e16);
     defparam.ftol = 1e-4;
     defparam.wolfe = 0.9;
     defparam.gtol = 0.9;
-    defparam.xtol = floatval_t(1e-14);
+    defparam.xtol = get_epsilon<floatval_t>()*10;
     defparam.orthantwise_c = 0.0;
     defparam.orthantwise_start = 0;
     defparam.orthantwise_end = -1;
@@ -253,11 +253,13 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
     {
         return LBFGSERR_INVALID_DELTA;
     }
-    //cout << "Hit this " << to_out_string(param.min_step, 5) << " " << to_out_string(defparam.eps, 5) << std::scientific << endl ;
+    // Actually don't sweat this one, step is only ever a multiplier so the eps here isn't so sensible, we more want do be limited by the minimum floats
+    /*
     if (param.min_step < defparam.eps)
     {
         return LBFGSERR_INVALID_MINSTEP;
     }
+    */
     if (param.max_step < param.min_step)
     {
         return LBFGSERR_INVALID_MAXSTEP;
@@ -584,7 +586,7 @@ int lbfgs(
 
 
     /*
-       Make sure that the initial variables are not a minimizer.
+       Make sure that the initial variables are not a minimum.
      */
     vec2norm(&xnorm, x, n);
 
@@ -647,7 +649,7 @@ int lbfgs(
 #endif
 
         /* TODO: This has been hacked. */
-        if (ls < 0 && ls != LBFGSERR_MAXIMUMLINESEARCH && ls != LBFGSERR_INCREASEGRADIENT)
+        if (ls < 0 && ls != LBFGSERR_INCREASEGRADIENT)
         {
             /* Revert to the previous point. */
             veccpy(x, xp, n);
@@ -655,6 +657,7 @@ int lbfgs(
             ret = ls;
 #ifdef VERBOSE
             cout << "Hit the hacked exit condition." << endl;
+            cout << "ls = " << ls << endl;
 #endif
             goto lbfgs_exit;
         }
@@ -1207,6 +1210,9 @@ static int line_search_morethuente(
     /* Check the input parameters for errors. */
     if (*stp < EPS)
     {
+#ifdef VERBOSE
+        cout << "Exiting with invalid parameters." << endl;
+#endif
         return LBFGSERR_INVALIDPARAMETERS;
     }
 
@@ -1384,58 +1390,20 @@ static int line_search_morethuente(
         if (brackt && ((*stp - stmin < EPS || stmax - *stp < EPS) || uinfo != 0))
         {
             /* Rounding errors prevent further progress. */
-            //cout << "Returning rounding error, uinfo: " << uinfo << " count is: " << count << endl;
-
-            //if(*stp - stmin < EPS)
-            //{
-            //    cout << "Exceeded stmin." << endl;
-            //}
-            //if(stmax - *stp < EPS)
-            //{
-            //    cout << "Exceeded stmax." << endl;
-            //}
-
+#ifdef VERBOSE
+            cout << "Returning rounding error, uinfo: " << uinfo << " count is: " << count << endl;
+            cout << "Step is: " << to_out_string((*stp), 5) << endl;
+            if(*stp - stmin < EPS)
+            {
+                cout << "Exceeded stmin." << endl;
+            }
+            if(stmax - *stp < EPS)
+            {
+                cout << "Exceeded stmax." << endl;
+            }
+#endif
             //return count;
             return LBFGSERR_ROUNDING_ERROR;
-        }
-        // TODO Re-add a fixed version of  ftest1 - *f > -EPS
-        if (fabs((*stp)- param->max_step) < EPS && (ftest1 - *f) > -EPS &&  (dgtest - dg) > -EPS)
-        {
-            /* The step is the maximum value. */
-//#ifdef DEBUG
- /*            cout << "Hit the max step." << endl;
-            cout << "Step is: " << to_out_string((*stp), 5) << " Max is: " << to_out_string(param->max_step, 5) << endl;
-
-            cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
-            cout << "*stp * dgtest is: " << to_out_string(*stp * dgtest, 5) << endl;
-            cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
-*/
-//#endif
-            return LBFGSERR_MAXIMUMSTEP;
-        }
-        if (fabs((*stp) - param->min_step) < EPS && ((*f) - ftest1 > EPS || (dg - dgtest) > -EPS))
-        {
- /*           cout << "Hit the min step." << endl;
-            cout << "Step is: " << to_out_string((*stp), 5) << " Min is: " << to_out_string(param->min_step, 5) << endl;
- 
-            cout << "Condition value is: " << to_out_string (fabs((*stp) - param->min_step), 5) << endl;
-
-            cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
-            
-            cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
-*?
-            /* The step is the minimum value. */
-            return LBFGSERR_MINIMUMSTEP;
-        }
-        if (brackt && (param->xtol * stmax - (stmax - stmin)) > EPS)
-        {
-            /* Relative width of the interval of uncertainty is at most xtol. */
-            return LBFGSERR_WIDTHTOOSMALL;
-        }
-        if (param->max_linesearch <= count)
-        {
-            /* Maximum number of iteration. */
-            return LBFGSERR_MAXIMUMLINESEARCH;
         }
 
         if (ftest1 - *f > -EPS && (param->gtol * (-dginit) - fabs(dg)) > -EPS)
@@ -1443,6 +1411,55 @@ static int line_search_morethuente(
             /* The sufficient decrease condition and the directional derivative condition hold. */
             return count;
         }
+
+        // TODO Re-add a fixed version of  ftest1 - *f > -EPS
+        if (fabs(*stp)- param->max_step > EPS && (ftest1 - *f) > -EPS &&  (dgtest - dg) > -EPS)
+        {
+            /* The step is the maximum value. */
+#ifdef VERBOSE
+            cout << "Hit the max step." << endl;
+            cout << "Step is: " << to_out_string((*stp), 5) << " Max is: " << to_out_string(param->max_step, 5) << endl;
+
+            cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
+            cout << "*stp * dgtest is: " << to_out_string(*stp * dgtest, 5) << endl;
+            cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
+#endif
+            cout << "Exiting with maxstep." << endl;
+            return LBFGSERR_MAXIMUMSTEP;
+        }
+        if (fabs(*stp) - param->min_step < EPS && ((*f) - ftest1 > EPS || (dg - dgtest) > -EPS))
+        {
+#ifdef VERBOSE
+            cout << "Hit the min step." << endl;
+            cout << "Step is: " << to_out_string((*stp), 5) << " Min is: " << to_out_string(param->min_step, 5) << endl;
+ 
+            cout << "Condition value is: " << to_out_string (fabs((*stp) - param->min_step), 5) << endl;
+
+            cout << "ftest1 is: " << to_out_string(ftest1, 5) << " f: " << to_out_string(*f, 5) << endl;
+            
+            cout << "dgtest is: " << to_out_string(dgtest, 5) << " dg: " << to_out_string(dg, 5) << endl;
+#endif
+            /* The step is the minimum value. */
+            return LBFGSERR_MINIMUMSTEP;
+        }
+        if (brackt && (param->xtol * stmax - (stmax - stmin)) > EPS)
+        {
+            /* Relative width of the interval of uncertainty is at most xtol. */
+#ifdef VERBOSE
+            cout << "Exiting linesearch with width too small." << endl;
+#endif
+            return LBFGSERR_WIDTHTOOSMALL;
+        }
+        if (param->max_linesearch <= count)
+        {
+            /* Maximum number of iteration. */
+#ifdef VERBOSE
+            cout << "Exiting linesearch with maximum linesearch." << endl;
+#endif
+            return LBFGSERR_MAXIMUMLINESEARCH;
+        }
+
+        
 
         /*
             In the first stage we seek a step for which the modified
@@ -1660,16 +1677,30 @@ static int update_trial_interval(
     {
         if (min2(*x, *y) - *t > -EPS || *t - max2(*x, *y) > -EPS)
         {
+#ifdef VERBOSE
+            cout << "LBFGSERR_OUTOFINTERVAL" << endl;
+            cout << "x is: " << to_out_string((*x), 5) << " y is: " << to_out_string((*y), 5) << " t is: " << to_out_string((*t), 5) << endl;
+#endif
             /* The trival value t is out of the interval. */
             return LBFGSERR_OUTOFINTERVAL;
         }
         if (*dx * (*t - *x) > -EPS)
         {
+#ifdef VERBOSE
+            cout << "LBFGSERR_INCREASEGRADIENT" << endl;
+            cout << "*dx * (*t - *x): " << to_out_string((*dx * (*t - *x)), 5) << endl;
+            cout << "dx is: " << to_out_string((*dx), 5) << endl;
+            cout << "t is: " << to_out_string((*t), 5) << " x is: " << to_out_string((*x), 5) << endl;
+#endif
             /* The function must decrease from x. */
             return LBFGSERR_INCREASEGRADIENT;
         }
         if (tmin - tmax > -EPS)
         {
+#ifdef VERBOSE
+            cout << "LBFGSERR_INCORRECT_TMINMAX" << endl;
+            cout << "tmin is: " << to_out_string(tmin, 5) << " tmax is: " << to_out_string(tmax, 5) << endl;
+#endif
             /* Incorrect tmin and tmax specified. */
             return LBFGSERR_INCORRECT_TMINMAX;
         }

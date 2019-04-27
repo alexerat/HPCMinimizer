@@ -11,6 +11,8 @@ OBJECTS=$(SOURCES:.cpp=.o)
 
 all: clean $(OBJECTS)
 
+debug: all
+
 %.o : %.cpp
 	$(CC) $(CFLAGS) $(ARCHFLAGS) $(OPTFLAG) $(PROFFLAG) $(PROFDIR) $(INCLUDES) $< -o $@
 
