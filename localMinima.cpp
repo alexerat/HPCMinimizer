@@ -202,6 +202,10 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 #define IFDEF_NROBUST(...) __VA_ARGS__
 #endif
 
+CONSTANTS(double, atof)
+CONSTANTS(dd_real, dd_real)
+CONSTANTS(qd_real, qd_real)
+CONSTANTS(mp_real, mp_real)
 
 #define eval_code(NUM,floatval_t) static floatval_t lbgfs_evaluate_##NUM##_##floatval_t( \
 	const floatval_t *X, \
@@ -215,10 +219,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 	floatval_t fx = 0.; \
 	floatval_t fx_sum = 0.; \
 	floatval_t* g_sum; \
-	for(int i=0;i<n;i++) \
-	{ \
-		g[i] = 0.; \
-	} \
+	const floatval_t* c=const_arr_##floatval_t; \
 	IFDEF_ROBUST( \
 		batch_x = new floatval_t[DIM]; \
 		g_sum = new floatval_t[DIM]; \
@@ -285,6 +286,7 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 	floatval_t* batch_x;\
 	floatval_t fx = 0.;\
 	floatval_t fx_sum = 0.;\
+	const floatval_t* c=const_arr_##floatval_t; \
 	IFDEF_ROBUST(\
 		batch_x = new floatval_t[DIM];\
 		for(int i=0;i<SAMPLES;i++) {\
@@ -303,6 +305,7 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 	return fx;\
 }\
 
+
 #define M(i, _) eval_code(i,double)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
@@ -310,6 +313,7 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 #define M(i, _) eval_code(i,dd_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+
 
 #define M(i, _) eval_code(i,qd_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
@@ -3558,7 +3562,10 @@ int main(int argc, char **argv)
 		paramState[i] = 0;
 	}
 
-	
+	for(int i = 0; i < FULLBSETS; i++)
+	{
+		bState[i] = 0;
+	}
 
 #ifdef TEST_START_POINTS
 	objTest = new objective_function(0);

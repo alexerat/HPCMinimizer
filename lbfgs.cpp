@@ -1208,7 +1208,7 @@ static int line_search_morethuente(
 #endif
 
     /* Check the input parameters for errors. */
-    if (*stp < EPS)
+    if (*stp <= 0.0)
     {
 #ifdef VERBOSE
         cout << "Exiting with invalid parameters." << endl;
@@ -1219,8 +1219,8 @@ static int line_search_morethuente(
     /* Compute the initial gradient in the search direction. */
     vecdot(&dginit, g, s, n);
 
-    /* Make sure that s points to a descent direction. */
-    if (EPS < dginit)
+    /* Make sure that s points to a descent direction. 0 < dginit */
+    if (0.0 < dginit)
     {
 #ifdef VERBOSE
         cout << "Dginit for increasing gradient was: " << to_out_string(dginit,10) << endl;
@@ -1279,13 +1279,13 @@ static int line_search_morethuente(
         }
 
         /* Clip the step in the range of [stpmin, stpmax]. */
-        if (param->min_step - *stp > EPS)
+        if (*stp < param->min_step)
         {
             /* We hit the minimum step size so tap out */
             //return count;
             *stp = param->min_step;
         }
-        if (*stp - param->max_step > EPS)
+        if (*stp > param->max_step)
         {
             *stp = param->max_step;
         }
@@ -1294,8 +1294,8 @@ static int line_search_morethuente(
             If an unusual termination is to occur then let
             stp be the lowest point obtained so far.
          */
-        if ((brackt && ((*stp - stmin < EPS || stmax - *stp < EPS) || param->max_linesearch <= count + 1 || uinfo != 0))
-            || (brackt && (param->xtol * stmax - (stmax - stmin) > EPS )))
+        if ((brackt && ((*stp <= stmin || stmax <= *stp) || param->max_linesearch <= count + 1 || uinfo != 0))
+            || (brackt && (stmax - stmin <= param->xtol * stmax)))
         {
             *stp = stx;
         }
@@ -1319,21 +1319,21 @@ static int line_search_morethuente(
                 cout << "step[" << i << "]=" << to_out_string((s[i] * (*stp)),5) << endl;
                 cout << "s[" << i << "]=" << to_out_string(s[i],5) << endl;
 #endif
-                if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) > ubounds[i])
+                if(fabs(s[i]) > 0.0 && x[i] + s[i] * (*stp) > ubounds[i])
                 {
 #ifdef VERBOSE
                     cout << "Adjusting step, upper bound." << endl;
 #endif
-                    *stp = (ubounds[i] - x[i]) / s[i] - EPS;
+                    *stp = (ubounds[i] - x[i]) / s[i];
                     stmax = *stp;
                     bounded = true;
                 }
-                else if(fabs(s[i]) > EPS && x[i] + s[i] * (*stp) < lbounds[i])
+                else if(fabs(s[i]) > 0.0 && x[i] + s[i] * (*stp) < lbounds[i])
                 {
 #ifdef VERBOSE
                     cout << "Adjusting step, lower bound." << endl;
 #endif
-                    *stp = (lbounds[i] - x[i]) / s[i] - EPS;
+                    *stp = (lbounds[i] - x[i]) / s[i];
                     stmax = *stp;
                     bounded = true;
                 }
@@ -1387,17 +1387,17 @@ static int line_search_morethuente(
             /* We have run into a boundary. */
             return count;
         }
-        if (brackt && ((*stp - stmin < EPS || stmax - *stp < EPS) || uinfo != 0))
+        if (brackt && ((*stp <= stmin || stmax <= *stp) || uinfo != 0)) /*(brackt && ((*stp <= stmin || stmax <= *stp) || uinfo != 0))*/ 
         {
             /* Rounding errors prevent further progress. */
 #ifdef VERBOSE
             cout << "Returning rounding error, uinfo: " << uinfo << " count is: " << count << endl;
             cout << "Step is: " << to_out_string((*stp), 5) << endl;
-            if(*stp - stmin < EPS)
+            if(*stp <= stmin)
             {
-                cout << "Exceeded stmin." << endl;
+                cout << "Exceeded stmin: " << to_out_string(stmin, 5) << endl;
             }
-            if(stmax - *stp < EPS)
+            if(stmax <= *stp)
             {
                 cout << "Exceeded stmax." << endl;
             }
@@ -1406,14 +1406,8 @@ static int line_search_morethuente(
             return LBFGSERR_ROUNDING_ERROR;
         }
 
-        if (ftest1 - *f > -EPS && (param->gtol * (-dginit) - fabs(dg)) > -EPS)
-        {
-            /* The sufficient decrease condition and the directional derivative condition hold. */
-            return count;
-        }
-
         // TODO Re-add a fixed version of  ftest1 - *f > -EPS
-        if (fabs(*stp)- param->max_step > EPS && (ftest1 - *f) > -EPS &&  (dgtest - dg) > -EPS)
+        if (*stp == param->max_step && *f <= ftest1 && dg <= dgtest)
         {
             /* The step is the maximum value. */
 #ifdef VERBOSE
@@ -1427,7 +1421,7 @@ static int line_search_morethuente(
             cout << "Exiting with maxstep." << endl;
             return LBFGSERR_MAXIMUMSTEP;
         }
-        if (fabs(*stp) - param->min_step < EPS && ((*f) - ftest1 > EPS || (dg - dgtest) > -EPS))
+        if (*stp == param->min_step && (ftest1 < *f || dgtest <= dg))
         {
 #ifdef VERBOSE
             cout << "Hit the min step." << endl;
@@ -1442,7 +1436,7 @@ static int line_search_morethuente(
             /* The step is the minimum value. */
             return LBFGSERR_MINIMUMSTEP;
         }
-        if (brackt && (param->xtol * stmax - (stmax - stmin)) > EPS)
+        if (brackt && (stmax - stmin) <= param->xtol * stmax)
         {
             /* Relative width of the interval of uncertainty is at most xtol. */
 #ifdef VERBOSE
@@ -1459,13 +1453,17 @@ static int line_search_morethuente(
             return LBFGSERR_MAXIMUMLINESEARCH;
         }
 
-        
+        if  (*f <= ftest1 && fabs(dg) <= param->gtol * (-dginit))
+        {
+            /* The sufficient decrease condition and the directional derivative condition hold. */
+            return count;
+        }
 
         /*
             In the first stage we seek a step for which the modified
             function has a nonpositive value and nonnegative derivative.
          */
-        if (stage1 && *f - ftest1 < EPS && min2(param->ftol, param->gtol) * dginit - dg < EPS)
+        if (stage1 && *f <= ftest1 && min2(param->ftol, param->gtol) * dginit <= dg)
         {
             stage1 = 0;
         }
@@ -1477,7 +1475,7 @@ static int line_search_morethuente(
             derivative, and if a lower function value has been
             obtained but the decrease is not sufficient.
          */
-        if (stage1 && ftest1 - *f < EPS && *f - fx < EPS)
+        if (stage1 && ftest1 < *f && *f <= fx)
         {
             /* Define the modified function and derivative values. */
             fm = *f - *stp * dgtest;
@@ -1675,7 +1673,7 @@ static int update_trial_interval(
     /* Check the input parameters for errors. */
     if (*brackt)
     {
-        if (min2(*x, *y) - *t > -EPS || *t - max2(*x, *y) > -EPS)
+        if (*t <= min2(*x, *y) || max2(*x, *y) <= *t)
         {
 #ifdef VERBOSE
             cout << "LBFGSERR_OUTOFINTERVAL" << endl;
@@ -1684,7 +1682,7 @@ static int update_trial_interval(
             /* The trival value t is out of the interval. */
             return LBFGSERR_OUTOFINTERVAL;
         }
-        if (*dx * (*t - *x) > -EPS)
+        if (0. <= *dx * (*t - *x))
         {
 #ifdef VERBOSE
             cout << "LBFGSERR_INCREASEGRADIENT" << endl;
@@ -1695,7 +1693,7 @@ static int update_trial_interval(
             /* The function must decrease from x. */
             return LBFGSERR_INCREASEGRADIENT;
         }
-        if (tmin - tmax > -EPS)
+        if (tmax < tmin)
         {
 #ifdef VERBOSE
             cout << "LBFGSERR_INCORRECT_TMINMAX" << endl;
@@ -1709,7 +1707,7 @@ static int update_trial_interval(
     /*
         Trial value selection.
      */
-    if (*fx - *ft < -EPS)
+    if (*fx < *ft)
     {
         /*
             Case 1: a higher function value.
@@ -1722,7 +1720,7 @@ static int update_trial_interval(
 
         CUBIC_MINIMIZER(mc, *x, *fx, *dx, *t, *ft, *dt);
         QUARD_MINIMIZER(mq, *x, *fx, *dx, *t, *ft);
-        if (fabs(mq - *x) - fabs(mc - *x) > EPS)
+        if (fabs(mc - *x) < fabs(mq - *x))
         {
             newt = mc;
         }
@@ -1745,7 +1743,7 @@ static int update_trial_interval(
 
         CUBIC_MINIMIZER(mc, *x, *fx, *dx, *t, *ft, *dt);
         QUARD_MINIMIZER2(mq, *x, *dx, *t, *dt);
-        if (fabs(mc - *t) - fabs(mq - *t) > EPS)
+        if (fabs(mc - *t) > fabs(mq - *t))
         {
             newt = mc;
         }
@@ -1773,7 +1771,7 @@ static int update_trial_interval(
         QUARD_MINIMIZER2(mq, *x, *dx, *t, *dt);
         if (*brackt)
         {
-            if (fabs(*t - mq) - fabs(*t - mc) > EPS)
+            if (fabs(*t - mc) < fabs(*t - mq))
             {
                 newt = mc;
             }
@@ -1784,7 +1782,7 @@ static int update_trial_interval(
         }
         else
         {
-            if (fabs(*t - mc) - fabs(*t - mq) > EPS)
+            if (fabs(*t - mc) > fabs(*t - mq))
             {
                 newt = mc;
             }
@@ -1807,7 +1805,7 @@ static int update_trial_interval(
         {
             CUBIC_MINIMIZER(newt, *t, *ft, *dt, *y, *fy, *dy);
         }
-        else if (*t - *x > EPS)
+        else if (*x < *t)
         {
             newt = tmax;
         }
@@ -1828,7 +1826,7 @@ static int update_trial_interval(
         - Case c: if f(t) <= f(x) && f'(t)*f'(x) < 0,
             x <- t, y <- x.
      */
-    if (*ft - *fx > EPS)
+    if (*fx < *ft)
     {
         /* Case a */
         *y = *t;
@@ -1851,8 +1849,8 @@ static int update_trial_interval(
     }
 
     /* Clip the new trial value in [tmin, tmax]. */
-    if (newt - tmax > EPS) newt = tmax;
-    if (tmin - newt > EPS) newt = tmin;
+    if (tmax < newt) newt = tmax;
+    if (newt < tmin) newt = tmin;
 
     /*
         Redefine the new trial value if it is close to the upper bound
@@ -1861,13 +1859,13 @@ static int update_trial_interval(
     if (*brackt && bound)
     {
         mq = *x + 0.66 * (*y - *x);
-        if (*y - *x > EPS)
+        if (*x < *y)
         {
-            if (newt - mq > EPS) newt = mq;
+            if (mq < newt) newt = mq;
         }
         else
         {
-            if (mq - newt > EPS) newt = mq;
+            if (newt < mq) newt = mq;
         }
     }
 

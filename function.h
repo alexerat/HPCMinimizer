@@ -108,8 +108,13 @@ MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 };
 
 #define PARAMCOMPUTE(params) ({})
 
-#define FUNCTION0(x, params) (__extension__({pow(x[0]-10.0,2);}))
-#define DERIVATIVES0(g, x, params, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
+// CHANGE: All non-x non-param dependent values get evaluated on initialisation, param dependent will get done at a param sequence
+#define NCONSTANTS 2
+#define CONSTANTS(floatval_t,con_fun) const floatval_t const_arr_##floatval_t[NCONSTANTS]={con_fun("2.0"),sqrt(con_fun("2.0"))};
 
-#define FUNCTION1(x, params) (__extension__({pow(x[0]-10.0,2);}))
+// CHANGE: Functions are now stage specific
+#define FUNCTION0(x, params) (__extension__({pow(x[0]-c[1],2);}))
+#define DERIVATIVES0(g, x, params, f, step) (__extension__({g[0]=c[0]*(x[0]-c[1]);}))
+
+#define FUNCTION1(x, params) (__extension__({pow(x[0]-sqrt(floatval_t("2.0")).0,2);}))
 #define DERIVATIVES1(g, x, params, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
