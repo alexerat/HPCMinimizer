@@ -203,9 +203,15 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 #endif
 
 CONSTANTS(double, atof)
+#if (MAX_PRECISION_LEVEL > 1)
 CONSTANTS(dd_real, dd_real)
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
 CONSTANTS(qd_real, qd_real)
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
 CONSTANTS(mp_real, mp_real)
+#endif
 
 #define eval_code(NUM,floatval_t) static floatval_t lbgfs_evaluate_##NUM##_##floatval_t( \
 	const floatval_t *X, \
@@ -221,6 +227,7 @@ CONSTANTS(mp_real, mp_real)
 	floatval_t* g_sum; \
 	const floatval_t* c=const_arr_##floatval_t; \
 	IFDEF_ROBUST( \
+		cout << "Doing robust version" << endl; \
 		batch_x = new floatval_t[DIM]; \
 		g_sum = new floatval_t[DIM]; \
 		for(int i=0;i<n;i++) \
@@ -252,6 +259,7 @@ CONSTANTS(mp_real, mp_real)
 	IFDEF_NROBUST( \
 		fx = FUNCTION##NUM(X, params); \
 		DERIVATIVES##NUM(g, X, params, fx, step); \
+		cout << "c0 was: " << to_out_string(c[0],10) << " x0 was: " << to_out_string(X[0],10) << " g0 is: " << to_out_string(g[0],10) << endl; \
 	) \
 	if(fx < 0.0) \
 		cout << "The cost function was negative!" << endl; \
@@ -262,17 +270,23 @@ CONSTANTS(mp_real, mp_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
 
+#if (MAX_PRECISION_LEVEL > 1)
 #define M(i, _) eval_code(i,dd_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 2)
 #define M(i, _) eval_code(i,qd_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 3)
 #define M(i, _) eval_code(i,mp_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+#endif
 
 #undef eval_code
 
@@ -310,18 +324,23 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
 
+#if (MAX_PRECISION_LEVEL > 1)
 #define M(i, _) eval_code(i,dd_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+#endif
 
-
+#if (MAX_PRECISION_LEVEL > 2)
 #define M(i, _) eval_code(i,qd_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 3)
 #define M(i, _) eval_code(i,mp_real)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
+#endif
 
 #undef eval_code
 
@@ -335,29 +354,34 @@ void (* evaluates_dbl [])( ) =
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
-
 #undef M
 
+#if (MAX_PRECISION_LEVEL > 1)
 #define M(i, _) funcptr_code(i,dd_real)
 void (* evaluates_dd [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 2)
 #define M(i, _) funcptr_code(i,qd_real)
 void (* evaluates_qd [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 3)
 #define M(i, _) funcptr_code(i,mp_real)
 void (* evaluates_mp [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 #undef M
+#endif
 
 #undef funcptr_code
 
@@ -369,29 +393,34 @@ void (* evaluates_gen_dbl [])( ) =
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
-
 #undef M
 
+#if (MAX_PRECISION_LEVEL > 1)
 #define M(i, _) funcptr_code(i,dd_real)
 void (* evaluates_gen_dd [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 2)
 #define M(i, _) funcptr_code(i,qd_real)
 void (* evaluates_gen_qd [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 #undef M
+#endif
 
+#if (MAX_PRECISION_LEVEL > 3)
 #define M(i, _) funcptr_code(i,mp_real)
 void (* evaluates_gen_mp [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 };
 #undef M
+#endif
 
 #undef funcptr_code
 
@@ -453,24 +482,36 @@ template <typename floatval_t>
 inline fptr getEvalFunc(int stage);
 template<>
 inline fptr getEvalFunc<double>(int stage) { return evaluates_dbl[stage]; }
+#if (MAX_PRECISION_LEVEL > 1)
 template<>
 inline fptr getEvalFunc<dd_real>(int stage) { return evaluates_dd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
 template<>
 inline fptr getEvalFunc<qd_real>(int stage) { return evaluates_qd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
 template<>
 inline fptr getEvalFunc<mp_real>(int stage) { return evaluates_mp[stage]; }
+#endif
 
 // Code to distribute calls to get integer cast evaluation to the correct function pointer
 template <typename floatval_t>
 inline fptr getCastEvalFunc(int stage);
 template<>
 inline fptr getCastEvalFunc<double>(int stage) { return evaluates_gen_dbl[stage]; }
+#if (MAX_PRECISION_LEVEL > 1)
 template<>
 inline fptr getCastEvalFunc<dd_real>(int stage) { return evaluates_gen_dd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
 template<>
 inline fptr getCastEvalFunc<qd_real>(int stage) { return evaluates_gen_qd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
 template<>
 inline fptr getCastEvalFunc<mp_real>(int stage) { return evaluates_gen_mp[stage]; }
+#endif
 
 // Values of the upper bound for different precisions
 #if (MAX_PRECISION_LEVEL > 1)
@@ -730,7 +771,7 @@ public:
 	    param.max_linesearch = MAXLINE;
 	    param.min_step = get_min_step<floatval_t>();
 	    param.max_step = get_max_step<floatval_t>();
-	    param.ftol = 1e-4;
+	    param.ftol = 1e10*EPS;
 	    param.wolfe = 0.9;
 	    param.gtol = 0.9;
 	    param.xtol = EPS;

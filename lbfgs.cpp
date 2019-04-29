@@ -70,8 +70,8 @@ licence.
 #include "arithmetic_ansi.h"
 
 
-#define min2(a, b)      ((a - b < -EPS) ? (a) : (b))
-#define max2(a, b)      ((b - a < EPS) ? (a) : (b))
+#define min2(a, b)      ((a < b) ? (a) : (b))
+#define max2(a, b)      ((b < a) ? (a) : (b))
 #define max3(a, b, c)   max2(max2((a), (b)), (c));
 
 using std::cout;
@@ -645,7 +645,8 @@ int lbfgs(
         {
 			cout << ", x[" << i << "] = " << to_out_string(x[i],5);
 		}
-		cout << endl;
+        cout << endl;
+        cout << "fx: " << to_out_string(fx,5) << endl;
 #endif
 
         /* TODO: This has been hacked. */
@@ -1204,7 +1205,26 @@ static int line_search_morethuente(
     const floatval_t GSTEP = param->gstep;
 
 #ifdef VERBOSE
-    cout << "Starting linesearch..." << endl;
+    cout << "Starting linesearch at: " << endl;
+
+    for(int i=0; i<n; i++)
+    {
+        cout << "x[" << i << "] = " << to_out_string(x[i],10) << endl;
+    }
+
+    cout << "Search direction: " << endl;
+
+    for(int i=0; i<n; i++)
+    {
+        cout << "s[" << i << "] = " << to_out_string(s[i],10) << endl;
+    }
+
+    cout << "Gradient: " << endl;
+
+    for(int i=0; i<n; i++)
+    {
+        cout << "g[" << i << "] = " << to_out_string(g[i],10) << endl;
+    }
 #endif
 
     /* Check the input parameters for errors. */
@@ -1222,18 +1242,6 @@ static int line_search_morethuente(
     /* Make sure that s points to a descent direction. 0 < dginit */
     if (0.0 < dginit)
     {
-#ifdef VERBOSE
-        cout << "Dginit for increasing gradient was: " << to_out_string(dginit,10) << endl;
-        for(int i=0; i<n; i++)
-        {
-            cout << "     g[" << i << "] for increasing gradient was: " << to_out_string(g[i],10) << endl;
-        }
-        for(int i=0; i<n; i++)
-        {
-            cout << "     s[" << i << "] for increasing gradient was: " << to_out_string(s[i],10) << endl;
-        }
-#endif
-
         return LBFGSERR_INCREASEGRADIENT;
     }
 
@@ -1297,6 +1305,9 @@ static int line_search_morethuente(
         if ((brackt && ((*stp <= stmin || stmax <= *stp) || param->max_linesearch <= count + 1 || uinfo != 0))
             || (brackt && (stmax - stmin <= param->xtol * stmax)))
         {
+#ifdef VERBOSE
+        cout << "unusual termination in linesearch. Resetting step." << endl;
+#endif     
             *stp = stx;
         }
 
@@ -1351,14 +1362,19 @@ static int line_search_morethuente(
         veccpy(x, xp, n);
 
 #ifdef VERBOSE
+        cout << "Real step will be: " << endl;
+        for (int i = 0;i < n;i++)
+        {
+			cout << "sx[" << i << "] = " << to_out_string(((*stp)*s[i]),10) << endl;
+		}
+
         cout << "Before step";
         for (int i = 0;i < n;i++)
         {
-			cout << ", x[" << i << "] = " << to_out_string(x[i],5);
+			cout << ", x[" << i << "] = " << to_out_string(x[i],10);
 		}
 		cout << endl;
 #endif
-
 
         vecadd(x, s, *stp, n);
 
@@ -1366,7 +1382,7 @@ static int line_search_morethuente(
         cout << "After step";
         for (int i = 0;i < n;i++)
         {
-			cout << ", x[" << i << "] = " << to_out_string(x[i],5);
+			cout << ", x[" << i << "] = " << to_out_string(x[i],10);
 		}
 		cout << endl;
 #endif
@@ -1379,7 +1395,7 @@ static int line_search_morethuente(
         ++count;
 
         /* Test for errors and convergence. */
-        if(bounded && (brackt || stmax - *stp < EPS))
+        if(bounded && (brackt || stmax < *stp))
         {
 #ifdef VERBOSE
             cout << "Linesearch hit a boundary." << endl;
@@ -1399,8 +1415,10 @@ static int line_search_morethuente(
             }
             if(stmax <= *stp)
             {
-                cout << "Exceeded stmax." << endl;
+                cout << "Exceeded stmax: " << to_out_string(stmax, 5) << endl;
             }
+
+            cout << "stmax - stmin: " << to_out_string((stmax - stmin), 5) << endl;
 #endif
             //return count;
             return LBFGSERR_ROUNDING_ERROR;
@@ -1436,6 +1454,12 @@ static int line_search_morethuente(
             /* The step is the minimum value. */
             return LBFGSERR_MINIMUMSTEP;
         }
+
+        if ((stmax - stmin) <= param->xtol * stmax)
+        {
+            cout << "Would have done this but not brackt" << endl;
+        }
+
         if (brackt && (stmax - stmin) <= param->xtol * stmax)
         {
             /* Relative width of the interval of uncertainty is at most xtol. */
@@ -1477,6 +1501,7 @@ static int line_search_morethuente(
          */
         if (stage1 && ftest1 < *f && *f <= fx)
         {
+            cout << "Linesearch stage 1 trial interval." << endl;
             /* Define the modified function and derivative values. */
             fm = *f - *stp * dgtest;
             fxm = fx - stx * dgtest;
@@ -1499,7 +1524,7 @@ static int line_search_morethuente(
         }
         else
         {
-
+            cout << "Linesearch stage 2 trial interval." << endl;
             /*
                 Call update_trial_interval() to update the interval of
                 uncertainty and to compute the new step.
@@ -1512,7 +1537,7 @@ static int line_search_morethuente(
          */
         if (brackt)
         {
-            if (fabs(sty - stx) - 0.66 * prev_width > -EPS)
+            if (0.66 * prev_width <= fabs(sty - stx))
             {
                 *stp = stx + 0.5 * (sty - stx);
             }
@@ -1552,7 +1577,7 @@ static int line_search_morethuente(
     /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
     a = theta / s; \
     gamma = s * sqrt(max2(0., a * a - ((du) / s) * ((dv) / s))); \
-    if ((u) - (v) > EPS) gamma = -gamma; \
+    if ((v) < (u)) gamma = -gamma; \
     p = gamma - (du) + theta; \
     q = gamma - (du) + gamma + (dv); \
     r = p / q; \
@@ -1580,13 +1605,13 @@ static int line_search_morethuente(
     /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
     a = theta / s; \
     gamma = s * sqrt(max2(0., a * a - ((du) / s) * ((dv) / s))); \
-    if ((u) - (v) > EPS) gamma = -gamma; \
+    if ((u) < (v)) gamma = -gamma; \
     p = gamma - (dv) + theta; \
     q = gamma - (dv) + gamma + (du); \
     r = p / q; \
-    if (r < -EPS && fabs(gamma) > EPS) { \
+    if (r < 0.0 && fabs(gamma) > 0.0) { \
         (cm) = (v) - r * d; \
-    } else if (a < -EPS) { \
+    } else if (a < 0.0) { \
         (cm) = (xmax); \
     } else { \
         (cm) = (xmin); \
@@ -1670,6 +1695,12 @@ static int update_trial_interval(
     floatval_t newt;   /* new trial value. */
     USES_MINIMIZER;     /* for CUBIC_MINIMIZER and QUARD_MINIMIZER. */
 
+#ifdef VERBOSE
+    cout << "fx: " << to_out_string(*fx, 10) << " ft: " << to_out_string(*ft, 10) << endl;
+    cout << "x: " << to_out_string(*x, 20) << " t: " << to_out_string(*t, 20) << endl;
+    cout << "dx: " << to_out_string(*dx, 10) << " dt: " << to_out_string(*dt, 10) << endl;
+#endif
+
     /* Check the input parameters for errors. */
     if (*brackt)
     {
@@ -1728,6 +1759,10 @@ static int update_trial_interval(
         {
             newt = mc + 0.5 * (mq - mc);
         }
+#ifdef VERBOSE
+        cout << "Case 1 trial interval." << endl;
+        cout << "newt: " << to_out_string(newt, 10) << endl;
+#endif
     }
     else if (dsign)
     {
@@ -1751,8 +1786,13 @@ static int update_trial_interval(
         {
             newt = mq;
         }
+
+#ifdef VERBOSE
+        cout << "Case 2 trial interval." << endl;
+        cout << "newt: " << to_out_string(newt, 10) << endl;
+#endif
     }
-    else if (fabs(*dx) - fabs(*dt) > EPS)
+    else if (fabs(*dx) >  fabs(*dt))
     {
         /*
             Case 3: a lower function value, derivatives of the
@@ -1791,6 +1831,10 @@ static int update_trial_interval(
                 newt = mq;
             }
         }
+#ifdef VERBOSE
+        cout << "Case 3 trial interval." << endl;
+        cout << "newt: " << to_out_string(newt, 10) << endl;
+#endif
     }
     else
     {
@@ -1813,6 +1857,9 @@ static int update_trial_interval(
         {
             newt = tmin;
         }
+#ifdef VERBOSE
+        cout << "Case 4 trial interval." << endl;
+#endif
     }
 
     /*

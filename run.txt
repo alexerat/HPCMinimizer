@@ -1,0 +1,392 @@
+Rand max is: 2147483647
+Number of threads on this node: 1
+Starting threads....
+Thread number 0 started.
+Running Parameter Recursion.
+Doing a boundary recursion from the satage iteration.
+Running Boundary Recursion.
+Boundary start at boundary set: 0 is: 0
+HERE SUCCESSFULLY
+BSTATE 0
+INDEX 0
+currDimIdx 0
+LOOPING TO SET BOUNDS
+BOUND LOWER IS -2.0000e+01
+Running Boundary Recursion.
+Boundaries for dimension 0 lower: -2.0000e+01 upper: 2.0000e+01
+Before getting bests: 
+1.0000e+10, 
+Getting adjacent results.
+Setting Bests, current best is: 1.0000e+10
+Running experiment.
+Previous best is: 1.00000e+10 at: 0.00000e+00, 
+---------Starting test---------
+Waiting for threads to finish...
+Getting start points.
+c0 was: 2 x0 was: 0 g0 is: -0.3080717424
+Looking for bounds.
+Completed bounds.
+Looping.
+Starting linesearch at: 
+x[0] = 0
+Search direction: 
+s[0] = 0.3080717424
+Gradient: 
+g[0] = -0.3080717424
+----------------------
+Step will be: 3.246
+Checking condition for 0
+Check condition was: 1
+and: 1
+step[0]=1
+s[0]=0.30807
+----------------------
+Real step will be: 
+sx[0] = 1
+Before step, x[0] = 0
+After step, x[0] = 1
+c0 was: 2 x0 was: 1 g0 is: -0.7368689634
+Linesearch stage 2 trial interval.
+fx: 0.9756815641 ft: 0.1619822006
+x: 0 t: 3.2459971574463892807
+dx: -0.09490819844 dt: -0.2270085054
+Case 4 trial interval.
+----------------------
+Step will be: 16.23
+Checking condition for 0
+Check condition was: 6
+and: 6
+step[0]=5
+s[0]=0.30807
+----------------------
+Real step will be: 
+sx[0] = 5
+Before step, x[0] = 0
+After step, x[0] = 5
+c0 was: 2 x0 was: 5 g0 is: 0.7760558538
+Linesearch stage 2 trial interval.
+fx: 0.1619822006 ft: 0.1846679084
+x: 3.2459971574463892807 t: 16.229985787231946404
+dx: -0.2270085054 dt: 0.239080879
+Case 1 trial interval.
+newt: 9.718732334
+----------------------
+Step will be: 9.7187
+Checking condition for 0
+Check condition was: 7.9941
+and: 7.9941
+step[0]=2.9941
+s[0]=0.30807
+----------------------
+Real step will be: 
+sx[0] = 2.994066804
+Before step, x[0] = 0
+After step, x[0] = 2.994066804
+c0 was: 2 x0 was: 2.994066804 g0 is: -0.01811283829
+Linesearch stage 2 trial interval.
+fx: 0.1619822006 ft: 0.9999179745
+x: 3.2459971574463892807 t: 9.7187323336348150349
+dx: -0.2270085054 dt: -0.005580053651
+Case 1 trial interval.
+newt: 4.246994403
+----------------------
+Step will be: 4.247
+Checking condition for 0
+Check condition was: 4.3024
+and: 4.3024
+step[0]=1.3084
+s[0]=0.30807
+----------------------
+Real step will be: 
+sx[0] = 1.308378965
+Before step, x[0] = 0
+After step, x[0] = 1.308378965
+c0 was: 2 x0 was: 1.308378965 g0 is: -0.2100921319
+After linesearch, x[0] = 1.3084
+fx: 0.011159
+Looping.
+Starting linesearch at: 
+x[0] = 1.308378965
+Search direction: 
+s[0] = 2.805482946
+Gradient: 
+g[0] = -0.2100921319
+----------------------
+Step will be: 1
+Checking condition for 0
+Check condition was: 4.1139
+and: 4.1139
+step[0]=2.8055
+s[0]=2.8055
+----------------------
+Real step will be: 
+sx[0] = 2.805482946
+Before step, x[0] = 1.308378965
+After step, x[0] = 4.113861911
+c0 was: 2 x0 was: 4.113861911 g0 is: -0.7732106774
+Linesearch stage 2 trial interval.
+fx: 0.0111592038 ft: 0.182925384
+x: 0 t: 1
+dx: -0.5894098931 dt: -2.169229369
+Case 1 trial interval.
+newt: 0.08498052892
+----------------------
+Step will be: 0.084981
+Checking condition for 0
+Check condition was: 4.3523
+and: 4.3523
+step[0]=0.23841
+s[0]=2.8055
+----------------------
+Real step will be: 
+sx[0] = 0.2384114246
+Before step, x[0] = 1.308378965
+After step, x[0] = 1.54679039
+c0 was: 2 x0 was: 1.54679039 g0 is: 0.2620575567
+Linesearch stage 2 trial interval.
+fx: 0.0111592038 ft: 0.01747387714
+x: 0 t: 0.08498052892429468208
+dx: -0.5894098931 dt: 0.7351980061
+Case 1 trial interval.
+newt: 0.03767947255
+----------------------
+Step will be: 0.037679
+Checking condition for 0
+Check condition was: 1.6525
+and: 1.6525
+step[0]=0.10571
+s[0]=2.8055
+----------------------
+Real step will be: 
+sx[0] = 0.1057091177
+Before step, x[0] = 1.308378965
+After step, x[0] = 1.414088083
+c0 was: 2 x0 was: 1.414088083 g0 is: -0.0002509585654
+After linesearch, x[0] = 1.4141
+fx: 1.5745e-08
+Looping.
+Starting linesearch at: 
+x[0] = 1.414088083
+Search direction: 
+s[0] = 0.0001264223226
+Gradient: 
+g[0] = -0.0002509585654
+----------------------
+Step will be: 1
+Checking condition for 0
+Check condition was: 1.4142
+and: 1.4142
+step[0]=0.00012642
+s[0]=0.00012642
+----------------------
+Real step will be: 
+sx[0] = 0.0001264223226
+Before step, x[0] = 1.414088083
+After step, x[0] = 1.414214505
+c0 was: 2 x0 was: 1.414214505 g0 is: 1.88607723e-06
+After linesearch, x[0] = 1.4142
+fx: 8.8932e-13
+L-BFGS optimization terminated with status code = 1
+Final values are, x[0] = 1.4142
+Increasing precision to double-double
+===============================================================
+c0 was: 2.0000000000e+00 x0 was: 1.4142145054e+00 g0 is: 1.8860772301e-06
+Looking for bounds.
+Completed bounds.
+Looping.
+Starting linesearch at: 
+x[0] = 1.4142145054e+00
+Search direction: 
+s[0] = -1.8860772301e-06
+Gradient: 
+g[0] = 1.8860772301e-06
+----------------------
+Step will be: 5.30201e+05
+Checking condition for 0
+Check condition was: 4.14215e-01
+and: 4.14215e-01
+step[0]=-1.00000e+00
+s[0]=-1.88608e-06
+----------------------
+Real step will be: 
+sx[0] = -1.0000000000e+00
+Before step, x[0] = 1.4142145054e+00
+After step, x[0] = 4.1421450541e-01
+c0 was: 2.0000000000e+00 x0 was: 4.1421450541e-01 g0 is: -9.0929821171e-01
+Linesearch stage 2 trial interval.
+fx: 8.8932182952e-13 ft: 7.0807256077e-01
+x: 0.00000000000000000000e+00 t: 5.30200982238663820269e+05
+dx: -3.5572873181e-12 dt: 1.7150066525e-06
+Case 1 trial interval.
+newt: 4.1154883311e-01
+----------------------
+Step will be: 4.11549e-01
+Checking condition for 0
+Check condition was: 4.14214e-01
+and: 4.14214e-01
+step[0]=-7.76213e-07
+s[0]=-1.88608e-06
+----------------------
+Real step will be: 
+sx[0] = -7.7621288321e-07
+Before step, x[0] = 1.4142145054e+00
+After step, x[0] = 1.4142137292e+00
+c0 was: 2.0000000000e+00 x0 was: 1.4142137292e+00 g0 is: 3.3365146372e-07
+After linesearch, x[0] = 1.41421e+00
+fx: 2.78308e-14
+Looping.
+Starting linesearch at: 
+x[0] = 1.4142137292e+00
+Search direction: 
+s[0] = -1.6682573186e-07
+Gradient: 
+g[0] = 3.3365146372e-07
+----------------------
+Step will be: 1.00000e+00
+Checking condition for 0
+Check condition was: 1.41421e+00
+and: 1.41421e+00
+step[0]=-1.66826e-07
+s[0]=-1.66826e-07
+----------------------
+Real step will be: 
+sx[0] = -1.6682573186e-07
+Before step, x[0] = 1.4142137292e+00
+After step, x[0] = 1.4142135624e+00
+c0 was: 2.0000000000e+00 x0 was: 1.4142135624e+00 g0 is: -2.3280974340e-19
+After linesearch, x[0] = 1.41421e+00
+fx: 1.35501e-38
+L-BFGS optimization terminated with status code = 0
+Final values are, x[0] = 1.41421e+00
+Getting start points.
+c0 was: 2 x0 was: 1.414214505 g0 is: 1.88607723e-06
+Looking for bounds.
+Completed bounds.
+Looping.
+Starting linesearch at: 
+x[0] = 1.414214505
+Search direction: 
+s[0] = -1.88607723e-06
+Gradient: 
+g[0] = 1.88607723e-06
+----------------------
+Step will be: 5.302e+05
+Checking condition for 0
+Check condition was: 0.41421
+and: 0.41421
+step[0]=-1
+s[0]=-1.8861e-06
+----------------------
+Real step will be: 
+sx[0] = -1
+Before step, x[0] = 1.414214505
+After step, x[0] = 0.4142145054
+c0 was: 2 x0 was: 0.4142145054 g0 is: -0.9092982117
+Linesearch stage 2 trial interval.
+fx: 8.893218293e-13 ft: 0.7080725608
+x: 0 t: 530200.98229301581159
+dx: -3.557287317e-12 dt: 1.715006652e-06
+Case 1 trial interval.
+newt: 0.4115488331
+----------------------
+Step will be: 0.41155
+Checking condition for 0
+Check condition was: 0.41421
+and: 0.41421
+step[0]=-7.7621e-07
+s[0]=-1.8861e-06
+----------------------
+Real step will be: 
+sx[0] = -7.762128832e-07
+Before step, x[0] = 1.414214505
+After step, x[0] = 1.414213729
+c0 was: 2 x0 was: 1.414213729 g0 is: 3.336514633e-07
+After linesearch, x[0] = 1.4142
+fx: 2.7831e-14
+L-BFGS optimization terminated with status code = 1
+Final values are, x[0] = 1.4142
+Increasing precision to double-double
+===============================================================
+c0 was: 2.0000000000e+00 x0 was: 1.4142137292e+00 g0 is: 3.3365146354e-07
+Looking for bounds.
+Completed bounds.
+Looping.
+Starting linesearch at: 
+x[0] = 1.4142137292e+00
+Search direction: 
+s[0] = -3.3365146354e-07
+Gradient: 
+g[0] = 3.3365146354e-07
+----------------------
+Step will be: 2.99714e+06
+Checking condition for 0
+Check condition was: 4.14214e-01
+and: 4.14214e-01
+step[0]=-1.00000e+00
+s[0]=-3.33651e-07
+----------------------
+Real step will be: 
+sx[0] = -1.0000000000e+00
+Before step, x[0] = 1.4142137292e+00
+After step, x[0] = 4.1421372920e-01
+c0 was: 2.0000000000e+00 x0 was: 4.1421372920e-01 g0 is: -9.0929756567e-01
+Linesearch stage 2 trial interval.
+fx: 2.7830824781e-14 ft: 7.0807326658e-01
+x: 0.00000000000000000000e+00 t: 2.99713955811818260382e+06
+dx: -1.1132329912e-13 dt: 3.0338846358e-07
+Case 1 trial interval.
+newt: 4.1154878421e-01
+----------------------
+Step will be: 4.11549e-01
+Checking condition for 0
+Check condition was: 4.14214e-01
+and: 4.14214e-01
+step[0]=-1.37314e-07
+s[0]=-3.33651e-07
+----------------------
+Real step will be: 
+sx[0] = -1.3731385417e-07
+Before step, x[0] = 1.4142137292e+00
+After step, x[0] = 1.4142135919e+00
+c0 was: 2.0000000000e+00 x0 was: 1.4142135919e+00 g0 is: 5.9023755202e-08
+After linesearch, x[0] = 1.41421e+00
+fx: 8.70951e-16
+Looping.
+Starting linesearch at: 
+x[0] = 1.4142135919e+00
+Search direction: 
+s[0] = -2.9511877601e-08
+Gradient: 
+g[0] = 5.9023755202e-08
+----------------------
+Step will be: 1.00000e+00
+Checking condition for 0
+Check condition was: 1.41421e+00
+and: 1.41421e+00
+step[0]=-2.95119e-08
+s[0]=-2.95119e-08
+----------------------
+Real step will be: 
+sx[0] = -2.9511877601e-08
+Before step, x[0] = 1.4142135919e+00
+After step, x[0] = 1.4142135624e+00
+c0 was: 2.0000000000e+00 x0 was: 1.4142135624e+00 g0 is: -1.2888492253e-21
+After linesearch, x[0] = 1.41421e+00
+fx: 4.15283e-43
+L-BFGS optimization terminated with status code = 0
+Final values are, x[0] = 1.41421e+00
+Signalling threads complete....
+Finished threads.
+Thread 0 result is: 4.1528e-43 at: 1.4142e+00 
+Thread minimum bin is: 0
+Finished working results.
+Finalising statistics.
+Finished working statistics.
+---------Finished test---------
+Best result is: 4.1528e-43 at: 1.4142e+00 
+Best result now: 4.1528e-43 at: 1.4142e+00 
+Finished experiment.
+END OF FOR LOOP
+After propagating bests: 
+4.1528e-43, 
+Waiting for threads to finish work....

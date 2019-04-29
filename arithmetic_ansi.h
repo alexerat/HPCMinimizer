@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#define fsigndiff(x, y) (*y) > 0. ? ((*x) < EPS) : ((*x) > -EPS)
+#define fsigndiff(x, y) (*y) > 0. ? ((*x) < 0.0) : ((*x) > 0.0)
 
 inline static void* vecalloc(size_t size)
 {
