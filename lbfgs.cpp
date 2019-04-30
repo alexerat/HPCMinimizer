@@ -525,7 +525,7 @@ int lbfgs(
         for(int i=0;i<n;i++)
         {
             // TODO: Make sure this is back in.
-            if(x[i] - lbounds[i] < -EPS || ubounds[i] - x[i] < -EPS)
+            if(x[i] < lbounds[i] || ubounds[i] < x[i])
             {
                 cout << "Invalid start at: ";
                 for (i = 0;i < n;i++)
@@ -552,7 +552,7 @@ int lbfgs(
                 ret = LBFGSERR_INVALID_START_X;
                 goto lbfgs_exit;
             }
-            else if(fabs(g[i]) < EPS)
+            else if(fabs(g[i]) < 0.0)
             {
 #ifdef VERBOSE
                 cout << "Dimension " << i << " held due to gradient." << endl;
@@ -562,7 +562,7 @@ int lbfgs(
             }
             else
             {
-                if((g[i] > 0. && x[i] - ubounds[i] > -EPS) || (g[i] < 0. && lbounds[i] - x[i] > -EPS))
+                if((g[i] > 0. && x[i] > ubounds[i]) || (g[i] < 0. && lbounds[i] > x[i]))
                 {
 #ifdef VERBOSE
                     cout << "Dimension " << i << " held due to bounds." << endl;
@@ -803,7 +803,7 @@ int lbfgs(
             vecdot(&it->alpha, it->s, d, n);
 
 #ifdef VERBOSE
-            if(fabs(it->ys) < EPS)
+            if(fabs(it->ys) < 0.0)
             {
                 cout << "This is a small division 13" << endl;
             }
@@ -815,7 +815,7 @@ int lbfgs(
         }
 
 #ifdef VERBOSE
-        if(fabs(yy) < EPS)
+        if(fabs(yy) < 0.0)
         {
             cout << "This is a small division 14" << endl;
         }
@@ -830,7 +830,7 @@ int lbfgs(
             vecdot(&beta, it->y, d, n);
 
 #ifdef VERBOSE
-            if(fabs(it->ys) < EPS)
+            if(fabs(it->ys) < 0.0)
             {
                 cout << "This is a small division 15" << endl;
             }
@@ -849,7 +849,7 @@ int lbfgs(
         {
             for(int i=0;i<n;i++)
             {
-                if(fabs(g[i]) < EPS)
+                if(fabs(g[i]) < 0.0)
                 {
 #ifdef VERBOSE
                     cout << "Dimension " << i << " held due to gradient." << endl;
@@ -859,7 +859,7 @@ int lbfgs(
                 }
                 else
                 {
-                    if((g[i] > 0. && x[i] - ubounds[i] > -EPS) || (g[i] < 0. && lbounds[i] - x[i] > -EPS))
+                    if((g[i] > 0. && x[i] > ubounds[i]) || (g[i] < 0. && lbounds[i] > x[i]))
                     {
 #ifdef VERBOSE
                         cout << "Dimension " << i << " held due to bounds." << endl;
@@ -887,7 +887,7 @@ int lbfgs(
         {
             for (i = param.orthantwise_start;i < param.orthantwise_end;++i)
             {
-                if (d[i] * pg[i] > -EPS)
+                if (d[i] * pg[i] > 0.0)
                 {
                     d[i] = 0.;
                 }
@@ -914,14 +914,14 @@ lbfgs_exit:
         for(int i=0;i<n;i++)
         {
             // TODO: Make sure this is back in.
-            if(x[i] - lbounds[i] < 0.0)
+            if(x[i] < lbounds[i])
             {
                 cout << "Final boundary exceeded." << endl;
 
                 x[i] = lbounds[i];
                 recomp = true;
             }
-            else if(ubounds[i] - x[i] < 0.0)
+            else if(ubounds[i] < x[i])
             {
                 cout << "Final boundary exceeded." << endl;
 
