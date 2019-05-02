@@ -74,9 +74,9 @@ const real_t _EPSILON = get_epsilon<real_t>();
 
 // ********************************************************
 // vector velocity defines
-#define _dimensionless_velocity_ncomponents 2
+#define _dimensionless_velocity_ncomponents 6
 // vector position defines
-#define _dimensionless_position_ncomponents 2
+#define _dimensionless_position_ncomponents 6
 
 // ********************************************************
 // GLOBALS
@@ -307,7 +307,7 @@ void ode_dest(ode_workspace_t* workspace);
 void _dimensionless_velocity_initialise(ode_workspace_t* workspace);
 void _dimensionless_position_initialise(ode_workspace_t* workspace);
 int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace, real_t* res);
-void pi_pulse(bool breathing, bool neg, ode_workspace_t* workspace);
+void pi_pulse(bool neg, ode_workspace_t* workspace);
 inline void evolution_calculate_delta_a(real_t _step, ode_workspace_t* workspace);
 void evolution(real_t time_interval, ode_workspace_t* workspace);
 real_t evolution_dimensionless_velocity_timestep_error(real_t* _checkfield, ode_workspace_t* workspace);
@@ -348,7 +348,7 @@ int ode_init(ode_workspace_t* workspace)
   workspace->evolution_akjfield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
   workspace->evolution_initial_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
 
-  // TODO: Check mem.
+  // TODO: Check mem allocation
 
   return 0;
 }
@@ -443,7 +443,7 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
     for(j=0;j<abs(zVec[p]);j++)
     {
       cout << "Pulsing" << endl;
-      pi_pulse(false, zVec[p] < 0, workspace);
+      pi_pulse(zVec[p] < 0, workspace);
 
       if(j < abs(zVec[p]) -1)
         evolution(rep_time, workspace);
@@ -453,6 +453,8 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
   // Bing!
   _LOG(_SIMULATION_LOG_LEVEL, "\a");
   
+  delete[] tau;
+
   return 0;
 }
 
@@ -474,6 +476,10 @@ void _dimensionless_velocity_initialise(ode_workspace_t* workspace)
 {
   workspace->velocity[0]=0.0;
   workspace->velocity[1]=0.0;
+  workspace->velocity[3]=0.0;
+  workspace->velocity[4]=0.0;
+  workspace->velocity[5]=0.0;
+  workspace->velocity[6]=0.0;
 }
 
 // initialisation for vector position
@@ -481,21 +487,29 @@ void _dimensionless_position_initialise(ode_workspace_t* workspace)
 {
   workspace->position[0]=(-initDisp);
   workspace->position[1]=(initDisp);
+  workspace->position[3]=(-initDisp);
+  workspace->position[4]=(initDisp);
+  workspace->position[5]=(-initDisp);
+  workspace->position[6]=(initDisp);
 }
 
 // ********************************************************
 //   segment 1 (Filter) function implementations
-void pi_pulse(bool breathing, bool neg, ode_workspace_t* workspace)
+void pi_pulse(bool neg, ode_workspace_t* workspace)
 {
   if(neg)
   {
     workspace->velocity[0]-=k;
-    workspace->velocity[1]-=breathing ? -k : k;
+    workspace->velocity[1]-=k;
+    workspace->velocity[2]-=k;
+    workspace->velocity[3]+=k;
   }
   else
   {
     workspace->velocity[0]+=k;
-    workspace->velocity[1]+=breathing ? -k : k;
+    workspace->velocity[1]+=k;
+    workspace->velocity[2]+=k;
+    workspace->velocity[3]-=k;
   }
 }
 
@@ -1426,35 +1440,82 @@ bool evolution_dimensionless_position_reset(real_t* _reset_to_dimensionless_posi
 // Delta A propagation operator for field dimensionless
 void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_workspace_t* workspace)
 {
-  #define v1 workspace->active_velocity[0]
-  #define v2 workspace->active_velocity[1]
-  #define x1 workspace->active_position[0]
-  #define x2 workspace->active_position[1]
+  #define v1_1 workspace->active_velocity[0]
+  #define v2_1 workspace->active_velocity[1]
+  #define x1_1 workspace->active_position[0]
+  #define x2_1 workspace->active_position[1]
+  #define v1_2 workspace->active_velocity[2]
+  #define v2_2 workspace->active_velocity[3]
+  #define x1_2 workspace->active_position[2]
+  #define x2_2 workspace->active_position[3]
+  #define v1_3 workspace->active_velocity[4]
+  #define v2_3 workspace->active_velocity[5]
+  #define x1_3 workspace->active_position[4]
+  #define x2_3 workspace->active_position[5]
   #define t workspace->t
   #define phi workspace->phi
-  real_t dx2_dt;
-  real_t dv1_dt;
-  real_t dv2_dt;
-  real_t dx1_dt;
+  real_t dx2_1_dt;
+  real_t dv1_1_dt;
+  real_t dv2_1_dt;
+  real_t dx1_1_dt;
+  real_t dx2_2_dt;
+  real_t dv1_2_dt;
+  real_t dv2_2_dt;
+  real_t dx1_2_dt;
+  real_t dx2_3_dt;
+  real_t dv1_3_dt;
+  real_t dv2_3_dt;
+  real_t dx1_3_dt;
   
-  // ************* Propagation code ***************
-  dx1_dt = v1;
-  dx2_dt = v2;
-  dv1_dt = -coulomb/(delta+x2-x1) - trap*(a - 2*q*cos(wrf*(t)+phi))*x1;
-  dv2_dt = coulomb/(delta+x2-x1) - trap*(a - 2*q*cos(wrf*(t)+phi))*x2;
+  real_t dyn_trap = trap*(a - 2*q*cos(wrf*(t)+phi));
 
-  //dv1_dt = - trap*(a - 2*q*cos(wrf*t+phi))*x1;
-  //dv2_dt = - trap*(a - 2*q*cos(wrf*t+phi))*x2;
+  // ************* Propagation code ***************
+  // COM mode.
+  dx1_1_dt = v1_1;
+  dx2_1_dt = v2_1;
+  dv1_1_dt = -coulomb/(delta+x2_1-x1_1) - dyn_trap*x1_1;
+  dv2_1_dt = coulomb/(delta+x2_1-x1_1) - dyn_trap*x2_1;
+
+  x2_1 = dx2_1_dt * _step;
+  v1_1 = dv1_1_dt * _step;
+  v2_1 = dv2_1_dt * _step;
+  x1_1 = dx1_1_dt * _step;
+
+  // Breathing mode.
+  dx1_2_dt = v1_2;
+  dx2_2_dt = v2_2;
+  dv1_2_dt = -coulomb/(delta+x2_2-x1_2) - dyn_trap*x1_2;
+  dv2_2_dt = coulomb/(delta+x2_2-x1_2) - dyn_trap*x2_2;
+
+  x2_2 = dx2_2_dt * _step;
+  v1_2 = dv1_2_dt * _step;
+  v2_2 = dv2_2_dt * _step;
+  x1_2 = dx1_2_dt * _step;
+
+  // Non-kicked motion.
+  dx1_3_dt = v1_3;
+  dx2_3_dt = v2_3;
+  dv1_3_dt = -coulomb/(delta+x2_3-x1_3) - dyn_trap*x1_3;
+  dv2_3_dt = coulomb/(delta+x2_3-x1_3) - dyn_trap*x2_3;
+
+  x2_3 = dx2_3_dt * _step;
+  v1_3 = dv1_3_dt * _step;
+  v2_3 = dv2_3_dt * _step;
+  x1_3 = dx1_3_dt * _step;
   // **********************************************
 
-  x2 = dx2_dt * _step;
-  v1 = dv1_dt * _step;
-  v2 = dv2_dt * _step;
-  x1 = dx1_dt * _step;
   #undef t
-  #undef v1
-  #undef v2
-  #undef x1
-  #undef x2
+  #undef v1_1
+  #undef v2_1
+  #undef x1_1
+  #undef x2_1
+  #undef v1_2
+  #undef v2_2
+  #undef x1_2
+  #undef x2_2
+  #undef v1_3
+  #undef v2_3
+  #undef x1_3
+  #undef x2_3
   #undef phi
 }
