@@ -13,6 +13,20 @@
 #include <sstream>
 #include <iomanip>
 
+template<typename floatval_t>
+inline floatval_t con_fun(const char* str);
+
+template<>
+inline float con_fun<float>(const char* str) { return atof(str); }
+template<>
+inline double con_fun<double>(const char* str) { return atof(str); }
+template<>
+inline dd_real con_fun<dd_real>(const char* str) { return dd_real(str); }
+template<>
+inline qd_real con_fun<qd_real>(const char* str) { return qd_real(str);  }
+template<>
+inline mp_real con_fun<mp_real>(const char* str) { return mp_real(str);  }
+
 /**
  * 	Machine epsilon definition for various precisions.
  * 

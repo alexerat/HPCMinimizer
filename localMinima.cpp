@@ -27,6 +27,8 @@
 // TODO: Remove
 #include <unistd.h>
 
+#include "ode_opt.cpp"
+
 using namespace std;
 using std::cout;
 using std::cerr;
@@ -79,6 +81,7 @@ struct stage_t
     const int* vars;     
 	// Not very clear, but this will be an array of function pointers, allows for bounds to be functions of prev stage x's
     floatval_t (*(*pBSetOptSize))(floatval_t* x0);   
+	int (*get_density)(int* bState);
 };
 
 int nruns = 0;
@@ -158,6 +161,8 @@ int nodeNum = 0;
 
 int nThreads = 1;
 
+ode_workspace_t ode_wspace;
+
 pthread_spinlock_t workLock;
 pthread_mutex_t theadCoordLock;
 pthread_cond_t threadsComplete;
@@ -202,15 +207,15 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 #define IFDEF_NROBUST(...) __VA_ARGS__
 #endif
 
-CONSTANTS(double, atof)
+CONSTANTS(double)
 #if (MAX_PRECISION_LEVEL > 1)
-CONSTANTS(dd_real, dd_real)
+CONSTANTS(dd_real)
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-CONSTANTS(qd_real, qd_real)
+CONSTANTS(qd_real)
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
-CONSTANTS(mp_real, mp_real)
+CONSTANTS(mp_real)
 #endif
 
 #define eval_code(NUM,floatval_t) static floatval_t lbgfs_evaluate_##NUM##_##floatval_t( \
@@ -2770,6 +2775,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 			delete[] res.X;
 			delete[] point;
 
+			// TODO: Fix for staging
 			if(isStart && !RANDOMSEARCH)
 			{
 				if(2 * DIM * pow(NDIMPOINTS, DIM - 1) + 2 * DIM * pow(NDIMPOINTS - 1, DIM - 1) > workNumber)
@@ -2781,11 +2787,6 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 
 				startBound = false;
 			}
-
-#ifdef DYNDENSITY
-			nruns = DYNDENSITY;
-#endif /*DYNDENSITY*/
-
 #ifndef SILENT
 			cout << "Running experiment." << endl;
 #endif /*!SILENT*/
@@ -2797,6 +2798,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 			}
 			cout << endl;
 
+			nruns = stages[currStage].get_density(bState);
 			runExperiment(bestRes);
 #ifndef SILENT
 			cout << "Finished experiment." << endl;
@@ -3448,6 +3450,21 @@ int main(int argc, char **argv)
 
 	int ierr, my_id;
 
+	int ret = ode_init(&ode_wspace);
+
+	int zVec[3] = {20,-20,30};
+	MAX_PRECISION_T tVec[3] = {con_fun<MAX_PRECISION_T>("0.0"),con_fun<MAX_PRECISION_T>("0.5"),con_fun<MAX_PRECISION_T>("1.0")};
+	MAX_PRECISION_T rep_time =con_fun<MAX_PRECISION_T>("0.001");
+	MAX_PRECISION_T ode_phi = con_fun<MAX_PRECISION_T>("1.0");
+	int ode_dim = 3;
+	MAX_PRECISION_T ode_res = con_fun<MAX_PRECISION_T>("0.0");
+
+	ret = ode_run(zVec,tVec,rep_time,ode_phi,ode_dim,&ode_wspace,&ode_res);
+
+	ode_dest(&ode_wspace);
+
+
+	return 0;
 	num_nodes = 1;
 
 #ifdef USE_MPI

@@ -15,9 +15,7 @@
   #define xmds_free   _aligned_free
 #endif
 
-inline XMDSComplexType::value_type mod(const XMDSComplexType& _t) { return std::abs(_t); }
-inline XMDSComplexType::value_type mod2(const XMDSComplexType& _t) { return std::norm(_t); }
-inline XMDSComplexType cis(const real& _t) { return std::polar((real)1.0, _t); }
+
 
 namespace std {
   inline complex<float> operator*(const complex<float>& a, const double b) { return a*float(b); }
@@ -28,16 +26,9 @@ namespace std {
   inline complex<float> operator+(const double b, const complex<float>& a) { return a + float(b); }
   inline complex<float> operator-(const complex<float>& a, const double b) { return a - float(b); }
   inline complex<float> operator-(const double b, const complex<float>& a) { return float(b) - a; }
-};
+}
 
-inline XMDSComplexType operator*(const XMDSComplexType& a, const int b) { return a*XMDSComplexType::value_type(b); }
-inline XMDSComplexType operator*(const int b, const XMDSComplexType& a) { return a*XMDSComplexType::value_type(b); }
-inline XMDSComplexType operator/(const XMDSComplexType& a, const int b) { return a/XMDSComplexType::value_type(b); }
-inline XMDSComplexType operator/(const int b, const XMDSComplexType& a) { return XMDSComplexType::value_type(b)/a; }
-inline XMDSComplexType operator+(const XMDSComplexType& a, const int b) { return a + XMDSComplexType::value_type(b); }
-inline XMDSComplexType operator+(const int b, const XMDSComplexType& a) { return a + XMDSComplexType::value_type(b); }
-inline XMDSComplexType operator-(const XMDSComplexType& a, const int b) { return a - XMDSComplexType::value_type(b); }
-inline XMDSComplexType operator-(const int b, const XMDSComplexType& a) { return XMDSComplexType::value_type(b) - a; }
+
 
 #endif // xpdeint_h
 

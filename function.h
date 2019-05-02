@@ -1,12 +1,13 @@
+#ifndef USER_FUNCTION_H
+#define USER_FUNCTION_H
 
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
 
-#include "precision.h"
 
-#define MAX_PRECISION_LEVEL 2
-#define MAX_PRECISION_T dd_real
+#include "precision.h"
+#include "opt_prec.h"
 
 // CHANGE: Remove the dim setting, this is now dynamic based on stage, replace with FULLDIM
 #define FULLDIM 1
@@ -33,11 +34,12 @@ int dim;
 bool intCast;
 bool hasSym;
 */
-MAX_PRECISION_T su0(MAX_PRECISION_T* x0) { return 20.0; }
-MAX_PRECISION_T sl0(MAX_PRECISION_T* x0) { return -20.0; }
-MAX_PRECISION_T iu0(MAX_PRECISION_T* x0) { return 20.0; }
-MAX_PRECISION_T il0(MAX_PRECISION_T* x0) { return -20.0; }
-#define BOUNDS const boundary_t<MAX_PRECISION_T> b0={&sl0,&il0,&su0,&iu0,0,1,false,false};boundaries[0]=b0;
+// NOTE: These are inline functiosn to prevent multiple definition errors.
+inline MAX_PRECISION_T bounds_su0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("20.0"); }
+inline MAX_PRECISION_T bounds_sl0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-20.0"); }
+inline MAX_PRECISION_T bounds_iu0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("20.0"); }
+inline MAX_PRECISION_T bounds_il0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-20.0"); }
+#define BOUNDS const boundary_t<MAX_PRECISION_T> bounds_b0={bounds_sl0,bounds_il0,bounds_su0,bounds_iu0,0,1,false,false};boundaries[0]=bounds_b0;
 
 // CHANGE: We now need to define the number of stages
 #define NSTAGES 1
@@ -51,18 +53,25 @@ int* vars;
 floatval_t (*(*pBSetOptSize))(floatval_t* x0);   
 */
 // CHANGE: Define stages in header
-const int s0vars[1] = {0};
-MAX_PRECISION_T os00(MAX_PRECISION_T* x0) { return 1.0; }
-MAX_PRECISION_T (*os0[1])(MAX_PRECISION_T* x0) = { &os00 }; 
+// NOTE: These are inline functiosn to prevent multiple definition errors.
+const int stages_s0vars[1] = {0};
+inline MAX_PRECISION_T stages_os00(MAX_PRECISION_T* x0) { return 1.0; }
+MAX_PRECISION_T (*stages_os0[1])(MAX_PRECISION_T* x0) = { &stages_os00 }; 
 const int s1vars[1] = {0};
-MAX_PRECISION_T os10(MAX_PRECISION_T* x0) { return 1.0; }
-MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 }; 
-#define STAGES const stage_t<MAX_PRECISION_T> s0 = {1,1,0,s0vars,os0};stages[0]=s0;/*const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};stages[1]=s1;*/
+inline MAX_PRECISION_T stages_os10(MAX_PRECISION_T* x0) { return 1.0; }
+MAX_PRECISION_T (*stages_os1[1])(MAX_PRECISION_T* x0) = { &stages_os10 }; 
+// CHANGE: This will be stage dependent and given as a function
+inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
+#define STAGES const stage_t<MAX_PRECISION_T> stages_s0 = {1,1,0,stages_s0vars,stages_os0,dyn_density_0};stages[0]=stages_s0;/*const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};stages[1]=s1;*/
 
 // CHANGE:
 // These will be optimisation labels generated from the optimisation type codes
 #define OPT0 lbgfs
 #define OPT1 lbgfs
+
+
+
+
 
 #define BUCKETORD 9
 #define NBINSOUT 5
@@ -73,7 +82,6 @@ MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 };
 #define MAXIT 50
 #define SIGDIG 9
 
-#define DYNDENSITY 2*(1 + bState[0])
 
 #define NEXTRADATA 0
 #define EXTRAOUT
@@ -111,7 +119,7 @@ MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 };
 
 // CHANGE: All non-x non-param dependent values get evaluated on initialisation, param dependent will get done at a param sequence
 #define NCONSTANTS 2
-#define CONSTANTS(floatval_t,con_fun) const floatval_t const_arr_##floatval_t[NCONSTANTS]={con_fun("2.0"),sqrt(con_fun("2.0"))};
+#define CONSTANTS(floatval_t) const floatval_t const_arr_##floatval_t[NCONSTANTS]={con_fun<floatval_t>("2.0"),sqrt(con_fun<floatval_t>("2.0"))};
 
 // CHANGE: Functions are now stage specific
 #define FUNCTION0(x, params) (__extension__({pow(sin(x[0]-c[1]),2);}))
@@ -119,3 +127,5 @@ MAX_PRECISION_T (*os1[1])(MAX_PRECISION_T* x0) = { &os10 };
 
 #define FUNCTION1(x, params) (__extension__({pow(x[0]-sqrt(floatval_t("2.0")).0,2);}))
 #define DERIVATIVES1(g, x, params, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
+
+#endif /*USER_FUNCTION_H*/

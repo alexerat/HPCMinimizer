@@ -10,6 +10,11 @@
 / environment across all supported platforms.
 / *************************************************************************** */
 
+#include <arprec/mp_real.h>
+#include <arprec/mp_complex.h>
+#include <qd/dd_real.h>
+#include <qd/qd_real.h>
+
 #ifndef XPDEINT_PLATFORM_H
 #define XPDEINT_PLATFORM_H
 
@@ -599,6 +604,16 @@
       FP_UNION<fp_type> x, NANMask = _xmds_nan_mask<fp_type>();
       x.as_value = value;
       return (x.as_int & NANMask.as_int) == NANMask.as_int;
+  }
+
+  template<> inline bool _xmds_isnonfinite<dd_real>(dd_real value)
+  { 
+    return value.isnan();
+  }
+
+  template<> inline bool _xmds_isnonfinite<qd_real>(qd_real value)
+  { 
+    return value.isnan();
   }
 
 // Floating point casting.
