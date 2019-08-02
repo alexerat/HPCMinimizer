@@ -65,6 +65,8 @@ MAX_PRECISION_T* params;
 
 #ifdef PARAMSCONSTSCOUNT
 MAX_PRECISION_T precompute[PARAMSCONSTSCOUNT];
+#else
+MAX_PRECISION_T* precompute = NULL;
 #endif /*PARAMSCONSTSCOUNT*/
 
 MAX_PRECISION_T* ubounds = NULL;
@@ -690,7 +692,7 @@ public:
 		return ret;
 	}
 
-    int run(struct OptimizeResult<floatval_t>* result, int workNumber, floatval_t* locParams, floatval_t* start_x, bool use_start)
+    int run(struct OptimizeResult<floatval_t>* result, int workNumber, floatval_t* locParams, floatval_t* locPreComps, floatval_t* start_x, bool use_start)
     {
         int ret = -1;
         floatval_t fx = get_max_step<floatval_t>();
@@ -717,7 +719,7 @@ public:
 			else
 				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, this, &wspace);
 #else /*OPT_PROGRESS*/
-	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, this, &wspace);
+	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, this, &wspace);
 #endif /*!OPT_PROGRESS*/
 
 	       /* Report the result. */
@@ -766,12 +768,13 @@ public:
 
 	static floatval_t evaluate(
         const floatval_t *X,
-        const floatval_t *params
+        const floatval_t *params,
+		const floatval_t *precompute
         )
     {
         floatval_t fx = 0.;
 
-		fx = FUNCTION(X, params);
+		fx = FUNCTION(X, params, precompute);
 
         return fx;
     }
@@ -781,17 +784,19 @@ protected:
         void *instance,
         const floatval_t *X,
         const floatval_t *params,
+		const floatval_t *precompute,
         floatval_t *g,
         const int n,
         const floatval_t step
         )
     {
-        return reinterpret_cast<objective_function*>(instance)->lbgfs_evaluate(X, params, g, n, step);
+        return reinterpret_cast<objective_function*>(instance)->lbgfs_evaluate(X, params, precompute, g, n, step);
     }
 
     static floatval_t lbgfs_evaluate(
         const floatval_t *X,
         const floatval_t *params,
+		const floatval_t *precompute,
         floatval_t *g,
         const int n,
         const floatval_t step
@@ -824,10 +829,10 @@ protected:
 					batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);
 				}
 
-				fx = FUNCTION(batch_x, params);
+				fx = FUNCTION(batch_x, params, precompute);
 
 				// Derivatives
-				DERIVATIVES(g, batch_x, params, fx, step);
+				DERIVATIVES(g, batch_x, params, precompute, fx, step);
 
 				for(int j=0;j<n;j++)
 				{
@@ -848,10 +853,10 @@ protected:
 		}
 		else
 		{
-			fx = FUNCTION(X, params);
+			fx = FUNCTION(X, params, precompute);
 
 			// Derivatives
-			DERIVATIVES(g, X, params, fx, step);
+			DERIVATIVES(g, X, params, precompute, fx, step);
 
 			/*
 			cout << "At : ";
@@ -903,15 +908,17 @@ protected:
         void *instance,
         const floatval_t *X,
         const floatval_t *params,
+		const floatval_t *precompute,
         const int n
         )
     {
-        return reinterpret_cast<objective_function*>(instance)->de_evaluate(X, params, n);
+        return reinterpret_cast<objective_function*>(instance)->de_evaluate(X, params, precompute, n);
     }
 
     static floatval_t de_evaluate(
         const floatval_t *X,
         const floatval_t *params,
+		const floatval_t *precompute,
         const int n
         )
     {
@@ -930,7 +937,7 @@ protected:
 					batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);
 				}
 
-				fx = FUNCTION(batch_x, params);
+				fx = FUNCTION(batch_x, params, precompute);
 
 				fx_sum += fx;
 			}
@@ -941,7 +948,7 @@ protected:
 		}
 		else
 		{
-			fx = FUNCTION(X, params);
+			fx = FUNCTION(X, params, precompute);
 		}
 
         return fx;
@@ -1015,28 +1022,28 @@ template<typename floatval_t>
 void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX);
 
 template<typename floatval_t>
-void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
 	if(locDepth == boundaries[depth].dim)
 	{
-		castBoundaries<floatval_t>(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
+		castBoundaries<floatval_t>(depth + 1, dimCount + boundaries[depth].dim, obj, params, precompute, Xin, X, best, bestX);
 	}
 	else
 	{
 		X[dimCount + locDepth] = floor(Xin[dimCount + locDepth]);
-		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, best, bestX);
 
 		X[dimCount + locDepth] = ceil(Xin[dimCount + locDepth]);
-		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, best, bestX);
 	}
 }
 
 template<typename floatval_t>
-void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
 	if(depth == BSETS)
 	{
-		floatval_t f = obj->evaluate(X, params);
+		floatval_t f = obj->evaluate(X, params, precompute);
 		if(f < *best)
 		{
 			*best = f;
@@ -1050,7 +1057,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 	{
 		if(boundaries[depth].intCast)
 		{
-			locCastRecurs(depth, 0, dimCount, obj, params, Xin, X, best, bestX);
+			locCastRecurs(depth, 0, dimCount, obj, params, precompute, Xin, X, best, bestX);
 		}
 		else
 		{
@@ -1058,7 +1065,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 			{
 				X[dimCount + i] = Xin[dimCount + i];
 			}
-			castBoundaries(depth + 1, dimCount + boundaries[depth].dim, obj, params, Xin, X, best, bestX);
+			castBoundaries(depth + 1, dimCount + boundaries[depth].dim, obj, params, precompute, Xin, X, best, bestX);
 		}
 	}
 }
@@ -1104,12 +1111,27 @@ void *run_multi(void *threadarg)
 
 #if (MAX_PRECISION_LEVEL > 1)
 	double* locParams_dbl = new double[NPARAMS];
+#ifdef PARAMSCONSTSCOUNT
+	double* locPreComps_dbl = new double[PARAMSCONSTSCOUNT];
+#else
+	double* locPreComps_dbl = NULL;
+#endif
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 	dd_real* locParams_dd = new dd_real[NPARAMS];
+#ifdef PARAMSCONSTSCOUNT
+	dd_real* locPreComps_dd = new dd_real[PARAMSCONSTSCOUNT];
+#else
+	dd_real* locPreComps_dd = NULL;
+#endif
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* locParams_qd = new qd_real[NPARAMS];
+#ifdef PARAMSCONSTSCOUNT
+	qd_real* locPreComps_qd = new qd_real[PARAMSCONSTSCOUNT];
+#else
+	qd_real* locPreComps_qd = NULL;
+#endif
 #endif
 
 	bool workDone = false;
@@ -1240,6 +1262,12 @@ void *run_multi(void *threadarg)
 		{
 			locParams_dbl[i] = (double)params[i];
 		}
+#ifdef PARAMSCONSTSCOUNT
+		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
+		{
+			locPreComps_dbl[i] = (double)precompute[i];
+		}
+#endif
 		obj_dd->setBounds();
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
@@ -1247,6 +1275,12 @@ void *run_multi(void *threadarg)
 		{
 			locParams_dd[i] = (dd_real)params[i];
 		}
+#ifdef PARAMSCONSTSCOUNT
+		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
+		{
+			locPreComps_dd[i] = (dd_real)precompute[i];
+		}
+#endif
 		obj_qd->setBounds();
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
@@ -1254,6 +1288,12 @@ void *run_multi(void *threadarg)
 		{
 			locParams_qd[i] = (qd_real)params[i];
 		}
+#ifdef PARAMSCONSTSCOUNT
+		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
+		{
+			locPreComps_qd[i] = (qd_real)precompute[i];
+		}
+#endif
 		obj_mp->setBounds();
 #endif
 
@@ -1270,9 +1310,9 @@ void *run_multi(void *threadarg)
 			}
 
 #if (MAX_PRECISION_LEVEL > 1)
-			ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, NULL, false);
+			ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, locPreComps_dbl, NULL, false);
 #else
-			ret = obj_dbl->run(&locResults_dbl, item, params, NULL, false);
+			ret = obj_dbl->run(&locResults_dbl, item, params, precompute, NULL, false);
 #endif
 
 			if(ret < 0)
@@ -1307,9 +1347,9 @@ void *run_multi(void *threadarg)
 			if(locResults_dbl.f < results[threadNum].f || locResults_dbl.f < get_delta<double>()*1e5)
 			{
 #if (MAX_PRECISION_LEVEL > 2)
-				ret = obj_dd->run(&locResults_dd, item, locParams_dd, locResults_dd.X, true);
+				ret = obj_dd->run(&locResults_dd, item, locParams_dd, locPreComps_dd, locResults_dd.X, true);
 #else
-				ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
+				ret = obj_dd->run(&locResults_dd, item, params, precompute, locResults_dd.X, true);
 #endif
 				
 				locResults.f = locResults_dd.f;
@@ -1349,9 +1389,9 @@ void *run_multi(void *threadarg)
 			if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<dd_real>()*1e5)
 			{
 #if (MAX_PRECISION_LEVEL > 3)
-				ret = obj_qd->run(&locResults_qd, item, locParams_qd, locResults_qd.X, true);
+				ret = obj_qd->run(&locResults_qd, item, locParams_qd, locPreComps_qd, locResults_qd.X, true);
 #else
-				ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+				ret = obj_qd->run(&locResults_qd, item, params, precompute, locResults_qd.X, true);
 #endif
 				
 				locResults.f = locResults_qd.f;
@@ -1393,7 +1433,7 @@ void *run_multi(void *threadarg)
 			if(locResults_qd.f < results[threadNum].f || locResults_qd.f < get_delta<qd_real>()*1e5)
 			{
 
-				ret = obj_mp->run(&locResults_mp, item, params, locResults_qd.X, true);
+				ret = obj_mp->run(&locResults_mp, item, params, precompute, locResults_qd.X, true);
 				
 				locResults.f = locResults_mp.f;
 				for(int i = 0; i < DIM; i++)
@@ -1448,7 +1488,7 @@ void *run_multi(void *threadarg)
 			if(mustCast)
 			{
 				bestCast = 1e10;
-				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, locResults.X, XCast, &bestCast, bestCastX);
+				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, precompute, locResults.X, XCast, &bestCast, bestCastX);
 
 				for(int i = 0; i < DIM; i++)
 				{
@@ -2003,10 +2043,9 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 	        outfile << ",";
 	    }
 
-		/*NOTE: Extra out must bring its own leading comma*/
 		EXTRAOUT
 
-		outfile << to_out_string(best,SIGDIG);
+		outfile << "," << to_out_string(best,SIGDIG);
 
 	    for(int k = 0; k < DIM; k++)
 	    {
