@@ -370,6 +370,7 @@ struct lbfgs_parameter_t {
  */
 template<typename floatval_t> 
 using lbfgs_evaluate_t = floatval_t (*)(
+	const floatval_t *,
     const floatval_t *,
     const floatval_t *,
     floatval_t *,
@@ -422,6 +423,7 @@ struct callback_data_t {
 template <typename floatval_t>
 using line_search_proc_t = int (*)(
     int,
+    floatval_t *,
     floatval_t *,
     floatval_t *,
     floatval_t *,
@@ -536,6 +538,7 @@ int lbfgs(
     floatval_t *lowerbounds,
     floatval_t *upperbounds,
     floatval_t *extparams,
+    floatval_t *precomps,
     lbfgs_evaluate_t<floatval_t> proc_evaluate,
     lbfgs_progress_t<floatval_t> proc_progress,
     lbfgs_wspace_t<floatval_t> *wspace

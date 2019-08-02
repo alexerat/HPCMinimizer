@@ -91,6 +91,8 @@ MAX_PRECISION_T* params;
 
 #ifdef PARAMSCONSTSCOUNT
 MAX_PRECISION_T precompute[PARAMSCONSTSCOUNT];
+#else
+MAX_PRECISION_T* precompute = NULL;
 #endif /*PARAMSCONSTSCOUNT*/
 
 OptimizeResult<MAX_PRECISION_T>* currBestRes;
@@ -221,6 +223,7 @@ CONSTANTS(mp_real)
 #define eval_code(NUM,floatval_t) static floatval_t lbgfs_evaluate_##NUM##_##floatval_t( \
 	const floatval_t *X, \
 	const floatval_t *params, \
+	const floatval_t *precompute,\
 	floatval_t *g, \
 	const int n, \
 	const floatval_t step \
@@ -244,8 +247,8 @@ CONSTANTS(mp_real)
 			{ \
 				batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5); \
 			} \
-			fx = FUNCTION##NUM(batch_x, params); \
-			DERIVATIVES##NUM(g, batch_x, params, fx, step); \
+			fx = FUNCTION##NUM(batch_x, params, precompute); \
+			DERIVATIVES##NUM(g, batch_x, params, precompute, fx, step); \
 			for(int j=0;j<n;j++) \
 			{ \
 				g_sum[j] += g[j]; \
@@ -261,8 +264,8 @@ CONSTANTS(mp_real)
 		delete[] g_sum; \
 	) \
 	IFDEF_NROBUST( \
-		fx = FUNCTION##NUM(X, params); \
-		DERIVATIVES##NUM(g, X, params, fx, step); \
+		fx = FUNCTION##NUM(X, params, precompute); \
+		DERIVATIVES##NUM(g, X, params, precompute, fx, step); \
 	) \
 	if(fx < 0.0) \
 		cout << "The cost function was negative!" << endl; \
@@ -297,6 +300,7 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 #define eval_code(NUM,floatval_t) static floatval_t gen_evaluate_##NUM##_##floatval_t( \
 	const floatval_t *X,\
 	const floatval_t *params,\
+	const floatval_t *precompute,\
 	const int n\
 	)\
 {\
@@ -310,14 +314,14 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 			for(int j=0;j<n;j++) {\
 				batch_x[j] = X[j] + NOISE * ((floatval_t)rand() / RAND_MAX - 0.5);\
 			}\
-			fx = FUNCTION##NUM(batch_x, params);\
+			fx = FUNCTION##NUM(batch_x, params, precompute);\
 			fx_sum += fx;\
 		}\
 		fx = fx_sum / SAMPLES;\
 		delete[] batch_x;\
 	)\
 	IFDEF_NROBUST(\
-		fx = FUNCTION##NUM(X, params);\
+		fx = FUNCTION##NUM(X, params, precompute);\
 	)\
 	return fx;\
 }\
@@ -1358,7 +1362,7 @@ public:
 		return ret;
 	}
 
-    int run(struct OptimizeResult<floatval_t>* result, int workNumber, floatval_t* locParams, floatval_t* start_x, bool use_start)
+    int run(struct OptimizeResult<floatval_t>* result, int workNumber, floatval_t* locParams, floatval_t* locPreComps, floatval_t* start_x, bool use_start)
     {
         int ret = -1;
         floatval_t fx = get_max_step<floatval_t>();
@@ -1381,11 +1385,11 @@ public:
 	        */
 #ifdef OPT_PROGRESS
 			if(workNumber % SAMPLE_SPACING == 0)
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, _progress, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, _progress, &wspace);
 			else
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
 #else /*OPT_PROGRESS*/
-	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, _lbgfs_evaluate, NULL, &wspace);
+	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
 #endif /*!OPT_PROGRESS*/
 
 	       /* Report the result. */
@@ -1435,10 +1439,11 @@ public:
 	static floatval_t evaluate(
         const floatval_t *X,
         const floatval_t *params,
+        const floatval_t *precompute,
         const int n
         )
     {
-        return (reinterpret_cast<evaluate_t<floatval_t>>(getCastEvalFunc<floatval_t>(currStage)))(X, params, n);
+        return (reinterpret_cast<evaluate_t<floatval_t>>(getCastEvalFunc<floatval_t>(currStage)))(X, params, precompute, n);
     }
 	
 
@@ -1451,7 +1456,7 @@ protected:
         const floatval_t step
         )
     {
-        return (reinterpret_cast<lbfgs_evaluate_t<floatval_t>>(getEvalFunc<floatval_t>(currStage)))(X, params, g, n, step);
+        return (reinterpret_cast<lbfgs_evaluate_t<floatval_t>>(getEvalFunc<floatval_t>(currStage)))(X, params, precompute, g, n, step);
     }
 	static floatval_t _de_evaluate(
         const floatval_t *X,
@@ -1459,7 +1464,7 @@ protected:
         const int n
         )
     {
-        return reinterpret_cast<evaluate_t<floatval_t>*>(getEvalFunc<floatval_t>(currStage))(X, params, n);
+        return reinterpret_cast<evaluate_t<floatval_t>*>(getEvalFunc<floatval_t>(currStage))(X, params, precompute, n);
     }
 
     static int _progress(
@@ -1718,6 +1723,12 @@ void *run_multi(void *threadarg)
 		{
 			locParams_dbl[i] = to_double(params[i]);
 		}
+#ifdef PARAMSCONSTSCOUNT
+		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
+		{
+			locPreComps_dbl[i] = (double)precompute[i];
+		}
+#endif
 		ret = obj_dd->setup();
 		if(ret < 0)
 		{
@@ -1731,6 +1742,12 @@ void *run_multi(void *threadarg)
 		{
 			locParams_dd[i] = (dd_real)params[i];
 		}
+#ifdef PARAMSCONSTSCOUNT
+		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
+		{
+			locPreComps_dd[i] = (dd_real)precompute[i];
+		}
+#endif
 		ret = obj_qd->setup();
 		if(ret < 0)
 		{
@@ -1744,6 +1761,12 @@ void *run_multi(void *threadarg)
 		{
 			locParams_qd[i] = (qd_real)params[i];
 		}
+#ifdef PARAMSCONSTSCOUNT
+		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
+		{
+			locPreComps_qd[i] = (qd_real)precompute[i];
+		}
+#endif
 		ret = obj_mp->setup();
 		if(ret < 0)
 		{
@@ -1768,13 +1791,13 @@ void *run_multi(void *threadarg)
 #if (MAX_PRECISION_LEVEL > 1)
 			if(currStage == 0)
 			{
-				ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, NULL, false);
+				ret = obj_dbl->run(&locResults_dbl, item, locParams_dbl, locPreComps_dbl, NULL, false);
 			}
 			else
 			{
 #if (MAX_PRECISION_LEVEL > 2)
 #if (MAX_PRECISION_LEVEL > 3)
-				ret = obj_mp->run(&locResults_mp, item, params, locResults_mp.X, true);
+				ret = obj_mp->run(&locResults_mp, item, params, precompute, locResults_mp.X, true);
 				if(ret < 0)
 				{
 					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
@@ -1794,7 +1817,7 @@ void *run_multi(void *threadarg)
 					locResults.X[i] = locResults_mp.X[i];
 				}
 #else /* MAX_PRECISION_LEVEL == 3, qd */
-				ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+				ret = obj_qd->run(&locResults_qd, item, params, precompute, locResults_qd.X, true);
 				if(ret < 0)
 				{
 					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
@@ -1815,7 +1838,7 @@ void *run_multi(void *threadarg)
 				}
 #endif
 #else /* MAX_PRECISION_LEVEL == 2, dd */
-				ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
+				ret = obj_dd->run(&locResults_dd, item, params, precompute, locResults_dd.X, true);
 				if(ret < 0)
 				{
 					if(ret != LBFGSERR_ROUNDING_ERROR || REPORTROUNDING)
@@ -1839,7 +1862,7 @@ void *run_multi(void *threadarg)
 			}
 			
 #else
-			ret = obj_dbl->run(&locResults_dbl, item, params, NULL, false);
+			ret = obj_dbl->run(&locResults_dbl, item, params, precompute, NULL, false);
 #endif
 
 			if(ret < 0)
@@ -1880,9 +1903,9 @@ void *run_multi(void *threadarg)
 					cout << "===============================================================" << endl;
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-					ret = obj_dd->run(&locResults_dd, item, locParams_dd, locResults_dd.X, true);
+					ret = obj_dd->run(&locResults_dd, item, locParams_dd, locPreComps_dd, locResults_dd.X, true);
 #else
-					ret = obj_dd->run(&locResults_dd, item, params, locResults_dd.X, true);
+					ret = obj_dd->run(&locResults_dd, item, params, precompute, locResults_dd.X, true);
 #endif
 					
 					locResults.f = locResults_dd.f;
@@ -1926,9 +1949,9 @@ void *run_multi(void *threadarg)
 					cout << "===============================================================" << endl;
 #endif					
 #if (MAX_PRECISION_LEVEL > 3)
-					ret = obj_qd->run(&locResults_qd, item, locParams_qd, locResults_qd.X, true);
+					ret = obj_qd->run(&locResults_qd, item, locParams_qd, locPreComps_qd, locResults_qd.X, true);
 #else
-					ret = obj_qd->run(&locResults_qd, item, params, locResults_qd.X, true);
+					ret = obj_qd->run(&locResults_qd, item, params precompute, locResults_qd.X, true);
 #endif
 					
 					locResults.f = locResults_qd.f;
@@ -1971,7 +1994,7 @@ void *run_multi(void *threadarg)
 					cout << "Increasing precision to multi-precision" << endl;
 					cout << "===============================================================" << endl;
 #endif	
-					ret = obj_mp->run(&locResults_mp, item, params, locResults_mp.X, true);
+					ret = obj_mp->run(&locResults_mp, item, params, precompute, locResults_mp.X, true);
 					
 					locResults.f = locResults_mp.f;
 					for(int i = 0; i < DIM; i++)
@@ -2027,7 +2050,7 @@ void *run_multi(void *threadarg)
 			if(mustCast)
 			{
 				bestCast = 1e10;
-				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, locResults.X, XCast, &bestCast, bestCastX);
+				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, precompute, locResults.X, XCast, &bestCast, bestCastX);
 
 				for(int i = 0; i < DIM; i++)
 				{
