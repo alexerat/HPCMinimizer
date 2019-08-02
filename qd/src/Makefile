@@ -1,6 +1,7 @@
 CC=icpc
-CFLAGS=-c -O2 -DHAVE_CONFIG -std=c++11
+CFLAGS=-c -O2 -fno-exceptions -DHAVE_CONFIG -std=c++11 -fp-model consistent -fimf-use-svml
 debug: CFLAGS=-c -O0 -g -DHAVE_CONFIG -std=c++11
+debug_opt: CFLAGS=-c -g -O2 -DHAVE_CONFIG -std=c++11
 INCLUDES=-I../ -I../include
 ARCHFLAGS=
 PROFFLAG=
@@ -12,6 +13,8 @@ OBJECTS=$(SOURCES:.cpp=.o)
 all: clean $(OBJECTS)
 
 debug: all
+
+debug_opt: all
 
 %.o : %.cpp
 	$(CC) $(CFLAGS) $(ARCHFLAGS) $(OPTFLAG) $(PROFFLAG) $(PROFDIR) $(INCLUDES) $< -o $@

@@ -226,13 +226,12 @@ CONSTANTS(mp_real)
 	const floatval_t step \
 	) \
 { \
-	floatval_t* batch_x; \
 	floatval_t fx = 0.; \
-	floatval_t fx_sum = 0.; \
-	floatval_t* g_sum; \
 	const floatval_t* c=const_arr_##floatval_t; \
 	IFDEF_ROBUST( \
-		cout << "Doing robust version" << endl; \
+		floatval_t* batch_x; \
+		floatval_t fx_sum = 0.; \
+		floatval_t* g_sum; \
 		batch_x = new floatval_t[DIM]; \
 		g_sum = new floatval_t[DIM]; \
 		for(int i=0;i<n;i++) \
@@ -264,7 +263,6 @@ CONSTANTS(mp_real)
 	IFDEF_NROBUST( \
 		fx = FUNCTION##NUM(X, params); \
 		DERIVATIVES##NUM(g, X, params, fx, step); \
-		cout << "c0 was: " << to_out_string(c[0],10) << " x0 was: " << to_out_string(X[0],10) << " g0 is: " << to_out_string(g[0],10) << endl; \
 	) \
 	if(fx < 0.0) \
 		cout << "The cost function was negative!" << endl; \
@@ -302,11 +300,11 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 	const int n\
 	)\
 {\
-	floatval_t* batch_x;\
 	floatval_t fx = 0.;\
-	floatval_t fx_sum = 0.;\
 	const floatval_t* c=const_arr_##floatval_t; \
 	IFDEF_ROBUST(\
+		floatval_t* batch_x;\
+		floatval_t fx_sum = 0.;\
 		batch_x = new floatval_t[DIM];\
 		for(int i=0;i<SAMPLES;i++) {\
 			for(int j=0;j<n;j++) {\
@@ -1006,7 +1004,6 @@ public:
 		int workPos;
 
 		int dimCount = 0;
-		int cuurBSet = 0;
 
 		floatval_t stepScale;
 
@@ -1595,7 +1592,6 @@ void *run_multi(void *threadarg)
 	int item;
 	int numWorks = nruns / nThreads;
 
-	int n;
 	int ret;
 
 	MAX_PRECISION_T bestCast;
@@ -1701,7 +1697,6 @@ void *run_multi(void *threadarg)
 		}
 		pthread_spin_unlock(&workLock);
 
-		n = 0;
 		threadFails[threadNum] = 0;
 		threadMinBin[threadNum] = 2<<(BUCKETORD+1);
 		for(int i = 0; i < NBINSOUT; i++)
@@ -2213,9 +2208,7 @@ int find_minima(OptimizeResult<MAX_PRECISION_T>* bestResult, OptimizeResult<MAX_
 	ofstream outfile;
 	MAX_PRECISION_T best;
 	MAX_PRECISION_T* bestX;
-	MAX_PRECISION_T avRes = 0.0;
-	MAX_PRECISION_T stdDev = 0.0;
-	int nClose = 0;
+
 	int* binsOut = new int[NBINSOUT];
 	int lBin = 2<<(BUCKETORD+1);
 	int fails = 0;
@@ -3362,7 +3355,6 @@ void getPrevResuts(ifstream* infile, int* bState, MAX_PRECISION_T** pBest, MAX_P
 {
 	int dimSize = 1;
 	bool startReached = false;
-	bool usePrev = false;
 	if(infile->is_open())
 	{
 		OptimizeResult<MAX_PRECISION_T> res;
@@ -3448,7 +3440,9 @@ int main(int argc, char **argv)
     int threadReturn;
 	MAX_PRECISION_T* pParams;
 
-	int ierr, my_id;
+#ifdef USE_MPI
+	int ierr;
+#endif
 
 	int ret = ode_init(&ode_wspace);
 
@@ -3457,9 +3451,8 @@ int main(int argc, char **argv)
 	MAX_PRECISION_T rep_time =con_fun<MAX_PRECISION_T>("0.001");
 	MAX_PRECISION_T ode_phi = con_fun<MAX_PRECISION_T>("1.0");
 	int ode_dim = 3;
-	MAX_PRECISION_T ode_res = con_fun<MAX_PRECISION_T>("0.0");
 
-	ret = ode_run(zVec,tVec,rep_time,ode_phi,ode_dim,&ode_wspace,&ode_res);
+	ret = ode_run(zVec,tVec,rep_time,ode_phi,ode_dim,&ode_wspace);
 
 	ode_dest(&ode_wspace);
 
@@ -3586,14 +3579,10 @@ int main(int argc, char **argv)
 		paramState = new int[NPARAMS];
 
 	// TEST: This memory assignment needs changing for new code
-	int currMaxBSet=0;
-	
 	int* bState = new int[FULLBSETS];
 
 	MAX_PRECISION_T*** pBests = new MAX_PRECISION_T**[NSTAGES];
 	MAX_PRECISION_T**** pPoints = new MAX_PRECISION_T***[NSTAGES];
-
-	int dimCount = 0;
 
 	for(int i = 0; i < NSTAGES; i++)
 	{

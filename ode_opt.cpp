@@ -40,6 +40,8 @@
 
 #include "xpdeint.h"
 
+#define TRAPTYPE 1
+
 typedef MAX_PRECISION_T real_t;
 using namespace std;
 
@@ -306,7 +308,7 @@ int ode_init(ode_workspace_t* workspace);
 void ode_dest(ode_workspace_t* workspace);
 void _dimensionless_velocity_initialise(ode_workspace_t* workspace);
 void _dimensionless_position_initialise(ode_workspace_t* workspace);
-int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace, real_t* res);
+int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace);
 void pi_pulse(bool neg, ode_workspace_t* workspace);
 inline void evolution_calculate_delta_a(real_t _step, ode_workspace_t* workspace);
 void evolution(real_t time_interval, ode_workspace_t* workspace);
@@ -382,10 +384,31 @@ void ode_dest(ode_workspace_t* workspace)
   xmds_free(workspace->evolution_initial_dimensionless_position);
 }
 
+real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
+{
+  // TODO: move into workspace for speed.
+
+
+  int* zVec = new int[dim];
+  real_t* tVec = new real_t[dim];
+  real_t phi = x[dim];
+  real_t rep_time = 0.0001;
+
+  for(int i = 0; i < dim; i++)
+  {
+    zVec[i] = to_int(x0[i]);
+    tVec[i] = x[i];
+  }
+
+  ode_run(zVec,tVec,rep_time,phi,dim,workspace);
+
+  // TODO: Take res and determine cost function.
+}
+
 // ********************************************************
 // MAIN ROUTINE
 // ********************************************************
-int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_workspace_t* workspace, real_t* res)
+int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_workspace_t* workspace)
 {
   int p=0;
   int j=0;
@@ -476,10 +499,10 @@ void _dimensionless_velocity_initialise(ode_workspace_t* workspace)
 {
   workspace->velocity[0]=0.0;
   workspace->velocity[1]=0.0;
+  workspace->velocity[2]=0.0;
   workspace->velocity[3]=0.0;
   workspace->velocity[4]=0.0;
   workspace->velocity[5]=0.0;
-  workspace->velocity[6]=0.0;
 }
 
 // initialisation for vector position
@@ -487,10 +510,10 @@ void _dimensionless_position_initialise(ode_workspace_t* workspace)
 {
   workspace->position[0]=(-initDisp);
   workspace->position[1]=(initDisp);
-  workspace->position[3]=(-initDisp);
-  workspace->position[4]=(initDisp);
-  workspace->position[5]=(-initDisp);
-  workspace->position[6]=(initDisp);
+  workspace->position[2]=(-initDisp);
+  workspace->position[3]=(initDisp);
+  workspace->position[4]=(-initDisp);
+  workspace->position[5]=(initDisp);
 }
 
 // ********************************************************
@@ -575,9 +598,13 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   real_t* _dimensionless_position = workspace->position;
   
   do {
-  
+#ifdef FPTEST
+    cout << "Stepping...." << endl;
+#endif
     do {
-     
+#ifdef FPTEST
+      cout << "Attempting step.." << endl;
+#endif
       // Step 1
       memcpy(_akafield_dimensionless_velocity, _dimensionless_velocity, sizeof(real_t) * _dimensionless_velocity_ncomponents);
       memcpy(_akafield_dimensionless_position, _dimensionless_position, sizeof(real_t) * _dimensionless_position_ncomponents);
@@ -1292,6 +1319,9 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       _attempted_steps++;
       
       if (_error < _tolerance) {
+#ifdef FPTEST
+        cout << "Step within tolerence." << endl;
+#endif
         _t_local += _step;
         if (_step > _max_step)
           _max_step = _step;
@@ -1300,7 +1330,11 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
         _discard = false;
       } else {
         workspace->t -= _step;
-  
+#ifdef FPTEST
+        cout << "Step outside tolerence." << endl;
+        cout << "error: " << to_out_string(_error,5) << endl;
+        cout << "tolerance: " << to_out_string(_tolerance,5) << endl;
+#endif
         if (evolution_dimensionless_velocity_reset(_initial_dimensionless_velocity, workspace) == false) {
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
@@ -1325,11 +1359,17 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       
       // Resize step
       if (_error < 0.5*_tolerance || _error > _tolerance) {
+#ifdef FPTEST
+        cout << "Step probably within tolerence." << endl;
+#endif
         const real_t _safetyFactor = 0.90;
         real_t _scalingFactor = _safetyFactor * pow(abs(_error/_tolerance), real_t(-0.7/9.0)) * pow(_last_norm_error, real_t(0.4/9.0));
         _scalingFactor = MAX(_scalingFactor, 1.0/5.0);
         _scalingFactor = MIN(_scalingFactor, 7.0);
         if (_error > _tolerance && _scalingFactor > 1.0) {
+#ifdef FPTEST
+          cout << "Step not within tolerence." << endl;
+#endif
           // If our step failed don't try and increase our step size. That would be silly.
           _scalingFactor = _safetyFactor * pow(abs(_error/_tolerance), real_t(-1.0/9.0));
         }
@@ -1343,6 +1383,13 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
     if (_break_next) {
       _break = true;
     }
+
+#ifdef FPTEST
+    cout << "_t_local + _step: " << to_out_string((_t_local + _step),5) << endl;
+    cout << "_t_local: " << to_out_string((_t_local),5) << endl;
+    cout << "_step: " << to_out_string((_step),5) << endl;
+    cout << "next break time: " << to_out_string(_t_break_next,5) << endl;
+#endif
     
     if ( (_t_local + _step)*(1.0 + _EPSILON) > _t_break_next) {
       _break_next = true;
@@ -1356,24 +1403,32 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   _LOG(_SEGMENT_LOG_LEVEL, "Segment 2: minimum timestep: %e maximum timestep: %e\n", to_double(_min_step), to_double(_max_step));
   _LOG(_SEGMENT_LOG_LEVEL, "  Attempted %li steps, %.2f%% steps failed.\n", _attempted_steps, (100.0*_unsuccessful_steps)/_attempted_steps);
 
+#ifdef FPTEST
   cout << "Positions: " << endl;
-  cout << to_out_string(workspace->position[0],10) << endl;
-  cout << to_out_string(workspace->position[1],10) << endl;
+  cout << to_out_string(workspace->position[0],30) << endl;
+  cout << to_out_string(workspace->position[1],30) << endl;
 
   cout << "Velocities: " << endl;
-  cout << to_out_string(workspace->velocity[0],10) << endl;
-  cout << to_out_string(workspace->velocity[1],10) << endl;
+  cout << to_out_string(workspace->velocity[0],30) << endl;
+  cout << to_out_string(workspace->velocity[1],30) << endl;
+#endif
 }
 
 real_t evolution_dimensionless_velocity_timestep_error(real_t* _checkfield, ode_workspace_t* workspace)
 {
   real_t _error = get_epsilon<real_t>();
   real_t _temp_error = con_fun<real_t>("0.0");
-  real_t _temp_mod = con_fun<real_t>("0.0");
  
   for (long  _i1 = 0; _i1 < _dimensionless_velocity_ncomponents; _i1++) {
     _temp_error = abs(workspace->velocity[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->velocity[_i1]) + 0.5*abs(_checkfield[_i1]));
     
+#ifdef FPTEST
+    cout << "Vel: " << to_out_string(workspace->velocity[_i1],30) << endl;
+    cout << "Chk_Vel: " << to_out_string(_checkfield[_i1],30) << endl;
+    cout << "diff: " << to_out_string(abs(workspace->velocity[_i1] - _checkfield[_i1]),30) << endl;
+    cout << "norm diff: " << to_out_string((abs(workspace->velocity[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->velocity[_i1]) + 0.5*abs(_checkfield[_i1]))),30) << endl;
+#endif
+
     if (_xmds_isnonfinite(_temp_error)) {
       /* For _temp_error to be NaN, both the absolute value of the higher and lower order solutions
           must BOTH be zero. This therefore implies that their difference is zero, and that there is no error. */
@@ -1405,11 +1460,17 @@ real_t evolution_dimensionless_position_timestep_error(real_t* _checkfield, ode_
 {
   real_t _error = get_epsilon<real_t>();
   real_t _temp_error = con_fun<real_t>("0.0");
-  real_t _temp_mod = con_fun<real_t>("0.0");
 
   for (long  _i1 = 0; _i1 < _dimensionless_position_ncomponents; _i1++) {
     _temp_error = abs(workspace->position[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->position[_i1]) + 0.5*abs(_checkfield[_i1]));
     
+#ifdef FPTEST
+    cout << "Pos: " << to_out_string(workspace->position[_i1],30) << endl;
+    cout << "Chk_Pos: " << to_out_string(_checkfield[_i1],30) << endl;
+    cout << "diff: " << to_out_string(abs(workspace->position[_i1] - _checkfield[_i1]),30) << endl;
+    cout << "norm diff: " << to_out_string((abs(workspace->position[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->position[_i1]) + 0.5*abs(_checkfield[_i1]))),30) << endl;
+#endif
+
     if (_xmds_isnonfinite(_temp_error)) {
       /* For _temp_error to be NaN, both the absolute value of the higher and lower order solutions
           must BOTH be zero. This therefore implies that their difference is zero, and that there is no error. */
@@ -1467,14 +1528,24 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   real_t dv2_3_dt;
   real_t dx1_3_dt;
   
+#if (TRAPTYPE == 1)
   real_t dyn_trap = trap*(a - 2*q*cos(wrf*(t)+phi));
+#endif
 
   // ************* Propagation code ***************
   // COM mode.
   dx1_1_dt = v1_1;
   dx2_1_dt = v2_1;
+
+  // Microtrap with micromotion
+#if (TRAPTYPE == 1)
   dv1_1_dt = -coulomb/(delta+x2_1-x1_1) - dyn_trap*x1_1;
   dv2_1_dt = coulomb/(delta+x2_1-x1_1) - dyn_trap*x2_1;
+#else
+  // Paul Trap
+  dv1_1_dt = -coulomb/(x2_1-x1_1) - x1_1;
+  dv2_1_dt = coulomb/(x2_1-x1_1) - x2_1;
+#endif
 
   x2_1 = dx2_1_dt * _step;
   v1_1 = dv1_1_dt * _step;
@@ -1484,8 +1555,16 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   // Breathing mode.
   dx1_2_dt = v1_2;
   dx2_2_dt = v2_2;
+
+  // Microtrap with micromotion
+#if (TRAPTYPE == 1)
   dv1_2_dt = -coulomb/(delta+x2_2-x1_2) - dyn_trap*x1_2;
   dv2_2_dt = coulomb/(delta+x2_2-x1_2) - dyn_trap*x2_2;
+#else
+  // Paul Trap
+  dv1_2_dt = -coulomb/(x2_2-x1_2) - x1_2;
+  dv2_2_dt = coulomb/(x2_2-x1_2) - x2_2;
+#endif
 
   x2_2 = dx2_2_dt * _step;
   v1_2 = dv1_2_dt * _step;
@@ -1495,8 +1574,18 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   // Non-kicked motion.
   dx1_3_dt = v1_3;
   dx2_3_dt = v2_3;
+
+  // Microtrap with micromotion
+#if (TRAPTYPE == 1)
   dv1_3_dt = -coulomb/(delta+x2_3-x1_3) - dyn_trap*x1_3;
   dv2_3_dt = coulomb/(delta+x2_3-x1_3) - dyn_trap*x2_3;
+#elif (TRAPTYPE == 2)
+
+#else
+  // Paul Trap
+  dv1_3_dt = -coulomb/(x2_3-x1_3) - x1_3;
+  dv2_3_dt = coulomb/(x2_3-x1_3) - x2_3;
+#endif
 
   x2_3 = dx2_3_dt * _step;
   v1_3 = dv1_3_dt * _step;

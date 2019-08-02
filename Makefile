@@ -1,9 +1,9 @@
-CC=g++
-LD=g++
-CFLAGS=-c -O3 -fno-exceptions -std=c++11
+CC=icpc
+LD=icpc
+CFLAGS=-c -O3 -fno-exceptions -std=c++11 -fp-model consistent -fimf-use-svml
 TFLAGS=
 PROFDIR=
-ARCHFLAGS=
+ARCHFLAGS=-xCOMMON-AVX512
 INCLUDES=-I./qd/include -I./arprec/include
 LFLAGS=
 SOURCES=lbfgs.cpp localMinima.cpp
@@ -23,9 +23,12 @@ profile: PROFFLAG=-prof-gen
 profile: OPTFLAG=
 
 debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic -DVERBOSE
-debug: LD=g++
 debug: OPTFLAG=
 debug: PROFFLAG=
+
+debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=c++11
+debug_opt: OPTFLAG=
+debug_opt: PROFFLAG=
 
 debug_det: CFLAGS=-c -O0 -fno-exceptions -g -Wall -pedantic -DVERBOSE -D DETERMINISTIC
 debug_det: OPTFLAG=
@@ -62,6 +65,8 @@ profile: build
 det: build
 
 debug: build
+
+debug_opt: build
 
 debug_det: build
 
