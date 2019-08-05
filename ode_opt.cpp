@@ -40,6 +40,8 @@
 
 #include "xpdeint.h"
 
+//#define FPTEST
+
 #define TRAPTYPE 1
 
 typedef MAX_PRECISION_T real_t;
@@ -79,6 +81,8 @@ const real_t _EPSILON = get_epsilon<real_t>();
 #define _dimensionless_velocity_ncomponents 6
 // vector position defines
 #define _dimensionless_position_ncomponents 6
+// Vector phase defines
+#define _phase_ncomponents 1
 
 // ********************************************************
 // GLOBALS
@@ -269,9 +273,11 @@ struct ode_workspace_t {
   
   real_t* velocity = NULL;
   real_t* position = NULL;
+  real_t* phase = NULL;
 
   real_t* active_velocity = NULL;
   real_t* active_position = NULL;
+  real_t* active_phase = NULL;
 
   // ********************************************************
   //   segment 2 (RK89 adaptive-step integrator) globals
@@ -286,6 +292,7 @@ struct ode_workspace_t {
   real_t* evolution_akifield_dimensionless_velocity;
   real_t* evolution_akjfield_dimensionless_velocity;
   real_t* evolution_initial_dimensionless_velocity;
+ 
   real_t* evolution_akafield_dimensionless_position;
   real_t* evolution_akbfield_dimensionless_position;
   real_t* evolution_akcfield_dimensionless_position;
@@ -298,6 +305,18 @@ struct ode_workspace_t {
   real_t* evolution_akjfield_dimensionless_position;
   real_t* evolution_initial_dimensionless_position;
 
+  real_t* evolution_akafield_phase;
+  real_t* evolution_akbfield_phase;
+  real_t* evolution_akcfield_phase;
+  real_t* evolution_akdfield_phase;
+  real_t* evolution_akefield_phase;
+  real_t* evolution_akffield_phase;
+  real_t* evolution_akgfield_phase;
+  real_t* evolution_akhfield_phase;
+  real_t* evolution_akifield_phase;
+  real_t* evolution_akjfield_phase;
+  real_t* evolution_initial_phase;
+
   real_t phi;
 };
 
@@ -308,6 +327,7 @@ int ode_init(ode_workspace_t* workspace);
 void ode_dest(ode_workspace_t* workspace);
 void _dimensionless_velocity_initialise(ode_workspace_t* workspace);
 void _dimensionless_position_initialise(ode_workspace_t* workspace);
+void _phase_initialise(ode_workspace_t* workspace);
 int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace);
 void pi_pulse(bool neg, ode_workspace_t* workspace);
 inline void evolution_calculate_delta_a(real_t _step, ode_workspace_t* workspace);
@@ -316,6 +336,8 @@ real_t evolution_dimensionless_velocity_timestep_error(real_t* _checkfield, ode_
 bool evolution_dimensionless_velocity_reset(real_t* _reset_to, ode_workspace_t* workspace);
 real_t evolution_dimensionless_position_timestep_error(real_t* _checkfield, ode_workspace_t* workspace);
 bool evolution_dimensionless_position_reset(real_t* _reset_to, ode_workspace_t* workspace);
+real_t evolution_phase_timestep_error(real_t* _checkfield, ode_workspace_t* workspace);
+bool evolution_phase_reset(real_t* _reset_to, ode_workspace_t* workspace);
 void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_workspace_t* workspace);
 
 
@@ -326,6 +348,9 @@ int ode_init(ode_workspace_t* workspace)
   
   workspace->position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
   workspace->active_position = workspace->position;
+
+  workspace->phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->active_phase = workspace->phase;
 
   workspace->evolution_akafield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
   workspace->evolution_akbfield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
@@ -338,6 +363,7 @@ int ode_init(ode_workspace_t* workspace)
   workspace->evolution_akifield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
   workspace->evolution_akjfield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
   workspace->evolution_initial_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
+  
   workspace->evolution_akafield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
   workspace->evolution_akbfield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
   workspace->evolution_akcfield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
@@ -350,6 +376,18 @@ int ode_init(ode_workspace_t* workspace)
   workspace->evolution_akjfield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
   workspace->evolution_initial_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
 
+  workspace->evolution_akafield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akbfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akcfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akdfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akefield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akffield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akgfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akhfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akifield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_akjfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_initial_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+
   // TODO: Check mem allocation
 
   return 0;
@@ -359,6 +397,7 @@ void ode_dest(ode_workspace_t* workspace)
 {
   xmds_free(workspace->velocity);
   xmds_free(workspace->position);
+  xmds_free(workspace->phase);
 
   xmds_free(workspace->evolution_akafield_dimensionless_velocity);
   xmds_free(workspace->evolution_akbfield_dimensionless_velocity);
@@ -371,6 +410,7 @@ void ode_dest(ode_workspace_t* workspace)
   xmds_free(workspace->evolution_akifield_dimensionless_velocity);
   xmds_free(workspace->evolution_akjfield_dimensionless_velocity);
   xmds_free(workspace->evolution_initial_dimensionless_velocity);
+  
   xmds_free(workspace->evolution_akafield_dimensionless_position);
   xmds_free(workspace->evolution_akbfield_dimensionless_position);
   xmds_free(workspace->evolution_akcfield_dimensionless_position);
@@ -382,6 +422,18 @@ void ode_dest(ode_workspace_t* workspace)
   xmds_free(workspace->evolution_akifield_dimensionless_position);
   xmds_free(workspace->evolution_akjfield_dimensionless_position);
   xmds_free(workspace->evolution_initial_dimensionless_position);
+
+  xmds_free(workspace->evolution_akafield_phase);
+  xmds_free(workspace->evolution_akbfield_phase);
+  xmds_free(workspace->evolution_akcfield_phase);
+  xmds_free(workspace->evolution_akdfield_phase);
+  xmds_free(workspace->evolution_akefield_phase);
+  xmds_free(workspace->evolution_akffield_phase);
+  xmds_free(workspace->evolution_akgfield_phase);
+  xmds_free(workspace->evolution_akhfield_phase);
+  xmds_free(workspace->evolution_akifield_phase);
+  xmds_free(workspace->evolution_akjfield_phase);
+  xmds_free(workspace->evolution_initial_phase);
 }
 
 real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
@@ -403,6 +455,7 @@ real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
   ode_run(zVec,tVec,rep_time,phi,dim,workspace);
 
   // TODO: Take res and determine cost function.
+  return (dd_real(1.0)/dd_real(3.0))*pow(abs(workspace->phase[0]) - dd_real::_pi2,2) + dd_real(0.2)*(workspace->position[0] + workspace->position[1]) + dd_real(0.2)*(workspace->position[2] + workspace->position[3]);
 }
 
 // ********************************************************
@@ -452,8 +505,12 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
   
   workspace->active_velocity = workspace->velocity;
   _dimensionless_velocity_initialise(workspace);
+
   workspace->active_position = workspace->position;
   _dimensionless_position_initialise(workspace);
+
+  workspace->active_phase = workspace->phase;
+  _phase_initialise(workspace);
 
   workspace->phi = phi;
 
@@ -516,23 +573,29 @@ void _dimensionless_position_initialise(ode_workspace_t* workspace)
   workspace->position[5]=(initDisp);
 }
 
+void _phase_initialise(ode_workspace_t* workspace)
+{
+  workspace->phase[0]=0.0;
+}
+
 // ********************************************************
 //   segment 1 (Filter) function implementations
 void pi_pulse(bool neg, ode_workspace_t* workspace)
 {
+  // Twice because there are two pi-pulses for each ions kick, i.e. counter-propagating
   if(neg)
   {
-    workspace->velocity[0]-=k;
-    workspace->velocity[1]-=k;
-    workspace->velocity[2]-=k;
-    workspace->velocity[3]+=k;
+    workspace->velocity[0]-=2*k;
+    workspace->velocity[1]-=2*k;
+    workspace->velocity[2]-=2*k;
+    workspace->velocity[3]+=2*k;
   }
   else
   {
-    workspace->velocity[0]+=k;
-    workspace->velocity[1]+=k;
-    workspace->velocity[2]+=k;
-    workspace->velocity[3]-=k;
+    workspace->velocity[0]+=2*k;
+    workspace->velocity[1]+=2*k;
+    workspace->velocity[2]+=2*k;
+    workspace->velocity[3]-=2*k;
   }
 }
 
@@ -553,11 +616,12 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   long _attempted_steps = 0;
   long _unsuccessful_steps = 0;
   
-  real_t _tolerance = real_t("1e-25");
+  real_t _tolerance = real_t("1e-18");
   
   real_t _error, _last_norm_error = 1.0;
   real_t evolution_dimensionless_velocity_error;
   real_t evolution_dimensionless_position_error;
+  real_t evolution_phase_error;
   
   bool _discard = false;
   bool _break_next = false;
@@ -582,6 +646,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   real_t* _akifield_dimensionless_velocity = workspace->evolution_akifield_dimensionless_velocity;
   real_t* _akjfield_dimensionless_velocity = workspace->evolution_akjfield_dimensionless_velocity;
   real_t* _initial_dimensionless_velocity = workspace->evolution_initial_dimensionless_velocity;
+  
   real_t* _akafield_dimensionless_position = workspace->evolution_akafield_dimensionless_position;
   real_t* _akbfield_dimensionless_position = workspace->evolution_akbfield_dimensionless_position;
   real_t* _akcfield_dimensionless_position = workspace->evolution_akcfield_dimensionless_position;
@@ -594,8 +659,21 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   real_t* _akjfield_dimensionless_position = workspace->evolution_akjfield_dimensionless_position;
   real_t* _initial_dimensionless_position = workspace->evolution_initial_dimensionless_position;
 
+  real_t* _akafield_phase = workspace->evolution_akafield_phase;
+  real_t* _akbfield_phase = workspace->evolution_akbfield_phase;
+  real_t* _akcfield_phase = workspace->evolution_akcfield_phase;
+  real_t* _akdfield_phase = workspace->evolution_akdfield_phase;
+  real_t* _akefield_phase = workspace->evolution_akefield_phase;
+  real_t* _akffield_phase = workspace->evolution_akffield_phase;
+  real_t* _akgfield_phase = workspace->evolution_akgfield_phase;
+  real_t* _akhfield_phase = workspace->evolution_akhfield_phase;
+  real_t* _akifield_phase = workspace->evolution_akifield_phase;
+  real_t* _akjfield_phase = workspace->evolution_akjfield_phase;
+  real_t* _initial_phase = workspace->evolution_initial_phase;
+
   real_t* _dimensionless_velocity = workspace->velocity;
   real_t* _dimensionless_position = workspace->position;
+  real_t* _phase = workspace->phase;
   
   do {
 #ifdef FPTEST
@@ -608,9 +686,11 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       // Step 1
       memcpy(_akafield_dimensionless_velocity, _dimensionless_velocity, sizeof(real_t) * _dimensionless_velocity_ncomponents);
       memcpy(_akafield_dimensionless_position, _dimensionless_position, sizeof(real_t) * _dimensionless_position_ncomponents);
+      memcpy(_akafield_phase, _phase, sizeof(real_t) * _phase_ncomponents);
 
       workspace->active_velocity = _akafield_dimensionless_velocity;
       workspace->active_position = _akafield_dimensionless_position;
+      workspace->active_phase = _akafield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -636,9 +716,19 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
           _AUTOVEC(_akbfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[1][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akbfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[1][0]*_AUTOVEC(_akafield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akbfield_dimensionless_velocity;
       workspace->active_position = _akbfield_dimensionless_position;
+      workspace->active_phase = _akbfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -666,9 +756,20 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
           _AUTOVEC(_akcfield_dimensionless_position)[_i0] = _AUTOVEC(_dimensionless_position)[_i0] + _b[2][0]*_AUTOVEC(_akafield_dimensionless_position)[_i0] + _b[2][1]*_AUTOVEC(_akbfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akcfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[2][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[2][1]*_AUTOVEC(_akbfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akcfield_dimensionless_velocity;
       workspace->active_position = _akcfield_dimensionless_position;
+      workspace->active_phase = _akcfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -700,9 +801,22 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[3][2]*_AUTOVEC(_akcfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akdfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[3][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[3][1]*_AUTOVEC(_akbfield_phase)[_i0]
+              + _b[3][2]*_AUTOVEC(_akcfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akdfield_dimensionless_velocity;
       workspace->active_position = _akdfield_dimensionless_position;
+      workspace->active_phase = _akdfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -736,9 +850,23 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[4][2]*_AUTOVEC(_akcfield_dimensionless_position)[_i0] + _b[4][3]*_AUTOVEC(_akdfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akefield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[4][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[4][1]*_AUTOVEC(_akbfield_phase)[_i0]
+              + _b[4][2]*_AUTOVEC(_akcfield_phase)[_i0] + _b[4][3]*_AUTOVEC(_akdfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akefield_dimensionless_velocity;
       workspace->active_position = _akefield_dimensionless_position;
+      workspace->active_phase = _akefield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -770,9 +898,22 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[5][4]*_AUTOVEC(_akefield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akifield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[5][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[5][3]*_AUTOVEC(_akdfield_phase)[_i0]
+              + _b[5][4]*_AUTOVEC(_akefield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akifield_dimensionless_velocity;
       workspace->active_position = _akifield_dimensionless_position;
+      workspace->active_phase = _akifield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -806,9 +947,23 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[6][4]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[6][5]*_AUTOVEC(_akifield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akjfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[6][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[6][3]*_AUTOVEC(_akdfield_phase)[_i0]
+              + _b[6][4]*_AUTOVEC(_akefield_phase)[_i0] + _b[6][5]*_AUTOVEC(_akifield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akjfield_dimensionless_velocity;
       workspace->active_position = _akjfield_dimensionless_position;
+      workspace->active_phase = _akjfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -840,9 +995,22 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[7][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akbfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[7][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[7][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[7][6]*_AUTOVEC(_akjfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akbfield_dimensionless_velocity;
       workspace->active_position = _akbfield_dimensionless_position;
+      workspace->active_phase = _akbfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -876,9 +1044,23 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[8][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[8][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akcfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[8][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[8][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[8][6]*_AUTOVEC(_akjfield_phase)[_i0]+ _b[8][7]*_AUTOVEC(_akbfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akcfield_dimensionless_velocity;
       workspace->active_position = _akcfield_dimensionless_position;
+      workspace->active_phase = _akcfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -914,9 +1096,24 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[9][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[9][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0]+ _b[9][8]*_AUTOVEC(_akcfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akdfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[9][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[9][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[9][6]*_AUTOVEC(_akjfield_phase)[_i0]+ _b[9][7]*_AUTOVEC(_akbfield_phase)[_i0]+ _b[9][8]*_AUTOVEC(_akcfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akdfield_dimensionless_velocity;
       workspace->active_position = _akdfield_dimensionless_position;
+      workspace->active_phase = _akdfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -956,9 +1153,26 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[10][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akefield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[10][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[10][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[10][6]*_AUTOVEC(_akjfield_phase)[_i0]+ _b[10][7]*_AUTOVEC(_akbfield_phase)[_i0] + _b[10][8]*_AUTOVEC(_akcfield_phase)[_i0]
+              + _b[10][9]*_AUTOVEC(_akdfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akefield_dimensionless_velocity;
       workspace->active_position = _akefield_dimensionless_position;
+      workspace->active_phase = _akefield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -1000,9 +1214,27 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[11][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[11][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akffield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[11][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[11][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[11][6]*_AUTOVEC(_akjfield_phase)[_i0] + _b[11][7]*_AUTOVEC(_akbfield_phase)[_i0] + _b[11][8]*_AUTOVEC(_akcfield_phase)[_i0]
+              + _b[11][9]*_AUTOVEC(_akdfield_phase)[_i0] + _b[11][10]*_AUTOVEC(_akefield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akffield_dimensionless_velocity;
       workspace->active_position = _akffield_dimensionless_position;
+      workspace->active_phase = _akffield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -1046,9 +1278,28 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[12][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[12][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[12][11]*_AUTOVEC(_akffield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akgfield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akgfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[12][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[12][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[12][6]*_AUTOVEC(_akjfield_phase)[_i0]+ _b[12][7]*_AUTOVEC(_akbfield_phase)[_i0] + _b[12][8]*_AUTOVEC(_akcfield_phase)[_i0]
+              + _b[12][9]*_AUTOVEC(_akdfield_phase)[_i0] + _b[12][10]*_AUTOVEC(_akefield_phase)[_i0] + _b[12][11]*_AUTOVEC(_akffield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akgfield_dimensionless_velocity;
       workspace->active_position = _akgfield_dimensionless_position;
+      workspace->active_phase = _akgfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -1096,9 +1347,30 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[13][12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akhfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akgfield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akhfield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[13][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[13][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[13][6]*_AUTOVEC(_akjfield_phase)[_i0]+ _b[13][7]*_AUTOVEC(_akbfield_phase)[_i0] + _b[13][8]*_AUTOVEC(_akcfield_phase)[_i0]
+              + _b[13][9]*_AUTOVEC(_akdfield_phase)[_i0] + _b[13][10]*_AUTOVEC(_akefield_phase)[_i0] + _b[13][11]*_AUTOVEC(_akffield_phase)[_i0]
+              + _b[13][12]*_AUTOVEC(_akgfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _akhfield_dimensionless_velocity;
       workspace->active_position = _akhfield_dimensionless_position;
+      workspace->active_phase = _akhfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -1142,6 +1414,26 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _b[14][6]*_AUTOVEC(_akjfield_dimensionless_position)[_i0]+ _b[14][7]*_AUTOVEC(_akbfield_dimensionless_position)[_i0] + _b[14][8]*_AUTOVEC(_akcfield_dimensionless_position)[_i0]
               + _b[14][9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _b[14][10]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _b[14][11]*_AUTOVEC(_akffield_dimensionless_position)[_i0]
               + _b[14][12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0] + _b[14][13]*_AUTOVEC(_akhfield_dimensionless_position)[_i0];
+        }
+      }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akhfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akgfield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akifield_phase)[_i0] = _AUTOVEC(_phase)[_i0] + _b[14][0]*_AUTOVEC(_akafield_phase)[_i0] + _b[14][5]*_AUTOVEC(_akifield_phase)[_i0]
+              + _b[14][6]*_AUTOVEC(_akjfield_phase)[_i0]+ _b[14][7]*_AUTOVEC(_akbfield_phase)[_i0] + _b[14][8]*_AUTOVEC(_akcfield_phase)[_i0]
+              + _b[14][9]*_AUTOVEC(_akdfield_phase)[_i0] + _b[14][10]*_AUTOVEC(_akefield_phase)[_i0] + _b[14][11]*_AUTOVEC(_akffield_phase)[_i0]
+              + _b[14][12]*_AUTOVEC(_akgfield_phase)[_i0] + _b[14][13]*_AUTOVEC(_akhfield_phase)[_i0];
         }
       }
       {
@@ -1198,11 +1490,39 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
                 + _d[10]*_AUTOVEC(_akhfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akhfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akgfield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akjfield_phase)[_i0] = _d[0]*_AUTOVEC(_phase)[_i0]
+                + _d[1]*_AUTOVEC(_akafield_phase)[_i0]
+                + _d[2]*_AUTOVEC(_akifield_phase)[_i0]
+                + _d[3]*_AUTOVEC(_akjfield_phase)[_i0]
+                + _d[4]*_AUTOVEC(_akbfield_phase)[_i0]
+                + _d[5]*_AUTOVEC(_akcfield_phase)[_i0]
+                + _d[6]*_AUTOVEC(_akdfield_phase)[_i0]
+                + _d[7]*_AUTOVEC(_akefield_phase)[_i0]
+                + _d[8]*_AUTOVEC(_akffield_phase)[_i0]
+                + _d[9]*_AUTOVEC(_akgfield_phase)[_i0]
+                + _d[10]*_AUTOVEC(_akhfield_phase)[_i0];
+        }
+      }
       
       workspace->t += _a[14] * _step;
       
       workspace->active_velocity = _akifield_dimensionless_velocity;
       workspace->active_position = _akifield_dimensionless_position;
+      workspace->active_phase = _akifield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -1211,6 +1531,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       
       workspace->active_velocity = _akjfield_dimensionless_velocity;
       workspace->active_position = _akjfield_dimensionless_position;
+      workspace->active_phase = _akjfield_phase;
       
       // a_k=G[a_k, t]
       evolution_calculate_delta_a(_step, workspace);
@@ -1219,6 +1540,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       // ai = a
       memcpy(_initial_dimensionless_velocity, _dimensionless_velocity, sizeof(real_t) * _dimensionless_velocity_ncomponents);
       memcpy(_initial_dimensionless_position, _dimensionless_position, sizeof(real_t) * _dimensionless_position_ncomponents);
+      memcpy(_initial_phase, _phase, sizeof(real_t) * _phase_ncomponents);
       
       // a = a + etc
       {
@@ -1259,6 +1581,26 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _c[9]*_AUTOVEC(_akdfield_dimensionless_position)[_i0] + _c[10]*_AUTOVEC(_akefield_dimensionless_position)[_i0] + _c[11]*_AUTOVEC(_akffield_dimensionless_position)[_i0]
               + _c[12]*_AUTOVEC(_akgfield_dimensionless_position)[_i0] + _c[13]*_AUTOVEC(_akhfield_dimensionless_position)[_i0] + _c[14]*_AUTOVEC(_akifield_dimensionless_position)[_i0]
               + _c[15]*_AUTOVEC(_akjfield_dimensionless_position)[_i0];
+        }
+      }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akhfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akgfield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_phase)[_i0] += _c[0]*_AUTOVEC(_akafield_phase)[_i0] + _c[7]*_AUTOVEC(_akbfield_phase)[_i0] + _c[8]*_AUTOVEC(_akcfield_phase)[_i0]
+              + _c[9]*_AUTOVEC(_akdfield_phase)[_i0] + _c[10]*_AUTOVEC(_akefield_phase)[_i0] + _c[11]*_AUTOVEC(_akffield_phase)[_i0]
+              + _c[12]*_AUTOVEC(_akgfield_phase)[_i0] + _c[13]*_AUTOVEC(_akhfield_phase)[_i0] + _c[14]*_AUTOVEC(_akifield_phase)[_i0]
+              + _c[15]*_AUTOVEC(_akjfield_phase)[_i0];
         }
       }
       // a* = a + etc
@@ -1302,9 +1644,30 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
               + _cs[14]*_AUTOVEC(_akifield_dimensionless_position)[_i0] + _cs[15]*_AUTOVEC(_akjfield_dimensionless_position)[_i0];
         }
       }
+      {
+        _MAKE_AUTOVEC_VARIABLE(_akbfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akcfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_initial_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akffield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akdfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akifield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akefield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akjfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akhfield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akafield_phase);
+        _MAKE_AUTOVEC_VARIABLE(_akgfield_phase);
+        #pragma ivdep
+        for (long _i0 = 0; _i0 < (1) * _phase_ncomponents; _i0++) {
+          _AUTOVEC(_akafield_phase)[_i0] = _AUTOVEC(_initial_phase)[_i0] + _cs[0]*_AUTOVEC(_akafield_phase)[_i0] + _cs[7]*_AUTOVEC(_akbfield_phase)[_i0]
+              + _cs[8]*_AUTOVEC(_akcfield_phase)[_i0] + _cs[9]*_AUTOVEC(_akdfield_phase)[_i0] + _cs[10]*_AUTOVEC(_akefield_phase)[_i0]
+              + _cs[11]*_AUTOVEC(_akffield_phase)[_i0] + _cs[12]*_AUTOVEC(_akgfield_phase)[_i0] + _cs[13]*_AUTOVEC(_akhfield_phase)[_i0]
+              + _cs[14]*_AUTOVEC(_akifield_phase)[_i0] + _cs[15]*_AUTOVEC(_akjfield_phase)[_i0];
+        }
+      }
       
       workspace->active_velocity = _dimensionless_velocity;
       workspace->active_position = _dimensionless_position;
+      workspace->active_phase = _phase;
       
       _error = 0.0;
       
@@ -1315,6 +1678,10 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       evolution_dimensionless_position_error = evolution_dimensionless_position_timestep_error(_akafield_dimensionless_position,workspace);
       if (evolution_dimensionless_position_error > _error)
         _error = evolution_dimensionless_position_error;
+
+      evolution_phase_error = evolution_phase_timestep_error(_akafield_phase,workspace);
+      if (evolution_phase_error > _error)
+        _error = evolution_phase_error;
       
       _attempted_steps++;
       
@@ -1346,6 +1713,13 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
                              "         Non-finite number in integration vector \"position\" in segment 2.\n", to_double(workspace->t));
+          
+          goto _SEGMENT2_END;
+        }
+        if (evolution_phase_reset(_initial_phase, workspace) == false) {
+  
+          _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
+                             "         Non-finite number in integration vector \"phase\" in segment 2.\n", to_double(workspace->t));
           
           goto _SEGMENT2_END;
         }
@@ -1411,6 +1785,9 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   cout << "Velocities: " << endl;
   cout << to_out_string(workspace->velocity[0],30) << endl;
   cout << to_out_string(workspace->velocity[1],30) << endl;
+
+  cout << "Phase: " << endl;
+  cout << to_out_string(workspace->phase[0],30) << endl;
 #endif
 }
 
@@ -1498,6 +1875,48 @@ bool evolution_dimensionless_position_reset(real_t* _reset_to_dimensionless_posi
   return bNoNaNsPresent;
 }
 
+real_t evolution_phase_timestep_error(real_t* _checkfield, ode_workspace_t* workspace)
+{
+  real_t _error = get_epsilon<real_t>();
+  real_t _temp_error = con_fun<real_t>("0.0");
+
+  for (long  _i1 = 0; _i1 < _phase_ncomponents; _i1++) {
+    _temp_error = abs(workspace->phase[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->phase[_i1]) + 0.5*abs(_checkfield[_i1]));
+    
+#ifdef FPTEST
+    cout << "Phase: " << to_out_string(workspace->phase[_i1],30) << endl;
+    cout << "Chk_Phase: " << to_out_string(_checkfield[_i1],30) << endl;
+    cout << "diff: " << to_out_string(abs(workspace->phase[_i1] - _checkfield[_i1]),30) << endl;
+    cout << "norm diff: " << to_out_string((abs(workspace->phase[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->phase[_i1]) + 0.5*abs(_checkfield[_i1]))),30) << endl;
+#endif
+
+    if (_xmds_isnonfinite(_temp_error)) {
+      /* For _temp_error to be NaN, both the absolute value of the higher and lower order solutions
+          must BOTH be zero. This therefore implies that their difference is zero, and that there is no error. */
+      _temp_error = 0.0;
+    }
+    
+    if (_error < _temp_error) // UNVECTORISABLE
+      _error = _temp_error;
+  }
+
+  return _error;
+}
+
+bool evolution_phase_reset(real_t* _reset_to_phase, ode_workspace_t* workspace)
+{
+  memcpy(workspace->phase, _reset_to_phase, sizeof(real_t) * _phase_ncomponents);
+  
+  /* return false if there's a NaN somewhere in the vector, otherwise return true */
+  bool bNoNaNsPresent = true;
+
+  for (long _i1 = 0; _i1 < _phase_ncomponents; _i1++) {
+    if (_xmds_isnonfinite(workspace->phase[_i1])) bNoNaNsPresent = false;
+  }
+
+  return bNoNaNsPresent;
+}
+
 // Delta A propagation operator for field dimensionless
 void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_workspace_t* workspace)
 {
@@ -1513,6 +1932,7 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   #define v2_3 workspace->active_velocity[5]
   #define x1_3 workspace->active_position[4]
   #define x2_3 workspace->active_position[5]
+  #define phase workspace->active_phase[0]
   #define t workspace->t
   #define phi workspace->phi
   real_t dx2_1_dt;
@@ -1527,7 +1947,8 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   real_t dv1_3_dt;
   real_t dv2_3_dt;
   real_t dx1_3_dt;
-  
+  real_t dphase_dt;
+
 #if (TRAPTYPE == 1)
   real_t dyn_trap = trap*(a - 2*q*cos(wrf*(t)+phi));
 #endif
@@ -1539,14 +1960,17 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
 
   // Microtrap with micromotion
 #if (TRAPTYPE == 1)
-  dv1_1_dt = -coulomb/(delta+x2_1-x1_1) - dyn_trap*x1_1;
-  dv2_1_dt = coulomb/(delta+x2_1-x1_1) - dyn_trap*x2_1;
+  dv1_1_dt = -coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x1_1;
+  dv2_1_dt = coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x2_1;
+  dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((delta+x2_1-x1_1)) - 0.5*dyn_trap*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((delta+x2_2-x1_2)) + 0.5*dyn_trap*(x1_2*x1_2+x2_2*x2_2);
 #else
   // Paul Trap
-  dv1_1_dt = -coulomb/(x2_1-x1_1) - x1_1;
-  dv2_1_dt = coulomb/(x2_1-x1_1) - x2_1;
+  dv1_1_dt = -coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x1_1;
+  dv2_1_dt = coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x2_1;
+  dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((x2_1-x1_1)) - 0.5*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((x2_2-x1_2)) + 0.5*(x1_2*x1_2+x2_2*x2_2);
 #endif
 
+  phase = dphase_dt * _step;
   x2_1 = dx2_1_dt * _step;
   v1_1 = dv1_1_dt * _step;
   v2_1 = dv2_1_dt * _step;
@@ -1558,12 +1982,13 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
 
   // Microtrap with micromotion
 #if (TRAPTYPE == 1)
-  dv1_2_dt = -coulomb/(delta+x2_2-x1_2) - dyn_trap*x1_2;
-  dv2_2_dt = coulomb/(delta+x2_2-x1_2) - dyn_trap*x2_2;
+  dv1_2_dt = -coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x1_2;
+  dv2_2_dt = coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x2_2;
 #else
   // Paul Trap
-  dv1_2_dt = -coulomb/(x2_2-x1_2) - x1_2;
-  dv2_2_dt = coulomb/(x2_2-x1_2) - x2_2;
+  dv1_2_dt = -coulomb/((x2_2-x1_2)*(x2_2-x1_2)) - x1_2;
+  dv2_2_dt = coulomb/((x2_2-x1_2)*(x2_2-x1_2)) - x2_2;
+  
 #endif
 
   x2_2 = dx2_2_dt * _step;
@@ -1607,4 +2032,5 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   #undef x1_3
   #undef x2_3
   #undef phi
+  #undef phase
 }

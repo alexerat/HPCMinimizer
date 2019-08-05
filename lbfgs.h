@@ -370,7 +370,7 @@ struct lbfgs_parameter_t {
  */
 template<typename floatval_t> 
 using lbfgs_evaluate_t = floatval_t (*)(
-	const floatval_t *,
+	  const floatval_t *,
     const floatval_t *,
     const floatval_t *,
     floatval_t *,

@@ -1395,7 +1395,7 @@ static int line_search_morethuente(
 #endif
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(x, extparams, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, extparams, precomps, g, cd->n, GSTEP);
         vecdot(&dg, g, s, n);
 
         ftest1 = finit + *stp * dgtest;

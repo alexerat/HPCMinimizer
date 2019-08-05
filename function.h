@@ -104,7 +104,7 @@ inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
 #define NDIMPOINTS 13
 #define NRUNS 3000
 
-// CHANGE: Onle define robust when using robust.
+// CHANGE: Only define robust when using robust.
 //#define ROBUST false
 #define SAMPLES 10
 #define NOISE 0.0001
@@ -122,10 +122,10 @@ inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
 #define CONSTANTS(floatval_t) const floatval_t const_arr_##floatval_t[NCONSTANTS]={con_fun<floatval_t>("2.0"),sqrt(con_fun<floatval_t>("2.0"))};
 
 // CHANGE: Functions are now stage specific
-#define FUNCTION0(x, params) (__extension__({pow(sin(x[0]-c[1]),2);}))
-#define DERIVATIVES0(g, x, params, f, step) (__extension__({g[0]=c[0]*cos(x[0]-c[1])*sin(x[0]-c[1]);}))
+#define FUNCTION0(x, params, precompute) (__extension__({pow(sin(x[0]-c[1]),2);}))
+#define DERIVATIVES0(g, x, params, precompute, f, step) (__extension__({g[0]=c[0]*cos(x[0]-c[1])*sin(x[0]-c[1]);}))
 
-#define FUNCTION1(x, params) (__extension__({pow(x[0]-sqrt(floatval_t("2.0")).0,2);}))
-#define DERIVATIVES1(g, x, params, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
+#define FUNCTION1(x, params, precompute) (__extension__({pow(x[0]-sqrt(floatval_t("2.0")).0,2);}))
+#define DERIVATIVES1(g, x, params, precompute, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
 
 #endif /*USER_FUNCTION_H*/

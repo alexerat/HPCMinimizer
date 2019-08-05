@@ -20,6 +20,9 @@
 
 
 #include "precision.h"
+
+
+// TODO: Improve the algorithm interchangability/set
 #include "lbfgs.h"
 //#include "de.h"
 #include "preprocessor_trickery.h"
@@ -38,6 +41,7 @@ template<typename floatval_t>
 using evaluate_t = floatval_t (*)(
     const floatval_t *,
     const floatval_t *,
+	const floatval_t *,
     const int
     );
 
@@ -1451,6 +1455,7 @@ protected:
     static floatval_t _lbgfs_evaluate(
         const floatval_t *X,
         const floatval_t *params,
+		const floatval_t *precompute,
         floatval_t *g,
         const int n,
         const floatval_t step
@@ -1461,6 +1466,7 @@ protected:
 	static floatval_t _de_evaluate(
         const floatval_t *X,
         const floatval_t *params,
+		const floatval_t *precompute,
         const int n
         )
     {
@@ -1489,31 +1495,31 @@ objective_function *objTest;
 #endif /*TEST_START_POINTS*/
 
 template<typename floatval_t>
-void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX);
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX);
 
 template<typename floatval_t>
-void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
 	if(locDepth == obj->currBSetDIMS[depth])
 	{
-		castBoundaries<floatval_t>(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, Xin, X, best, bestX);
+		castBoundaries<floatval_t>(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, precompute, Xin, X, best, bestX);
 	}
 	else
 	{
 		X[dimCount + locDepth] = floor(Xin[dimCount + locDepth]);
-		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, best, bestX);
 
 		X[dimCount + locDepth] = ceil(Xin[dimCount + locDepth]);
-		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, best, bestX);
 	}
 }
 
 template<typename floatval_t>
-void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
 {
 	if(depth == obj->NactiveBSETS)
 	{
-		floatval_t f = obj->evaluate(X, params, DIM);
+		floatval_t f = obj->evaluate(X, params, precompute, DIM);
 		if(f < *best)
 		{
 			*best = f;
@@ -1528,7 +1534,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 		
 		if(boundaries[obj->activeBSETS[depth]].intCast)
 		{
-			locCastRecurs(depth, 0, dimCount, obj, params, Xin, X, best, bestX);
+			locCastRecurs(depth, 0, dimCount, obj, params, precompute, Xin, X, best, bestX);
 		}
 		else
 		{
@@ -1536,7 +1542,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 			{
 				X[dimCount + i] = Xin[dimCount + i];
 			}
-			castBoundaries(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, Xin, X, best, bestX);
+			castBoundaries(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, precompute, Xin, X, best, bestX);
 		}
 	}
 }
@@ -1582,12 +1588,27 @@ void *run_multi(void *threadarg)
 
 #if (MAX_PRECISION_LEVEL > 1)
 	double* locParams_dbl = new double[NPARAMS];
+#ifdef PARAMSCONSTSCOUNT
+	double* locPreComps_dbl = new double[PARAMSCONSTSCOUNT];
+#else /* No parameter precomputes */
+	double* locPreComps_dbl = NULL;
+#endif
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 	dd_real* locParams_dd = new dd_real[NPARAMS];
+#ifdef PARAMSCONSTSCOUNT
+	double* locPreComps_dd = new dd_real[PARAMSCONSTSCOUNT];
+#else /* No parameter precomputes */
+	double* locPreComps_dd = NULL;
+#endif
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* locParams_qd = new qd_real[NPARAMS];
+#ifdef PARAMSCONSTSCOUNT
+	double* locPreComps_qd = new qd_real[PARAMSCONSTSCOUNT];
+#else /* No parameter precomputes */
+	double* locPreComps_qd = NULL;
+#endif
 #endif
 
 	bool workDone = false;
@@ -3469,16 +3490,23 @@ int main(int argc, char **argv)
 
 	int ret = ode_init(&ode_wspace);
 
-	int zVec[3] = {20,-20,30};
-	MAX_PRECISION_T tVec[3] = {con_fun<MAX_PRECISION_T>("0.0"),con_fun<MAX_PRECISION_T>("0.5"),con_fun<MAX_PRECISION_T>("1.0")};
+	int zVec[2] = {2,0};
+	MAX_PRECISION_T tVec[2] = {con_fun<MAX_PRECISION_T>("0.0"),con_fun<MAX_PRECISION_T>("0.5")};
 	MAX_PRECISION_T rep_time =con_fun<MAX_PRECISION_T>("0.001");
 	MAX_PRECISION_T ode_phi = con_fun<MAX_PRECISION_T>("1.0");
-	int ode_dim = 3;
+	int ode_dim = 2;
 
 	ret = ode_run(zVec,tVec,rep_time,ode_phi,ode_dim,&ode_wspace);
 
+
+	cout << "Phase is: " << to_out_string(ode_wspace.phase[0],4) << endl;
+	cout << "Position is: " << to_out_string(ode_wspace.position[0],4) << endl;
+
+	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(ode_wspace.phase[0]) - dd_real::_pi2,2) + dd_real(0.2)*(pow(ode_wspace.position[0]+initDisp,2) + pow(ode_wspace.position[1]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(ode_wspace.position[2]+initDisp,2) + pow(ode_wspace.position[3]-initDisp,2));
+
 	ode_dest(&ode_wspace);
 
+	cout << "Cost is: " << to_out_string(cost,4) << endl;
 
 	return 0;
 	num_nodes = 1;
