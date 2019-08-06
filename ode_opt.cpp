@@ -455,7 +455,7 @@ real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
   ode_run(zVec,tVec,rep_time,phi,dim,workspace);
 
   // TODO: Take res and determine cost function.
-  return (dd_real(1.0)/dd_real(3.0))*pow(abs(workspace->phase[0]) - dd_real::_pi2,2) + dd_real(0.2)*(workspace->position[0] + workspace->position[1]) + dd_real(0.2)*(workspace->position[2] + workspace->position[3]);
+  return (__float128(1.0)/__float128(3.0))*pow(abs(workspace->phase[0]) - M_PI_2q,2) + __float128(0.2)*(workspace->position[0] + workspace->position[1]) + __float128(0.2)*(workspace->position[2] + workspace->position[3]);
 }
 
 // ********************************************************
@@ -483,14 +483,14 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
 
   for(p=0;p<dim;p++)
   {
-    printf("tau[%d][0]=%lf\n",p,to_double(tau[2*p]));
+    printf("tau[%d][0]=%lf\n",p,(double)(tau[2*p]));
   }
   
-  qsort(tau,dim,sizeof(tau)/2,compare);
+  qsort(tau,dim,sizeof(real_t)*2,compare);
   
   for(p=0;p<dim;p++)
   {
-    printf("tau[%d][0]=%lf, tau[%d][1]=%lf\n",p,to_double(tau[2*p]),p,to_double(tau[2*p+1]));
+    printf("tau[%d][0]=%lf, tau[%d][1]=%lf\n",p,(double)(tau[2*p]),p,(double)(tau[2*p+1]));
   }
   // **********************************************
     
@@ -498,7 +498,7 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
   // Run-time validation checks
   if (tau[2*1 + 0] <= 0.0)
     _LOG(_ERROR_LOG_LEVEL, "ERROR: The interval for segment 2 is not positive!\n"
-                           "Interval = %e\n", to_double(tau[2*1+0]));
+                           "Interval = %e\n", (double)(tau[2*1+0]));
   
   /* Code that actually does stuff goes here */
   workspace->t = 0.0;
@@ -616,7 +616,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   long _attempted_steps = 0;
   long _unsuccessful_steps = 0;
   
-  real_t _tolerance = real_t("1e-18");
+  real_t _tolerance = con_fun<real_t>("1e-18");
   
   real_t _error, _last_norm_error = 1.0;
   real_t evolution_dimensionless_velocity_error;
@@ -1705,21 +1705,21 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
         if (evolution_dimensionless_velocity_reset(_initial_dimensionless_velocity, workspace) == false) {
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
-                             "         Non-finite number in integration vector \"velocity\" in segment 2.\n", to_double(workspace->t));
+                             "         Non-finite number in integration vector \"velocity\" in segment 2.\n", (double)(workspace->t));
           
           goto _SEGMENT2_END;
         }
         if (evolution_dimensionless_position_reset(_initial_dimensionless_position, workspace) == false) {
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
-                             "         Non-finite number in integration vector \"position\" in segment 2.\n", to_double(workspace->t));
+                             "         Non-finite number in integration vector \"position\" in segment 2.\n", (double)(workspace->t));
           
           goto _SEGMENT2_END;
         }
         if (evolution_phase_reset(_initial_phase, workspace) == false) {
   
           _LOG(_WARNING_LOG_LEVEL, "WARNING: NaN present. Integration halted at t = %e.\n"
-                             "         Non-finite number in integration vector \"phase\" in segment 2.\n", to_double(workspace->t));
+                             "         Non-finite number in integration vector \"phase\" in segment 2.\n", (double)(workspace->t));
           
           goto _SEGMENT2_END;
         }
@@ -1730,6 +1730,10 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
       }
       
       _old_step = _step;
+
+#ifdef FPTEST
+      cout << "error: " << to_out_string(_error,10) << endl;
+#endif
       
       // Resize step
       if (_error < 0.5*_tolerance || _error > _tolerance) {
@@ -1740,6 +1744,11 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
         real_t _scalingFactor = _safetyFactor * pow(abs(_error/_tolerance), real_t(-0.7/9.0)) * pow(_last_norm_error, real_t(0.4/9.0));
         _scalingFactor = MAX(_scalingFactor, 1.0/5.0);
         _scalingFactor = MIN(_scalingFactor, 7.0);
+
+#ifdef FPTEST
+        cout << "scaling factor: " << to_out_string(_scalingFactor,10) << endl;
+#endif
+
         if (_error > _tolerance && _scalingFactor > 1.0) {
 #ifdef FPTEST
           cout << "Step not within tolerence." << endl;
@@ -1767,14 +1776,14 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
     
     if ( (_t_local + _step)*(1.0 + _EPSILON) > _t_break_next) {
       _break_next = true;
-      _LOG(_SAMPLE_LOG_LEVEL, "Current timestep: %e\n", to_double(_old_step));
+      _LOG(_SAMPLE_LOG_LEVEL, "Current timestep: %e\n", (double)(_old_step));
       _step = _t_break_next - _t_local;
     }
   } while (!_break);
   
   _SEGMENT2_END:;
 
-  _LOG(_SEGMENT_LOG_LEVEL, "Segment 2: minimum timestep: %e maximum timestep: %e\n", to_double(_min_step), to_double(_max_step));
+  _LOG(_SEGMENT_LOG_LEVEL, "Segment 2: minimum timestep: %e maximum timestep: %e\n", (double)(_min_step), (double)(_max_step));
   _LOG(_SEGMENT_LOG_LEVEL, "  Attempted %li steps, %.2f%% steps failed.\n", _attempted_steps, (100.0*_unsuccessful_steps)/_attempted_steps);
 
 #ifdef FPTEST

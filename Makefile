@@ -1,9 +1,9 @@
-CC=icpc
-LD=icpc
-CFLAGS=-c -O3 -fno-exceptions -std=c++11 -fp-model consistent -fimf-use-svml
+CC=g++
+LD=g++
+CFLAGS=-c -O3 -fno-exceptions -std=gnu++11
 TFLAGS=
 PROFDIR=
-ARCHFLAGS=-xCOMMON-AVX512
+ARCHFLAGS=
 INCLUDES=-I./qd/include -I./arprec/include
 LFLAGS=
 SOURCES=lbfgs.cpp localMinima.cpp
@@ -13,7 +13,7 @@ OPTFLAG=
 OBJECTS=$(SOURCES:.cpp=.o) $(QDOBJS)
 EXECUTABLE=localMinima
 EXECUTABLE_MPI=localMinima_MPI
-LIBRARIERS=-lpthread
+LIBRARIERS=-lpthread -lquadmath
 SUBDIRS=./qd/src/ ./arprec/src/
 
 no_prof: PROFFLAG=
@@ -22,7 +22,7 @@ profile: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias
 profile: PROFFLAG=-prof-gen
 profile: OPTFLAG=
 
-debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic -DVERBOSE
+debug: CFLAGS=-c -O0 -fno-exceptions -std=gnu++11 -g -Wall -pedantic -DVERBOSE
 debug: OPTFLAG=
 debug: PROFFLAG=
 

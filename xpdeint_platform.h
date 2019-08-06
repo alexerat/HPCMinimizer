@@ -15,6 +15,8 @@
 #include <qd/dd_real.h>
 #include <qd/qd_real.h>
 
+#include "precision.h"
+
 #ifndef XPDEINT_PLATFORM_H
 #define XPDEINT_PLATFORM_H
 
@@ -604,6 +606,11 @@
       FP_UNION<fp_type> x, NANMask = _xmds_nan_mask<fp_type>();
       x.as_value = value;
       return (x.as_int & NANMask.as_int) == NANMask.as_int;
+  }
+
+  template<> inline bool _xmds_isnonfinite<__float128>(__float128 value)
+  { 
+    return isnanq(value);
   }
 
   template<> inline bool _xmds_isnonfinite<dd_real>(dd_real value)

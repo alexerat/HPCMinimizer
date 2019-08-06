@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <sys/sysinfo.h>
 
+
 #ifdef FHEADER
 #include FHEADER
 #else /*FHEADER*/
@@ -215,7 +216,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 
 CONSTANTS(double)
 #if (MAX_PRECISION_LEVEL > 1)
-CONSTANTS(dd_real)
+CONSTANTS(__float128)
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 CONSTANTS(qd_real)
@@ -281,7 +282,7 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 #undef M
 
 #if (MAX_PRECISION_LEVEL > 1)
-#define M(i, _) eval_code(i,dd_real)
+#define M(i, _) eval_code(i,__float128)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
 #endif
@@ -336,7 +337,7 @@ EVAL_PP(REPEAT_PP(NSTAGES, M, ~))
 #undef M
 
 #if (MAX_PRECISION_LEVEL > 1)
-#define M(i, _) eval_code(i,dd_real)
+#define M(i, _) eval_code(i,__float128)
 EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
 #undef M
 #endif
@@ -368,7 +369,7 @@ void (* evaluates_dbl [])( ) =
 #undef M
 
 #if (MAX_PRECISION_LEVEL > 1)
-#define M(i, _) funcptr_code(i,dd_real)
+#define M(i, _) funcptr_code(i,__float128)
 void (* evaluates_dd [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
@@ -407,7 +408,7 @@ void (* evaluates_gen_dbl [])( ) =
 #undef M
 
 #if (MAX_PRECISION_LEVEL > 1)
-#define M(i, _) funcptr_code(i,dd_real)
+#define M(i, _) funcptr_code(i,__float128)
 void (* evaluates_gen_dd [])( ) = 
 {
 	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
@@ -495,7 +496,7 @@ template<>
 inline fptr getEvalFunc<double>(int stage) { return evaluates_dbl[stage]; }
 #if (MAX_PRECISION_LEVEL > 1)
 template<>
-inline fptr getEvalFunc<dd_real>(int stage) { return evaluates_dd[stage]; }
+inline fptr getEvalFunc<__float128>(int stage) { return evaluates_dd[stage]; }
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 template<>
@@ -513,7 +514,7 @@ template<>
 inline fptr getCastEvalFunc<double>(int stage) { return evaluates_gen_dbl[stage]; }
 #if (MAX_PRECISION_LEVEL > 1)
 template<>
-inline fptr getCastEvalFunc<dd_real>(int stage) { return evaluates_gen_dd[stage]; }
+inline fptr getCastEvalFunc<__float128>(int stage) { return evaluates_gen_dd[stage]; }
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 template<>
@@ -529,7 +530,7 @@ inline fptr getCastEvalFunc<mp_real>(int stage) { return evaluates_gen_mp[stage]
 	double* ubounds_dbl = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	dd_real* ubounds_dd = NULL;
+	__float128* ubounds_dd = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* ubounds_qd = NULL;
@@ -540,7 +541,7 @@ inline fptr getCastEvalFunc<mp_real>(int stage) { return evaluates_gen_mp[stage]
 	double* lbounds_dbl = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	dd_real* lbounds_dd = NULL;
+	__float128* lbounds_dd = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* lbounds_qd = NULL;
@@ -551,7 +552,7 @@ inline fptr getCastEvalFunc<mp_real>(int stage) { return evaluates_gen_mp[stage]
 	double* stepUp_dbl = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	dd_real* stepUp_dd = NULL;
+	__float128* stepUp_dd = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* stepUp_qd = NULL;
@@ -562,7 +563,7 @@ inline fptr getCastEvalFunc<mp_real>(int stage) { return evaluates_gen_mp[stage]
 	double* stepDown_dbl = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	dd_real* stepDown_dd = NULL;
+	__float128* stepDown_dd = NULL;
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* stepDown_qd = NULL;
@@ -581,7 +582,7 @@ inline double getBStepDown<double>(int idx)
 #endif
 }
 template<>
-inline dd_real getBStepDown<dd_real>(int idx) 
+inline __float128 getBStepDown<__float128>(int idx) 
 { 
 #if (MAX_PRECISION_LEVEL > 2)
 	return stepDown_dd[idx]; 
@@ -595,7 +596,7 @@ inline qd_real getBStepDown<qd_real>(int idx)
 #if (MAX_PRECISION_LEVEL > 3)
 	return stepDown_qd[idx]; 
 #else
-	return stepDown[idx]; 
+	return qd_real(to_out_string(stepDown[idx],32).c_str()); 
 #endif
 }
 #if (MAX_PRECISION_LEVEL > 3)
@@ -616,7 +617,7 @@ inline double getBStepUp<double>(int idx)
 #endif
 }
 template<>
-inline dd_real getBStepUp<dd_real>(int idx) 
+inline __float128 getBStepUp<__float128>(int idx) 
 { 
 #if (MAX_PRECISION_LEVEL > 2)
 	return stepUp_dd[idx]; 
@@ -630,7 +631,7 @@ inline qd_real getBStepUp<qd_real>(int idx)
 #if (MAX_PRECISION_LEVEL > 3)
 	return stepUp_qd[idx]; 
 #else
-	return stepUp[idx]; 
+	return qd_real(to_out_string(stepUp[idx],32).c_str()); 
 #endif
 }
 #if (MAX_PRECISION_LEVEL > 3)
@@ -651,7 +652,7 @@ inline double getLowerBounds<double>(int idx)
 #endif
 }
 template<>
-inline dd_real getLowerBounds<dd_real>(int idx) 
+inline __float128 getLowerBounds<__float128>(int idx) 
 { 
 #if (MAX_PRECISION_LEVEL > 2)
 	return lbounds_dd[idx]; 
@@ -665,7 +666,8 @@ inline qd_real getLowerBounds<qd_real>(int idx)
 #if (MAX_PRECISION_LEVEL > 3)
 	return lbounds_qd[idx]; 
 #else
-	return lbounds[idx]; 
+	// TODO: Native transform between quad and qd/mp, then remove the string nonsense
+	return qd_real(to_out_string(lbounds[idx],32).c_str()); 
 #endif
 }
 #if (MAX_PRECISION_LEVEL > 3)
@@ -686,7 +688,7 @@ inline double getUpperBounds<double>(int idx)
 #endif
 }
 template<>
-inline dd_real getUpperBounds<dd_real>(int idx) 
+inline __float128 getUpperBounds<__float128>(int idx) 
 { 
 #if (MAX_PRECISION_LEVEL > 2)
 	return ubounds_dd[idx]; 
@@ -700,7 +702,8 @@ inline qd_real getUpperBounds<qd_real>(int idx)
 #if (MAX_PRECISION_LEVEL > 3)
 	return ubounds_qd[idx]; 
 #else
-	return ubounds[idx]; 
+	// TODO: Native transform between quad and qd/mp, then remove the string nonsense
+	return qd_real(to_out_string(ubounds[idx],32).c_str());
 #endif
 }
 #if (MAX_PRECISION_LEVEL > 3)
@@ -1562,8 +1565,8 @@ void *run_multi(void *threadarg)
 #define locResults locResults_dbl
 
 #if (MAX_PRECISION_LEVEL > 1)
-	objective_function<dd_real> *obj_dd = new objective_function<dd_real>(threadNum);
-	OptimizeResult<dd_real> locResults_dd;
+	objective_function<__float128> *obj_dd = new objective_function<__float128>(threadNum);
+	OptimizeResult<__float128> locResults_dd;
 #undef obj
 #define obj obj_dd
 #undef locResults
@@ -1595,9 +1598,9 @@ void *run_multi(void *threadarg)
 #endif
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	dd_real* locParams_dd = new dd_real[NPARAMS];
+	__float128* locParams_dd = new __float128[NPARAMS];
 #ifdef PARAMSCONSTSCOUNT
-	double* locPreComps_dd = new dd_real[PARAMSCONSTSCOUNT];
+	double* locPreComps_dd = new __float128[PARAMSCONSTSCOUNT];
 #else /* No parameter precomputes */
 	double* locPreComps_dd = NULL;
 #endif
@@ -1669,7 +1672,7 @@ void *run_multi(void *threadarg)
 	locResults_dbl.X = new double[FULLDIM];
 
 #if (MAX_PRECISION_LEVEL > 1)
-	locResults_dd.X = new dd_real[FULLDIM];
+	locResults_dd.X = new __float128[FULLDIM];
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 	locResults_qd.X = new qd_real[FULLDIM];
@@ -1742,7 +1745,7 @@ void *run_multi(void *threadarg)
 #if (MAX_PRECISION_LEVEL > 1)
 		for(int i = 0; i < NPARAMS; i++)
 		{
-			locParams_dbl[i] = to_double(params[i]);
+			locParams_dbl[i] = (double)(params[i]);
 		}
 #ifdef PARAMSCONSTSCOUNT
 		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
@@ -1761,12 +1764,12 @@ void *run_multi(void *threadarg)
 #if (MAX_PRECISION_LEVEL > 2)
 		for(int i = 0; i < NPARAMS; i++)
 		{
-			locParams_dd[i] = (dd_real)params[i];
+			locParams_dd[i] = (__float128)params[i];
 		}
 #ifdef PARAMSCONSTSCOUNT
 		for(int i = 0; i < PARAMSCONSTSCOUNT; i++)
 		{
-			locPreComps_dd[i] = (dd_real)precompute[i];
+			locPreComps_dd[i] = (__float128)precompute[i];
 		}
 #endif
 		ret = obj_qd->setup();
@@ -1907,11 +1910,11 @@ void *run_multi(void *threadarg)
 				{
 					locResults_dd.X[i] = locResults_dbl.X[i];
 
-					if(locResults_dd.X[i] - lbounds[i] < get_delta<dd_real>())
+					if(locResults_dd.X[i] - lbounds[i] < get_delta<__float128>())
 					{
 						locResults_dd.X[i] = lbounds[i];
 					}
-					else if(ubounds[i] - locResults_dd.X[i] < get_delta<dd_real>())
+					else if(ubounds[i] - locResults_dd.X[i] < get_delta<__float128>())
 					{
 						locResults_dd.X[i] = ubounds[i];
 					}
@@ -1937,10 +1940,10 @@ void *run_multi(void *threadarg)
 				}
 				else
 				{
-					locResults_dd.f = dd_real(locResults_dbl.f);
+					locResults_dd.f = __float128(locResults_dbl.f);
 					for(int i = 0; i < DIM; i++)
 					{
-						locResults_dd.X[i] = dd_real(locResults_dbl.X[i]);
+						locResults_dd.X[i] = __float128(locResults_dbl.X[i]);
 					}
 				}
 
@@ -1963,7 +1966,7 @@ void *run_multi(void *threadarg)
 					locResults_qd.X[i] = locResults_dd.X[i];
 				}
 
-				if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<dd_real>()*1e5)
+				if(locResults_dd.f < results[threadNum].f || locResults_dd.f < get_delta<__float128>()*1e5)
 				{
 #ifdef VERBOSE
 					cout << "Increasing precision to qaud-double" << endl;
@@ -1983,10 +1986,10 @@ void *run_multi(void *threadarg)
 				}
 				else
 				{
-					locResults_qd.f = dd_real(locResults_dd.f);
+					locResults_qd.f = __float128(locResults_dd.f);
 					for(int i = 0; i < DIM; i++)
 					{
-						locResults_qd.X[i] = dd_real(locResults_dd.X[i]);
+						locResults_qd.X[i] = __float128(locResults_dd.X[i]);
 					}
 				}
 
@@ -2025,10 +2028,10 @@ void *run_multi(void *threadarg)
 				}
 				else
 				{
-					locResults_mp.f = dd_real(locResults_qd.f);
+					locResults_mp.f = __float128(locResults_qd.f);
 					for(int i = 0; i < DIM; i++)
 					{
-						locResults_mp.X[i] = dd_real(locResults_qd.X[i]);
+						locResults_mp.X[i] = __float128(locResults_qd.X[i]);
 					}
 				}
 
@@ -2100,7 +2103,7 @@ void *run_multi(void *threadarg)
 			}
 			else
 			{
-				binNum = to_int(floor((locResults.f / pow(10.0,floor(fabs(logRes)))) * (2<<(BUCKETORD - to_int(floor(fabs(logRes))))))) + (2<<(BUCKETORD - to_int(floor(fabs(logRes))))) - 1;
+				binNum = to_int(floor((locResults.f / pow(con_fun<MAX_PRECISION_T>("10.0"),floor(fabs(logRes)))) * (2<<(BUCKETORD - to_int(floor(fabs(logRes))))))) + (2<<(BUCKETORD - to_int(floor(fabs(logRes))))) - 1;
 			}
 
 			if(binNum < threadMinBin[threadNum])
@@ -2705,7 +2708,7 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 		}
 
 #ifndef SILENT
-		cout << "Got it, it was: " << res->f << " at: ";
+		cout << "Got it, it was: " << to_out_string(res->f,4) << " at: ";
 		for(int k = 0; k < DIM; k++)
 		{
 			cout << to_out_string(res->X[k],4) << ", ";
@@ -2779,7 +2782,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 				{
 					getAdjacentRes(j, bState, pBest, pPoint, &res);
 #ifndef SILENT
-					cout << "Post function, it was: " << res.f << endl;
+					cout << "Post function, it was: " << to_out_string(res.f,4) << endl;
 #endif /*!SILENT*/
 					if(res.f < currBest)
 					{
@@ -2885,16 +2888,16 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 
 					// Propagate these to lower precisions
 #if (MAX_PRECISION_LEVEL > 1)
-					stepDown_dbl[currDimIdx] = to_double(stepDown[currDimIdx]);
-					stepUp_dbl[currDimIdx] = to_double(stepUp[currDimIdx]);
-					lbounds_dbl[currDimIdx] = to_double(lbounds[currDimIdx]);
-					ubounds_dbl[currDimIdx] = to_double(ubounds[currDimIdx]);
+					stepDown_dbl[currDimIdx] = (double)(stepDown[currDimIdx]);
+					stepUp_dbl[currDimIdx] = (double)(stepUp[currDimIdx]);
+					lbounds_dbl[currDimIdx] = (double)(lbounds[currDimIdx]);
+					ubounds_dbl[currDimIdx] = (double)(ubounds[currDimIdx]);
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-					stepDown_dd[currDimIdx] = to_dd_real(stepDown[currDimIdx]);
-					stepUp_dd[currDimIdx] = to_dd_real(stepUp[currDimIdx]);
-					lbounds_dd[currDimIdx] = to_dd_real(lbounds[currDimIdx]);
-					ubounds_dd[currDimIdx] = to_dd_real(ubounds[currDimIdx]);
+					stepDown_dd[currDimIdx] = to___float128(stepDown[currDimIdx]);
+					stepUp_dd[currDimIdx] = to___float128(stepUp[currDimIdx]);
+					lbounds_dd[currDimIdx] = to___float128(lbounds[currDimIdx]);
+					ubounds_dd[currDimIdx] = to___float128(ubounds[currDimIdx]);
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 					stepDown_qd[currDimIdx] = to_qd_real(stepDown[currDimIdx]);
@@ -2961,16 +2964,16 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 
 						// Propagate these to lower precisions
 #if (MAX_PRECISION_LEVEL > 1)
-						stepDown_dbl[currDimIdx] = to_double(stepDown[currDimIdx]);
-						stepUp_dbl[currDimIdx] = to_double(stepUp[currDimIdx]);
-						lbounds_dbl[currDimIdx] = to_double(lbounds[currDimIdx]);
-						ubounds_dbl[currDimIdx] = to_double(ubounds[currDimIdx]);
+						stepDown_dbl[currDimIdx] = (double)(stepDown[currDimIdx]);
+						stepUp_dbl[currDimIdx] = (double)(stepUp[currDimIdx]);
+						lbounds_dbl[currDimIdx] = (double)(lbounds[currDimIdx]);
+						ubounds_dbl[currDimIdx] = (double)(ubounds[currDimIdx]);
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-						stepDown_dd[currDimIdx] = to_dd_real(stepDown[currDimIdx]);
-						stepUp_dd[currDimIdx] = to_dd_real(stepUp[currDimIdx]);
-						lbounds_dd[currDimIdx] = to_dd_real(lbounds[currDimIdx]);
-						ubounds_dd[currDimIdx] = to_dd_real(ubounds[currDimIdx]);
+						stepDown_dd[currDimIdx] = to___float128(stepDown[currDimIdx]);
+						stepUp_dd[currDimIdx] = to___float128(stepUp[currDimIdx]);
+						lbounds_dd[currDimIdx] = to___float128(lbounds[currDimIdx]);
+						ubounds_dd[currDimIdx] = to___float128(ubounds[currDimIdx]);
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 						stepDown_qd[currDimIdx] = to_qd_real(stepDown[currDimIdx]);
@@ -3058,10 +3061,10 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 	double* pubounds_dbl;
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-	dd_real* pstepDown_dd;
-	dd_real* pstepUp_dd;
-	dd_real* plbounds_dd;
-	dd_real* pubounds_dd;
+	__float128* pstepDown_dd;
+	__float128* pstepUp_dd;
+	__float128* plbounds_dd;
+	__float128* pubounds_dd;
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	qd_real* pstepDown_qd;
@@ -3138,10 +3141,10 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		ubounds_dbl = new double[DIM];
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
-		stepDown_dd = new dd_real[DIM];
-		stepUp_dd = new dd_real[DIM];
-		lbounds_dd = new dd_real[DIM];
-		ubounds_dd = new dd_real[DIM];
+		stepDown_dd = new __float128[DIM];
+		stepUp_dd = new __float128[DIM];
+		lbounds_dd = new __float128[DIM];
+		ubounds_dd = new __float128[DIM];
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 		stepDown_qd = new qd_real[DIM];
@@ -3347,11 +3350,11 @@ void getLineResult(string line, OptimizeResult<MAX_PRECISION_T>* res)
 	}
 
 	getline( iss, s, ',' );
-	res->f = MAX_PRECISION_T(s.c_str());
+	res->f = con_fun<MAX_PRECISION_T>(s.c_str());
 	for(int i = 0; i < DIM; i++)
 	{
 		getline( iss, s, ',' );
-		res->X[i] = MAX_PRECISION_T(s.c_str());
+		res->X[i] = con_fun<MAX_PRECISION_T>(s.c_str());
 	}
 }
 
@@ -3499,14 +3502,14 @@ int main(int argc, char **argv)
 	ret = ode_run(zVec,tVec,rep_time,ode_phi,ode_dim,&ode_wspace);
 
 
-	cout << "Phase is: " << to_out_string(ode_wspace.phase[0],4) << endl;
-	cout << "Position is: " << to_out_string(ode_wspace.position[0],4) << endl;
+	cout << "Phase is: " << to_out_string(ode_wspace.phase[0],35) << endl;
+	cout << "Position is: " << to_out_string(ode_wspace.position[0],35) << endl;
 
-	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(ode_wspace.phase[0]) - dd_real::_pi2,2) + dd_real(0.2)*(pow(ode_wspace.position[0]+initDisp,2) + pow(ode_wspace.position[1]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(ode_wspace.position[2]+initDisp,2) + pow(ode_wspace.position[3]-initDisp,2));
+	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(ode_wspace.phase[0]) - M_PI_2q,2) + __float128(0.2)*(pow(ode_wspace.position[0]+initDisp,2) + pow(ode_wspace.position[1]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(ode_wspace.position[2]+initDisp,2) + pow(ode_wspace.position[3]-initDisp,2));
 
 	ode_dest(&ode_wspace);
 
-	cout << "Cost is: " << to_out_string(cost,4) << endl;
+	cout << "Cost is: " << to_out_string(cost,35) << endl;
 
 	return 0;
 	num_nodes = 1;

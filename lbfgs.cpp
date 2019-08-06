@@ -81,17 +81,17 @@ using std::endl;
 /* Forward function declarations. */
 
 template int lbfgs<double>(int n,double *x,double *ptr_fx,double *lowerbounds,double *upperbounds,double *extparams, double *precomps,lbfgs_evaluate_t<double> proc_evaluate,lbfgs_progress_t<double> proc_progress,lbfgs_wspace_t<double> *wspace);
-template int lbfgs<dd_real>(int n,dd_real *x,dd_real *ptr_fx,dd_real *lowerbounds,dd_real *upperbounds,dd_real *extparams, dd_real *precomps,lbfgs_evaluate_t<dd_real> proc_evaluate,lbfgs_progress_t<dd_real> proc_progress,lbfgs_wspace_t<dd_real> *wspace);
+template int lbfgs<__float128>(int n,__float128 *x,__float128 *ptr_fx,__float128 *lowerbounds,__float128 *upperbounds,__float128 *extparams, __float128 *precomps,lbfgs_evaluate_t<__float128> proc_evaluate,lbfgs_progress_t<__float128> proc_progress,lbfgs_wspace_t<__float128> *wspace);
 //template int lbfgs<qd_real>(int n,qd_real *x,qd_real *ptr_fx,qd_real *lowerbounds,qd_real *upperbounds,qd_real *extparams, qd_real *precomps,lbfgs_evaluate_t<qd_real> proc_evaluate,lbfgs_progress_t<qd_real> proc_progress,lbfgs_wspace_t<qd_real> *wspace);
 //template int lbfgs<mp_real>(int n,mp_real *x,mp_real *ptr_fx,mp_real *lowerbounds,mp_real *upperbounds,mp_real *extparams, mp_real *precomps,lbfgs_evaluate_t<mp_real> proc_evaluate,lbfgs_progress_t<mp_real> proc_progress,lbfgs_wspace_t<mp_real> *wspace);
 
 template int lbfgs_init<double>(int n, lbfgs_wspace_t<double> *wspace, lbfgs_parameter_t<double> *param);
-template int lbfgs_init<dd_real>(int n, lbfgs_wspace_t<dd_real> *wspace, lbfgs_parameter_t<dd_real> *param);
+template int lbfgs_init<__float128>(int n, lbfgs_wspace_t<__float128> *wspace, lbfgs_parameter_t<__float128> *param);
 //template int lbfgs_init<qd_real>(int n, lbfgs_wspace_t<qd_real> *wspace, lbfgs_parameter_t<qd_real> *param);
 //template int lbfgs_init<mp_real>(int n, lbfgs_wspace_t<mp_real> *wspace, lbfgs_parameter_t<mp_real> *param);
 
 template int lbfgs_dest<double>(lbfgs_wspace_t<double> *x);
-template int lbfgs_dest<dd_real>(lbfgs_wspace_t<dd_real> *x);
+template int lbfgs_dest<__float128>(lbfgs_wspace_t<__float128> *x);
 //template int lbfgs_dest<qd_real>(lbfgs_wspace_t<qd_real> *x);
 //template int lbfgs_dest<mp_real>(lbfgs_wspace_t<mp_real> *x);
 
