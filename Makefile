@@ -1,6 +1,6 @@
-CC=g++
-LD=g++
-CFLAGS=-c -O3 -fno-exceptions -std=gnu++11
+CC=icpc
+LD=icpc
+CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -fp-model consistent -DNINTELLISENSE
 TFLAGS=
 PROFDIR=
 ARCHFLAGS=
@@ -18,35 +18,35 @@ SUBDIRS=./qd/src/ ./arprec/src/
 
 no_prof: PROFFLAG=
 
-profile: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias
+profile: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -DNINTELLISENSE
 profile: PROFFLAG=-prof-gen
 profile: OPTFLAG=
 
-debug: CFLAGS=-c -O0 -fno-exceptions -std=gnu++11 -g -Wall -pedantic -DVERBOSE
+debug: CFLAGS=-c -O0 -std=gnu++11 -fp-model consistent -Qoption,cpp,--extended_float_types -g -Wall -pedantic -DVERBOSE -DNINTELLISENSE
 debug: OPTFLAG=
 debug: PROFFLAG=
 
-debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=c++11
+debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=c++11 -DNINTELLISENSE
 debug_opt: OPTFLAG=
 debug_opt: PROFFLAG=
 
-debug_det: CFLAGS=-c -O0 -fno-exceptions -g -Wall -pedantic -DVERBOSE -D DETERMINISTIC
+debug_det: CFLAGS=-c -O0 -fno-exceptions -g -Wall -pedantic -DVERBOSE -DDETERMINISTIC -DNINTELLISENSE
 debug_det: OPTFLAG=
 debug_det: PROFFLAG=
 
-test: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic
+test: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic -DNINTELLISENSE
 test: LD=g++
 test: OPTFLAG=
 test: PROFFLAG=
 
-det: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -fno-exceptions -D DETERMINISTIC
+det: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -fno-exceptions -DDETERMINISTIC -DNINTELLISENSE
 
 mpi: CC=mpicxx
-mpi: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -fno-exceptions -D USE_MPI -cxx=g++
+mpi: CFLAGS=-c -O3 -fno-exceptions -std=c++11 -ansi-alias -fno-exceptions -DUSE_MPI -cxx=g++ -DNINTELLISENSE
 mpi: PROFFLAG=
 mpi: PROFDIR=-prof-dir=./.MPI-Profiling
 mpi_debug: CC=mpicxx
-mpi_debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -D USE_MPI -cxx=g++
+mpi_debug: CFLAGS=-c -O0 -fno-exceptions -std=c++11 -g -D USE_MPI -cxx=g++ -DNINTELLISENSE
 mpi_debug: OPTFLAG=
 mpi_debug: PROFFLAG=
 mpi_debug: LIBRARIERS=-pthread -l irc -lm -lbfd -liberty -lunwind

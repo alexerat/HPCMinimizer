@@ -38,11 +38,12 @@
 #include "precision.h"
 #include "opt_prec.h"
 
+
 #include "xpdeint.h"
 
 //#define FPTEST
 
-#define TRAPTYPE 1
+#define TRAPTYPE 2
 
 typedef MAX_PRECISION_T real_t;
 using namespace std;
@@ -78,9 +79,9 @@ const real_t _EPSILON = get_epsilon<real_t>();
 
 // ********************************************************
 // vector velocity defines
-#define _dimensionless_velocity_ncomponents 6
+#define _dimensionless_velocity_ncomponents 4
 // vector position defines
-#define _dimensionless_position_ncomponents 6
+#define _dimensionless_position_ncomponents 4
 // Vector phase defines
 #define _phase_ncomponents 1
 
@@ -90,22 +91,39 @@ const real_t _EPSILON = get_epsilon<real_t>();
 //   'Globals' element globals
 const real_t a=con_fun<real_t>("0");
 const real_t q=con_fun<real_t>("0.1");
-const real_t trap=con_fun<real_t>("7864.76"); // (2 pi)^2/beta^2
+
+
+#if (TRAPTYPE == 1)
+  const real_t trap=con_fun<real_t>("7864.76"); // (2 pi)^2/beta^2
+#elif (TRAPTYPE == 2)
+  const real_t trap=con_fun<real_t>("39.4784176043574344753379639995"); // (2 pi)^2
+#else
+  // Paul Trap
+  const real_t trap=con_fun<real_t>("39.4784176043574344753379639995"); // (2 pi)^2
+#endif
+
+
+
+
+
 const real_t coulomb=con_fun<real_t>("8.64309169165991e8"); //e^2/4 pi eps0
 const real_t delta=con_fun<real_t>("6241.146965412783");
 const real_t wrf=con_fun<real_t>("177.367");
 const real_t eta=con_fun<real_t>("0.16");
-const real_t k=sqrt(con_fun<real_t>("2"))*eta;
+const real_t k=sqrt(con_fun<real_t>("20000"))*eta;
+
+
 const real_t initDisp=con_fun<real_t>("0.5618549231638847");
 
-// Runge Kutta method constants 
+// Runge Kutta method constants {0.5, 1/6, 1/3}
+const real_t rkConsts[3] = {con_fun<real_t>("0.5"),con_fun<real_t>("1.0")/con_fun<real_t>("6.0"),con_fun<real_t>("1.0")/con_fun<real_t>("3.0")};
 /*
 const real_t _a_raw[16] = {real_t("0.0"),real_t("0.02173913043478260869565217391304347"),real_t("0.09629581047800066670113001679819925"),
   real_t("0.14444371571700100005169502519729888"),real_t("0.52205882352941176470588235294117647"),real_t("0.22842443612863469578031459099794265"),
   real_t("0.54360353589933733219171338103002937"),real_t("0.64335664335664335664335664335664335"),real_t("0.48251748251748251748251748251748251"),
   real_t("0.06818181818181818181818181818181818"),real_t("0.25060827250608272506082725060827250"),real_t("0.66736715965600568968278165443304378"),
   real_t("0.85507246376811594202898550724637681"),real_t("0.89795918367346938775510204081632653"),real_t("1.0"),real_t("1.0")}; */
-
+/* 
 const real_t _a[16] = {
   con_fun<real_t>("0.0"),
   con_fun<real_t>("0.02173913043478260869565217391304347"),
@@ -259,6 +277,7 @@ const real_t _d[16] = {
   _b[15][13]-_b[14][13]*_b[15][5]/_b[14][5],  con_fun<real_t>("0.0"),con_fun<real_t>("0.0"),con_fun<real_t>("0.0"),
   con_fun<real_t>("0.0"),con_fun<real_t>("0.0")
 };
+*/
 
 inline int compare(const void *arr1, const void *arr2)
 {
@@ -281,7 +300,7 @@ struct ode_workspace_t {
 
   // ********************************************************
   //   segment 2 (RK89 adaptive-step integrator) globals
-  real_t* evolution_akafield_dimensionless_velocity;
+ /*  real_t* evolution_akafield_dimensionless_velocity;
   real_t* evolution_akbfield_dimensionless_velocity;
   real_t* evolution_akcfield_dimensionless_velocity;
   real_t* evolution_akdfield_dimensionless_velocity;
@@ -315,6 +334,18 @@ struct ode_workspace_t {
   real_t* evolution_akhfield_phase;
   real_t* evolution_akifield_phase;
   real_t* evolution_akjfield_phase;
+  real_t* evolution_initial_phase; */
+
+  real_t* evolution_akfield_dimensionless_velocity;
+  real_t* evolution_aifield_dimensionless_velocity;
+  real_t* evolution_initial_dimensionless_velocity;
+
+  real_t* evolution_akfield_dimensionless_position;
+  real_t* evolution_aifield_dimensionless_position;
+  real_t* evolution_initial_dimensionless_position;
+
+  real_t* evolution_akfield_phase;
+  real_t* evolution_aifield_phase;
   real_t* evolution_initial_phase;
 
   real_t phi;
@@ -352,6 +383,7 @@ int ode_init(ode_workspace_t* workspace)
   workspace->phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
   workspace->active_phase = workspace->phase;
 
+  /* 
   workspace->evolution_akafield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
   workspace->evolution_akbfield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
   workspace->evolution_akcfield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
@@ -386,6 +418,18 @@ int ode_init(ode_workspace_t* workspace)
   workspace->evolution_akhfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
   workspace->evolution_akifield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
   workspace->evolution_akjfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_initial_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents); */
+
+  workspace->evolution_akfield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
+  workspace->evolution_aifield_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
+  workspace->evolution_initial_dimensionless_velocity = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_velocity_ncomponents);
+
+  workspace->evolution_akfield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
+  workspace->evolution_aifield_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
+  workspace->evolution_initial_dimensionless_position = (real_t*) xmds_malloc(sizeof(real_t) * _dimensionless_position_ncomponents);
+
+  workspace->evolution_akfield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
+  workspace->evolution_aifield_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
   workspace->evolution_initial_phase = (real_t*) xmds_malloc(sizeof(real_t) * _phase_ncomponents);
 
   // TODO: Check mem allocation
@@ -399,6 +443,19 @@ void ode_dest(ode_workspace_t* workspace)
   xmds_free(workspace->position);
   xmds_free(workspace->phase);
 
+  xmds_free(workspace->evolution_akfield_dimensionless_velocity);
+  xmds_free(workspace->evolution_aifield_dimensionless_velocity);
+  xmds_free(workspace->evolution_initial_dimensionless_velocity);
+
+  xmds_free(workspace->evolution_akfield_dimensionless_position);
+  xmds_free(workspace->evolution_aifield_dimensionless_position);
+  xmds_free(workspace->evolution_initial_dimensionless_position);
+
+  xmds_free(workspace->evolution_akfield_phase);
+  xmds_free(workspace->evolution_aifield_phase);
+  xmds_free(workspace->evolution_initial_phase);
+
+/* 
   xmds_free(workspace->evolution_akafield_dimensionless_velocity);
   xmds_free(workspace->evolution_akbfield_dimensionless_velocity);
   xmds_free(workspace->evolution_akcfield_dimensionless_velocity);
@@ -433,7 +490,9 @@ void ode_dest(ode_workspace_t* workspace)
   xmds_free(workspace->evolution_akhfield_phase);
   xmds_free(workspace->evolution_akifield_phase);
   xmds_free(workspace->evolution_akjfield_phase);
-  xmds_free(workspace->evolution_initial_phase);
+  xmds_free(workspace->evolution_initial_phase); */
+
+
 }
 
 real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
@@ -455,7 +514,8 @@ real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
   ode_run(zVec,tVec,rep_time,phi,dim,workspace);
 
   // TODO: Take res and determine cost function.
-  return (__float128(1.0)/__float128(3.0))*pow(abs(workspace->phase[0]) - M_PI_2q,2) + __float128(0.2)*(workspace->position[0] + workspace->position[1]) + __float128(0.2)*(workspace->position[2] + workspace->position[3]);
+  MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
+  return (__float128(1.0)/__float128(3.0))*pow(abs(workspace->phase[0]) - pi_2,2) + __float128(0.2)*(workspace->position[0] + workspace->position[1]) + __float128(0.2)*(workspace->position[2] + workspace->position[3]);
 }
 
 // ********************************************************
@@ -518,7 +578,11 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
   {
 
     if(p>0)
+    {
+      cout << "Evolving" << endl;
       evolution((tVec[p]-(((real_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((real_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
+    }
+      
 
     for(j=0;j<abs(zVec[p]);j++)
     {
@@ -526,7 +590,11 @@ int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_w
       pi_pulse(zVec[p] < 0, workspace);
 
       if(j < abs(zVec[p]) -1)
+      {
+        cout << "Evolving" << endl;
         evolution(rep_time, workspace);
+      }
+        
     }
   }
   
@@ -558,8 +626,6 @@ void _dimensionless_velocity_initialise(ode_workspace_t* workspace)
   workspace->velocity[1]=0.0;
   workspace->velocity[2]=0.0;
   workspace->velocity[3]=0.0;
-  workspace->velocity[4]=0.0;
-  workspace->velocity[5]=0.0;
 }
 
 // initialisation for vector position
@@ -569,8 +635,6 @@ void _dimensionless_position_initialise(ode_workspace_t* workspace)
   workspace->position[1]=(initDisp);
   workspace->position[2]=(-initDisp);
   workspace->position[3]=(initDisp);
-  workspace->position[4]=(-initDisp);
-  workspace->position[5]=(initDisp);
 }
 
 void _phase_initialise(ode_workspace_t* workspace)
@@ -607,6 +671,157 @@ inline void evolution_calculate_delta_a(real_t _step, ode_workspace_t* workspace
   evolution_dimensionless_operators_evaluate_operator0(_step, workspace);
 }
 
+
+
+void evolution(real_t time_interval, ode_workspace_t* workspace)
+{
+  real_t _step = con_fun<real_t>("8e-7");
+
+  long nSteps = ceil(time_interval/_step);
+
+  cout << "Number of steps needed: " << nSteps << endl;
+
+  real_t* _akfield_dimensionless_velocity = workspace->evolution_akfield_dimensionless_velocity;
+  real_t* _aifield_dimensionless_velocity = workspace->evolution_aifield_dimensionless_velocity;
+  real_t* _initial_dimensionless_velocity = workspace->evolution_initial_dimensionless_velocity;
+  
+  real_t* _akfield_dimensionless_position = workspace->evolution_akfield_dimensionless_position;
+  real_t* _aifield_dimensionless_position = workspace->evolution_aifield_dimensionless_position;
+  real_t* _initial_dimensionless_position = workspace->evolution_initial_dimensionless_position;
+
+  real_t* _akfield_phase = workspace->evolution_akfield_phase;
+  real_t* _aifield_phase = workspace->evolution_aifield_phase;
+  real_t* _initial_phase = workspace->evolution_initial_phase;
+
+  real_t* _dimensionless_velocity = workspace->velocity;
+  real_t* _dimensionless_position = workspace->position;
+  real_t* _phase = workspace->phase;
+  
+  for (long _istep = 0; _istep < nSteps; _istep++) 
+  {
+    // a_k = a
+    memcpy(_akfield_dimensionless_velocity, _dimensionless_velocity, sizeof(real_t) * _dimensionless_velocity_ncomponents);
+    memcpy(_akfield_dimensionless_position, _dimensionless_position, sizeof(real_t) * _dimensionless_position_ncomponents);
+    memcpy(_akfield_phase, _phase, sizeof(real_t) * _phase_ncomponents);
+    
+    // a_i = a
+    memcpy(_aifield_dimensionless_velocity, _dimensionless_velocity, sizeof(real_t) * _dimensionless_velocity_ncomponents);
+    memcpy(_aifield_dimensionless_position, _dimensionless_position, sizeof(real_t) * _dimensionless_position_ncomponents);
+    memcpy(_aifield_phase, _phase, sizeof(real_t) * _phase_ncomponents);
+    
+    workspace->active_velocity = _akfield_dimensionless_velocity;
+    workspace->active_position = _akfield_dimensionless_position;
+    workspace->active_phase = _akfield_phase;
+      
+    // a_k = G[a_k, t]
+    evolution_calculate_delta_a(_step,workspace);
+    
+    for (long _i0 = 0; _i0 < _dimensionless_velocity_ncomponents; _i0++) 
+    {
+      // a = a + a_k/6
+      _dimensionless_velocity[_i0] += rkConsts[1]*_akfield_dimensionless_velocity[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_dimensionless_velocity[_i0] = _aifield_dimensionless_velocity[_i0] + rkConsts[0]*_akfield_dimensionless_velocity[_i0];
+    }
+    for (long _i0 = 0; _i0 < _dimensionless_position_ncomponents; _i0++) 
+    {
+      // a = a + a_k/6
+      _dimensionless_position[_i0] += rkConsts[1]*_akfield_dimensionless_position[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_dimensionless_position[_i0] = _aifield_dimensionless_position[_i0] + rkConsts[0]*_akfield_dimensionless_position[_i0];
+    }
+    for (long _i0 = 0; _i0 < _phase_ncomponents; _i0++) 
+    {
+      // a = a + a_k/6
+      _phase[_i0] += rkConsts[1]*_akfield_phase[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_phase[_i0] = _aifield_phase[_i0] + rkConsts[0]*_akfield_phase[_i0];
+    }
+    
+    
+    workspace->t += rkConsts[0]*_step;
+    
+    // a_k = G[a_k, t + h/2]
+    evolution_calculate_delta_a(_step,workspace);
+    
+    for (long _i0 = 0; _i0 < _dimensionless_velocity_ncomponents; _i0++) 
+    {
+      // a = a + a_k/3
+      _dimensionless_velocity[_i0] += rkConsts[2]*_akfield_dimensionless_velocity[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_dimensionless_velocity[_i0] = _aifield_dimensionless_velocity[_i0] + rkConsts[0]*_akfield_dimensionless_velocity[_i0];
+    }
+    for (long _i0 = 0; _i0 < _dimensionless_position_ncomponents; _i0++) 
+    {
+      // a = a + a_k/3
+      _dimensionless_position[_i0] += rkConsts[2]*_akfield_dimensionless_position[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_dimensionless_position[_i0] = _aifield_dimensionless_position[_i0] + rkConsts[0]*_akfield_dimensionless_position[_i0];
+    }
+    for (long _i0 = 0; _i0 < _phase_ncomponents; _i0++) 
+    {
+      // a = a + a_k/3
+      _phase[_i0] += rkConsts[2]*_akfield_phase[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_phase[_i0] = _aifield_phase[_i0] + rkConsts[0]*_akfield_phase[_i0];
+    }
+    
+    // a_k = G[a_k, t + h/2]
+    evolution_calculate_delta_a(_step,workspace);
+    
+    for (long _i0 = 0; _i0 < _dimensionless_velocity_ncomponents; _i0++) 
+    {
+      // a = a + a_k/3
+      _dimensionless_velocity[_i0] += rkConsts[2]*_akfield_dimensionless_velocity[_i0];
+      // a_k = a_i + a_k
+      _akfield_dimensionless_velocity[_i0] = _aifield_dimensionless_velocity[_i0] + _akfield_dimensionless_velocity[_i0];
+    }
+    for (long _i0 = 0; _i0 < _dimensionless_position_ncomponents; _i0++) 
+    {
+      // a = a + a_k/3
+      _dimensionless_position[_i0] += rkConsts[2]*_akfield_dimensionless_position[_i0];
+      // a_k = a_i + a_k
+      _akfield_dimensionless_position[_i0] = _aifield_dimensionless_position[_i0] + _akfield_dimensionless_position[_i0];
+    }
+    for (long _i0 = 0; _i0 < _phase_ncomponents; _i0++) 
+    {
+      // a = a + a_k/3
+      _phase[_i0] += rkConsts[2]*_akfield_phase[_i0];
+      // a_k = a_i + a_k
+      _akfield_phase[_i0] = _aifield_phase[_i0] + _akfield_phase[_i0];
+    }
+    
+    
+    workspace->t += rkConsts[0]*_step;
+    
+    // a_k = G[a_k, t + h]
+    evolution_calculate_delta_a(_step,workspace);
+
+    workspace->active_velocity = _dimensionless_velocity;
+    workspace->active_position = _dimensionless_position;
+    workspace->active_phase = _phase;  
+    
+    for (long _i0 = 0; _i0 < _dimensionless_velocity_ncomponents; _i0++) 
+    {
+      // a = a + a_k/6
+      _dimensionless_velocity[_i0] += rkConsts[1]*_akfield_dimensionless_velocity[_i0];
+    }
+    for (long _i0 = 0; _i0 < _dimensionless_position_ncomponents; _i0++) 
+    {
+      // a = a + a_k/6
+      _dimensionless_position[_i0] += rkConsts[1]*_akfield_dimensionless_position[_i0];
+    }
+    for (long _i0 = 0; _i0 < _phase_ncomponents; _i0++) 
+    {
+      // a = a + a_k/6
+      _phase[_i0] += rkConsts[1]*_akfield_phase[_i0];
+    }
+    
+    
+  }
+}
+
+#ifdef NEVER
 void evolution(real_t time_interval, ode_workspace_t* workspace)
 {
   real_t _step = (time_interval)/(real_t)100000000;
@@ -616,7 +831,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   long _attempted_steps = 0;
   long _unsuccessful_steps = 0;
   
-  real_t _tolerance = con_fun<real_t>("1e-18");
+  real_t _tolerance = con_fun<real_t>("32e-14");
   
   real_t _error, _last_norm_error = 1.0;
   real_t evolution_dimensionless_velocity_error;
@@ -1799,6 +2014,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   cout << to_out_string(workspace->phase[0],30) << endl;
 #endif
 }
+#endif /* NEVER */
 
 real_t evolution_dimensionless_velocity_timestep_error(real_t* _checkfield, ode_workspace_t* workspace)
 {
@@ -1890,13 +2106,13 @@ real_t evolution_phase_timestep_error(real_t* _checkfield, ode_workspace_t* work
   real_t _temp_error = con_fun<real_t>("0.0");
 
   for (long  _i1 = 0; _i1 < _phase_ncomponents; _i1++) {
-    _temp_error = abs(workspace->phase[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->phase[_i1]) + 0.5*abs(_checkfield[_i1]));
+   // _temp_error = abs(workspace->phase[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->phase[_i1]) + 0.5*abs(_checkfield[_i1]));
     
 #ifdef FPTEST
-    cout << "Phase: " << to_out_string(workspace->phase[_i1],30) << endl;
-    cout << "Chk_Phase: " << to_out_string(_checkfield[_i1],30) << endl;
-    cout << "diff: " << to_out_string(abs(workspace->phase[_i1] - _checkfield[_i1]),30) << endl;
-    cout << "norm diff: " << to_out_string((abs(workspace->phase[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->phase[_i1]) + 0.5*abs(_checkfield[_i1]))),30) << endl;
+  //  cout << "Phase: " << to_out_string(workspace->phase[_i1],30) << endl;
+  //  cout << "Chk_Phase: " << to_out_string(_checkfield[_i1],30) << endl;
+  //  cout << "diff: " << to_out_string(abs(workspace->phase[_i1] - _checkfield[_i1]),30) << endl;
+  //  cout << "norm diff: " << to_out_string((abs(workspace->phase[_i1] - _checkfield[_i1]) / (0.5*abs(workspace->phase[_i1]) + 0.5*abs(_checkfield[_i1]))),30) << endl;
 #endif
 
     if (_xmds_isnonfinite(_temp_error)) {
@@ -1937,10 +2153,6 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   #define v2_2 workspace->active_velocity[3]
   #define x1_2 workspace->active_position[2]
   #define x2_2 workspace->active_position[3]
-  #define v1_3 workspace->active_velocity[4]
-  #define v2_3 workspace->active_velocity[5]
-  #define x1_3 workspace->active_position[4]
-  #define x2_3 workspace->active_position[5]
   #define phase workspace->active_phase[0]
   #define t workspace->t
   #define phi workspace->phi
@@ -1972,6 +2184,10 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   dv1_1_dt = -coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x1_1;
   dv2_1_dt = coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x2_1;
   dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((delta+x2_1-x1_1)) - 0.5*dyn_trap*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((delta+x2_2-x1_2)) + 0.5*dyn_trap*(x1_2*x1_2+x2_2*x2_2);
+#elif (TRAPTYPE == 2)
+  dv1_1_dt = -coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - trap*x1_1;
+  dv2_1_dt = coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - trap*x2_1;
+  dphase_dt = rkConsts[0]*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((delta+x2_1-x1_1)) - rkConsts[0]*trap*(x1_1*x1_1+x2_1*x2_1) - rkConsts[0]*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((delta+x2_2-x1_2)) + rkConsts[0]*(x1_2*x1_2+x2_2*x2_2);
 #else
   // Paul Trap
   dv1_1_dt = -coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x1_1;
@@ -1993,11 +2209,13 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
 #if (TRAPTYPE == 1)
   dv1_2_dt = -coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x1_2;
   dv2_2_dt = coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x2_2;
+#elif (TRAPTYPE == 2)
+  dv1_2_dt = -coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - trap*x1_2;
+  dv2_2_dt = coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - trap*x2_2;
 #else
   // Paul Trap
-  dv1_2_dt = -coulomb/((x2_2-x1_2)*(x2_2-x1_2)) - x1_2;
-  dv2_2_dt = coulomb/((x2_2-x1_2)*(x2_2-x1_2)) - x2_2;
-  
+  dv1_2_dt = -coulomb/((x2_2-x1_2)*(x2_2-x1_2)) - trap*x1_2;
+  dv2_2_dt = coulomb/((x2_2-x1_2)*(x2_2-x1_2)) - trap*x2_2;
 #endif
 
   x2_2 = dx2_2_dt * _step;
@@ -2005,26 +2223,6 @@ void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_work
   v2_2 = dv2_2_dt * _step;
   x1_2 = dx1_2_dt * _step;
 
-  // Non-kicked motion.
-  dx1_3_dt = v1_3;
-  dx2_3_dt = v2_3;
-
-  // Microtrap with micromotion
-#if (TRAPTYPE == 1)
-  dv1_3_dt = -coulomb/(delta+x2_3-x1_3) - dyn_trap*x1_3;
-  dv2_3_dt = coulomb/(delta+x2_3-x1_3) - dyn_trap*x2_3;
-#elif (TRAPTYPE == 2)
-
-#else
-  // Paul Trap
-  dv1_3_dt = -coulomb/(x2_3-x1_3) - x1_3;
-  dv2_3_dt = coulomb/(x2_3-x1_3) - x2_3;
-#endif
-
-  x2_3 = dx2_3_dt * _step;
-  v1_3 = dv1_3_dt * _step;
-  v2_3 = dv2_3_dt * _step;
-  x1_3 = dx1_3_dt * _step;
   // **********************************************
 
   #undef t

@@ -14,6 +14,10 @@
 #include <iomanip>
 #include <quadmath.h>
 
+#ifndef NINTELLISENSE
+#define __float128 double
+#endif
+
 template<typename floatval_t>
 inline floatval_t con_fun(const char* str);
 
@@ -40,7 +44,7 @@ inline float get_epsilon<float>() { return std::numeric_limits<float>::epsilon()
 template<>
 inline double get_epsilon<double>() { return std::numeric_limits<double>::epsilon(); }
 template<>
-inline __float128 get_epsilon<__float128>() { return FLT128_EPSILON; }
+inline __float128 get_epsilon<__float128>() { return std::numeric_limits<__float128>::epsilon(); }
 template<>
 inline qd_real get_epsilon<qd_real>() { return std::numeric_limits<qd_real>::epsilon(); }
 template<>
@@ -59,7 +63,7 @@ inline float get_conv_epsilon<float>() { return 1e-4; }
 template<>
 inline double get_conv_epsilon<double>() { return 1e-8; }
 template<>
-inline __float128 get_conv_epsilon<__float128>() { return 1e-16q; }
+inline __float128 get_conv_epsilon<__float128>() { return con_fun<__float128>("1e-16q"); }
 template<>
 inline qd_real get_conv_epsilon<qd_real>() { return qd_real("1e-30"); }
 template<>
@@ -77,7 +81,7 @@ inline float get_delta<float>() { return 1e-4; }
 template<>
 inline double get_delta<double>() { return 1e-8; }
 template<>
-inline __float128 get_delta<__float128>() { return 1e-16q; }
+inline __float128 get_delta<__float128>() { return con_fun<__float128>("1e-16"); }
 template<>
 inline qd_real get_delta<qd_real>() { return qd_real("1e-30"); }
 template<>
@@ -95,7 +99,7 @@ inline float get_gstep<float>() { return 1e-5; }
 template<>
 inline double get_gstep<double>() { return 1e-8; }
 template<>
-inline __float128 get_gstep<__float128>() { return 1e-12q; }
+inline __float128 get_gstep<__float128>() { return con_fun<__float128>("1e-12"); }
 template<>
 inline qd_real get_gstep<qd_real>() { return qd_real("1e-24"); }
 template<>
@@ -113,7 +117,7 @@ inline float get_min_step<float>() { return 1.0e-10; }
 template<>
 inline double get_min_step<double>() { return 1.0e-20; }
 template<>
-inline __float128 get_min_step<__float128>() { return 1.0e-40q; }
+inline __float128 get_min_step<__float128>() { return con_fun<__float128>("1e-40"); }
 template<>
 inline qd_real get_min_step<qd_real>() { return qd_real("1.0e-80"); }
 template<>
@@ -131,7 +135,7 @@ inline float get_max_step<float>() { return 1e20; }
 template<>
 inline double get_max_step<double>() { return 1e20; }
 template<>
-inline __float128 get_max_step<__float128>() { return 1e20q; }
+inline __float128 get_max_step<__float128>() { return con_fun<__float128>("1e20"); }
 template<>
 inline qd_real get_max_step<qd_real>() { return qd_real(1e20); }
 template<>
@@ -261,9 +265,10 @@ inline floatval_t rnd_uni()
     return ((floatval_t)rand()) / RAND_MAX;
 }
 
-/* 
-__float128 rand128() {
-  static const double m_const = 4.6566128730773926e-10;  /* = 2^{-31} */
+ 
+//__float128 rand128() {
+	/* = 2^{-31} */
+//  static const double m_const = 4.6566128730773926e-10;  
 //  double m = m_const;
 //  __float128 r = 0.0;
 //  double d;
