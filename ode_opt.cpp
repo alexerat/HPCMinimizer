@@ -110,7 +110,7 @@ const real_t coulomb=con_fun<real_t>("8.64309169165991e8"); //e^2/4 pi eps0
 const real_t delta=con_fun<real_t>("6241.146965412783");
 const real_t wrf=con_fun<real_t>("177.367");
 const real_t eta=con_fun<real_t>("0.16");
-const real_t k=sqrt(con_fun<real_t>("20000"))*eta;
+const real_t k=sqrt(con_fun<real_t>("200"))*eta;
 
 
 const real_t initDisp=con_fun<real_t>("0.5618549231638847");
@@ -675,7 +675,7 @@ inline void evolution_calculate_delta_a(real_t _step, ode_workspace_t* workspace
 
 void evolution(real_t time_interval, ode_workspace_t* workspace)
 {
-  real_t _step = con_fun<real_t>("8e-7");
+  real_t _step = con_fun<real_t>("1e-6");
 
   long nSteps = ceil(time_interval/_step);
 

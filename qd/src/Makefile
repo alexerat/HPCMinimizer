@@ -1,7 +1,7 @@
 CC=g++
-CFLAGS=-c -O2 -fno-exceptions -DHAVE_CONFIG -std=c++11
-debug: CFLAGS=-c -O0 -g -DHAVE_CONFIG -std=c++11
-debug_opt: CFLAGS=-c -g -O2 -DHAVE_CONFIG -std=c++11
+CFLAGS=-c -O2 -fno-exceptions -DHAVE_CONFIG -std=gnu++11
+debug: CFLAGS=-c -O0 -g -DHAVE_CONFIG -std=gnu++11
+debug_opt: CFLAGS=-c -g -O2 -DHAVE_CONFIG -std=gnu++11
 INCLUDES=-I../ -I../include
 ARCHFLAGS=
 PROFFLAG=
