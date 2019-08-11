@@ -3502,11 +3502,11 @@ int main(int argc, char **argv)
 	ret = ode_run(zVec,tVec,rep_time,ode_phi,ode_dim,&ode_wspace);
 
 
-	cout << "Phase is: " << to_out_string(ode_wspace.phase[0],35) << endl;
-	cout << "Position is: " << to_out_string(ode_wspace.position[0],35) << endl;
+	cout << "Phase is: " << to_out_string(ode_wspace.vec[8],35) << endl;
+	cout << "Position is: " << to_out_string(ode_wspace.vec[4],35) << endl;
 
 	MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
-	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(ode_wspace.phase[0]) - pi_2,2) + __float128(0.2)*(pow(ode_wspace.position[0]+initDisp,2) + pow(ode_wspace.position[1]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(ode_wspace.position[2]+initDisp,2) + pow(ode_wspace.position[3]-initDisp,2));
+	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(ode_wspace.vec[8]) - pi_2,2) + __float128(0.2)*(pow(ode_wspace.vec[4]+initDisp,2) + pow(ode_wspace.vec[5]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(ode_wspace.vec[6]+initDisp,2) + pow(ode_wspace.vec[7]-initDisp,2));
 
 	ode_dest(&ode_wspace);
 

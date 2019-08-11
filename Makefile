@@ -3,7 +3,7 @@ LD=icpc
 CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE
 TFLAGS=
 PROFDIR=
-ARCHFLAGS=-xavx
+ARCHFLAGS=-xCOMMON-AVX512
 INCLUDES=-I./qd/include -I./arprec/include
 LFLAGS=
 SOURCES=lbfgs.cpp localMinima.cpp
@@ -26,7 +26,7 @@ debug: CFLAGS=-c -O0 -std=gnu++11 -fp-model consistent -Qoption,cpp,--extended_f
 debug: OPTFLAG=
 debug: PROFFLAG=
 
-debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE
+debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE -qopt-report=5 -simd -qopt-zmm-usage=high -Qoption,cpp,--extended_float_type
 debug_opt: OPTFLAG=
 debug_opt: PROFFLAG=
 
