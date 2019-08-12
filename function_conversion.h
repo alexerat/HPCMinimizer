@@ -35,8 +35,8 @@ bool intCast;
 bool hasSym;
 */
 // NOTE: These are inline functiosn to prevent multiple definition errors.
-inline MAX_PRECISION_T bounds_su0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.2"); }
-inline MAX_PRECISION_T bounds_sl0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.0"); }
+inline MAX_PRECISION_T bounds_su0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("20.0"); }
+inline MAX_PRECISION_T bounds_sl0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-20.0"); }
 inline MAX_PRECISION_T bounds_iu0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("20.0"); }
 inline MAX_PRECISION_T bounds_il0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-20.0"); }
 #define BOUNDS const boundary_t<MAX_PRECISION_T> bounds_b0={bounds_sl0,bounds_il0,bounds_su0,bounds_iu0,0,1,false,false};boundaries[0]=bounds_b0;
@@ -67,6 +67,10 @@ inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
 // CHANGE:
 // These will be optimisation labels generated from the optimisation type codes
 #define OPT0 lbgfs
+#define OPT1 lbgfs
+
+
+
 
 
 #define BUCKETORD 9
@@ -118,8 +122,10 @@ inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
 #define CONSTANTS(floatval_t) const floatval_t const_arr_##floatval_t[NCONSTANTS]={con_fun<floatval_t>("2.0"),sqrt(con_fun<floatval_t>("2.0"))};
 
 // CHANGE: Functions are now stage specific
-#define FUNCTION0(x, x0, params, precompute) (__extension__({ode_costFunc(x, x0, n, ode_wspace);}))
-#define DERIVATIVES0(g, x, x0, xs, params, precompute, f, step) (__extension__({xs[0]+=step;g[0]=ode_costFunc(xs, x0, n, ode_wspace);xs[0]=x[0];xs[1]+=step;g[1]=ode_costFunc(xs, x0, n, ode_wspace);}))
+#define FUNCTION0(x, params, precompute) (__extension__({pow(sin(x[0]-c[1]),2);}))
+#define DERIVATIVES0(g, x, params, precompute, f, step) (__extension__({g[0]=c[0]*cos(x[0]-c[1])*sin(x[0]-c[1]);}))
 
+#define FUNCTION1(x, params, precompute) (__extension__({pow(x[0]-sqrt(floatval_t("2.0")).0,2);}))
+#define DERIVATIVES1(g, x, params, precompute, f, step) (__extension__({g[0]=2.0*(x[0]-10.0);}))
 
 #endif /*USER_FUNCTION_H*/

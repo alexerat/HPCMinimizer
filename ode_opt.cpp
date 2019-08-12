@@ -146,19 +146,20 @@ struct ode_workspace_t {
 // ********************************************************
 // FUNCTION PROTOTYPES
 // ********************************************************
-int ode_init(ode_workspace_t* workspace);
-void ode_dest(ode_workspace_t* workspace);
+void* ode_init(int* workspace);
+void ode_dest(void* workspace);
 
 
 void _dimensionless_vec_initialise(ode_workspace_t* workspace);
-int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace);
+int ode_run(const int* zVec, const real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace);
 void pi_pulse(bool neg, ode_workspace_t* workspace);
 void evolution(real_t time_interval, ode_workspace_t* workspace);
 inline void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_workspace_t* workspace);
 
 
-int ode_init(ode_workspace_t* workspace)
+void* ode_init(int* ret)
 {
+  ode_workspace_t* workspace = (ode_workspace_t*)malloc(sizeof(ode_workspace_t));
 
   workspace->vec = (real_t*) xmds_malloc(sizeof(real_t) * tot_dim);
   workspace->active_vec = workspace->vec;
@@ -169,17 +170,17 @@ int ode_init(ode_workspace_t* workspace)
 
   // TODO: Check mem allocation
 
-  return 0;
+  return (void*)(workspace);
 }
 
-void ode_dest(ode_workspace_t* workspace)
+void ode_dest(void* workspace)
 {
-  xmds_free(workspace->evolution_akfield_vec);
-  xmds_free(workspace->evolution_agfield_vec);
-  xmds_free(workspace->evolution_aifield_vec);
+  xmds_free(((ode_workspace_t*)workspace)->evolution_akfield_vec);
+  xmds_free(((ode_workspace_t*)workspace)->evolution_agfield_vec);
+  xmds_free(((ode_workspace_t*)workspace)->evolution_aifield_vec);
 }
 
-real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
+real_t ode_costFunc(const real_t* x, const real_t* x0, int dim, void* workspace)
 {
   // TODO: move into workspace for speed.
 
@@ -195,17 +196,17 @@ real_t ode_costFunc(real_t* x, real_t* x0, int dim, ode_workspace_t* workspace)
     tVec[i] = x[i];
   }
 
-  ode_run(zVec,tVec,rep_time,phi,dim,workspace);
+  ode_run(zVec,tVec,rep_time,phi,dim,(ode_workspace_t*)workspace);
 
   // TODO: Take res and determine cost function.
   MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
-  return (__float128(1.0)/__float128(3.0))*pow(abs(workspace->vec[phase_start]) - pi_2,2) + __float128(0.2)*(workspace->vec[pos_start] + workspace->vec[pos_start+1]) + __float128(0.2)*(workspace->vec[pos_start+2] + workspace->vec[pos_start+3]);
+  return (__float128(1.0)/__float128(3.0))*pow(abs(((ode_workspace_t*)workspace)->vec[phase_start]) - pi_2,2) + __float128(0.2)*(((ode_workspace_t*)workspace)->vec[pos_start] + ((ode_workspace_t*)workspace)->vec[pos_start+1]) + __float128(0.2)*(((ode_workspace_t*)workspace)->vec[pos_start+2] + ((ode_workspace_t*)workspace)->vec[pos_start+3]);
 }
 
 // ********************************************************
 // MAIN ROUTINE
 // ********************************************************
-int ode_run(int* zVec, real_t* tVec, real_t rep_time, real_t phi, int dim, ode_workspace_t* workspace)
+int ode_run(const int* zVec, const real_t* tVec, real_t rep_time, real_t phi, int dim, ode_workspace_t* workspace)
 {
   int p=0;
   int j=0;
@@ -338,9 +339,10 @@ void pi_pulse(bool neg, ode_workspace_t* workspace)
 
 void evolution(real_t time_interval, ode_workspace_t* workspace)
 {
+  real_t _start_time = workspace->t;
   real_t _step = con_fun<real_t>("1e-6");
 
-  long nSteps = ceil(time_interval/_step);
+  long nSteps = floor(time_interval/_step);
 
   cout << "Number of steps needed: " << nSteps << endl;
 
@@ -350,6 +352,74 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   real_t* _vec = workspace->vec;
   
   for (long _istep = 0; _istep < nSteps; _istep++) 
+  {
+    memcpy(_akfield_vec, _vec, sizeof(real_t) * tot_dim);
+    memcpy(_aifield_vec, _vec, sizeof(real_t) * tot_dim);
+    workspace->active_vec = _akfield_vec;
+
+    // a_k = G[a_k, t]
+    evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
+    
+    #pragma ivdep
+    for (long _i0 = 0; _i0 < tot_dim; _i0++) 
+    {
+      // a = a + a_k/6
+      _vec[_i0] += rkConsts[1]*_akfield_vec[_i0];
+      // a_k = a_i + a_k/2
+      _agfield_vec[_i0] = _aifield_vec[_i0] + rkConsts[0]*_akfield_vec[_i0];
+    }
+
+    workspace->active_vec = _agfield_vec;
+    
+    workspace->t += rkConsts[0]*_step;
+    
+    // a_k = G[a_k, t + h/2]
+    evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
+
+    #pragma ivdep
+    for (long _i0 = 0; _i0 < tot_dim; _i0++) 
+    {
+      // a = a + a_k/3
+      _vec[_i0] += rkConsts[2]*_agfield_vec[_i0];
+      // a_k = a_i + a_k/2
+      _akfield_vec[_i0] = _aifield_vec[_i0] + rkConsts[0]*_agfield_vec[_i0];
+    }
+    
+    workspace->active_vec = _akfield_vec;
+    
+    // a_k = G[a_k, t + h/2]
+    evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
+
+    #pragma ivdep
+    for (long _i0 = 0; _i0 < tot_dim; _i0++) 
+    {
+      // a = a + a_k/3
+      _vec[_i0] += rkConsts[2]*_akfield_vec[_i0];
+      // a_k = a_i + a_k
+      _agfield_vec[_i0] = _aifield_vec[_i0] + _akfield_vec[_i0];
+    }
+
+    workspace->active_vec = _agfield_vec;
+
+    workspace->t += rkConsts[0]*_step;
+    
+    // a_k = G[a_k, t + h]
+    evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
+
+    workspace->active_vec = _vec; 
+    
+    #pragma ivdep
+    for (long _i0 = 0; _i0 < tot_dim; _i0++) 
+    {
+      // a = a + a_k/6
+      _vec[_i0] += rkConsts[1]*_agfield_vec[_i0];
+    }
+  }
+
+  // Clean Up the last step which may be a fraction
+  _step = _start_time + time_interval - workspace->t;
+
+  if(_step > _EPSILON)
   {
     memcpy(_akfield_vec, _vec, sizeof(real_t) * tot_dim);
     memcpy(_aifield_vec, _vec, sizeof(real_t) * tot_dim);
