@@ -38,5 +38,8 @@
 # Keep the libarprec to keep it working
 !libarprec.la
 
+*.optrpt
+
+Minimizer/*
 
 /localMinima

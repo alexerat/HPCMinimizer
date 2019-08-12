@@ -43,7 +43,8 @@ using evaluate_t = floatval_t (*)(
     const floatval_t *,
     const floatval_t *,
 	const floatval_t *,
-    const int
+    const int,
+	void *
     );
 
 template<typename floatval_t>
@@ -1462,32 +1463,38 @@ public:
 
 	static floatval_t evaluate(
         const floatval_t *X,
+		const floatval_t *X0,
         const floatval_t *params,
         const floatval_t *precompute,
-        const int n
+        const int n,
+		void *ode_wspace
         )
     {
-        return (reinterpret_cast<evaluate_t<floatval_t>>(getCastEvalFunc<floatval_t>(currStage)))(X, params, precompute, n);
+        return (reinterpret_cast<evaluate_t<floatval_t>>(getCastEvalFunc<floatval_t>(currStage)))(X, X0, params, precompute, n, ode_wspace);
     }
 	
-
 protected:
     static floatval_t _lbgfs_evaluate(
         const floatval_t *X,
+		const floatval_t *X0,
         const floatval_t *params,
 		const floatval_t *precompute,
         floatval_t *g,
         const int n,
-        const floatval_t step
+        const floatval_t step,
+		floatval_t *Xs,
+		void *ode_wspace
         )
     {
-        return (reinterpret_cast<lbfgs_evaluate_t<floatval_t>>(getEvalFunc<floatval_t>(currStage)))(X, params, precompute, g, n, step);
+        return (reinterpret_cast<lbfgs_evaluate_t<floatval_t>>(getEvalFunc<floatval_t>(currStage)))(X, X0, params, precompute, g, n, step, Xs, ode_wspace);
     }
 	static floatval_t _de_evaluate(
         const floatval_t *X,
+		const floatval_t *X0,
         const floatval_t *params,
 		const floatval_t *precompute,
-        const int n
+        const int n,
+		void *ode_wspace
         )
     {
         return reinterpret_cast<evaluate_t<floatval_t>*>(getEvalFunc<floatval_t>(currStage))(X, params, precompute, n);
@@ -1496,6 +1503,7 @@ protected:
     static int _progress(
         void *instance,
         const floatval_t *x,
+		const floatval_t *X0,
         const floatval_t *g,
         const floatval_t fx,
         const floatval_t xnorm,

@@ -358,13 +358,18 @@ struct lbfgs_parameter_t {
  *  this function to evaluate the values of the objective function and its
  *  gradients, given current values of variables.
  *
- *  @param  instance    The user data sent for lbfgs() function by the client.
  *  @param  x           The current values of variables.
+ *  @param  x0          The values of x that are not being optimized currently.
  *  @param  params      The additional parameters provided to the function.
+ *  @param  precompute  The values using by the cost function that can be computed
+ *                      on each parameter iteration.
  *  @param  g           The gradient vector. The callback function must compute
  *                      the gradient values for the current variables.
  *  @param  n           The number of variables.
  *  @param  step        The current step of the line search routine.
+ *  @param  Xs          The pointer to memory used to store the stepped x positions 
+ *                      for calculating g.
+ *  @param  ode_wspace  The workspace used for the ODE, NULL if not using ODE optimisation.
  *  @retval floatval_t The value of the objective function for the current
  *                          variables.
  */
@@ -375,7 +380,9 @@ using lbfgs_evaluate_t = floatval_t (*)(
     const floatval_t *,
     floatval_t *,
     const int,
-    const floatval_t
+    const floatval_t,
+    floatval_t *,
+    void *
     );
 
 /**

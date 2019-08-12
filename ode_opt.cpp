@@ -340,7 +340,8 @@ void pi_pulse(bool neg, ode_workspace_t* workspace)
 void evolution(real_t time_interval, ode_workspace_t* workspace)
 {
   real_t _start_time = workspace->t;
-  real_t _step = con_fun<real_t>("1e-6");
+  real_t _step = con_fun<real_t>("1e-10");
+  real_t _step_2 = rkConsts[0]*_step;
 
   long nSteps = floor(time_interval/_step);
 
@@ -371,7 +372,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
 
     workspace->active_vec = _agfield_vec;
     
-    workspace->t += rkConsts[0]*_step;
+    workspace->t += _step_2;
     
     // a_k = G[a_k, t + h/2]
     evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
@@ -401,7 +402,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
 
     workspace->active_vec = _agfield_vec;
 
-    workspace->t += rkConsts[0]*_step;
+    workspace->t += _step_2;
     
     // a_k = G[a_k, t + h]
     evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
@@ -439,7 +440,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
 
     workspace->active_vec = _agfield_vec;
     
-    workspace->t += rkConsts[0]*_step;
+    workspace->t += _step_2;
     
     // a_k = G[a_k, t + h/2]
     evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
@@ -469,7 +470,7 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
 
     workspace->active_vec = _agfield_vec;
 
-    workspace->t += rkConsts[0]*_step;
+    workspace->t += _step_2;
     
     // a_k = G[a_k, t + h]
     evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
@@ -533,20 +534,19 @@ inline void evolution_dimensionless_operators_evaluate_operator0(real_t _step, o
 
   real_t tmp1 = (delta+x2_1-x1_1);
   real_t itd1 = coulomb/(tmp1*tmp1);
-  real_t it1 = itd1 * tmp1;
 
   real_t tx1_2 = trap*x1_2;
   real_t tx2_2 = trap*x2_2;
 
   real_t tmp2 = (delta+x2_2-x1_2);
   real_t itd2 = coulomb/(tmp2*tmp2);
-  real_t it2 = itd2 * tmp2;
+  real_t it = -itd1 * tmp1 + itd2 * tmp2;
 
   dv1_2_dt = -itd2 - tx1_2;
   dv2_2_dt = itd2 - tx2_2;
   dv1_1_dt = -itd1 - tx1_1;
   dv2_1_dt = itd1 - tx2_1;
-  dphase_dt = rkConsts[0]*(v1_1*v1_1 + v2_1*v2_1) - it1 - rkConsts[0]*(x1_1*tx1_1+x2_1*tx2_1) - rkConsts[0]*(v1_2*v1_2 + v2_2*v2_2) + it2 + rkConsts[0]*(x1_2*tx1_2+x2_2*tx2_2);
+  dphase_dt = rkConsts[0]*((v1_1-v1_2)*(v1_1+v1_2) + (v2_1-v2_2)*(v2_1+v2_2) - x1_1*tx1_1+x2_1*tx2_1  + x1_2*tx1_2+x2_2*tx2_2) + it;
 #else
   // Paul Trap
   dv1_1_dt = -coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x1_1;
