@@ -457,12 +457,12 @@ void (* evaluates_gen_mp [])( ) =
 #undef funcptr_code
 
 
-// TODO: Much like the above we need the ODE init and destory, but also not for every stage, we can use some NULLs to mask them out and keep coding consistent
+// Much like the above we need the ODE init and destory, but also not for every stage, we can use some NULLs to mask them out and keep coding consistent
 #define eval_code(NUM,floatval_t) static void* ode_init_##NUM##_##floatval_t(int* ret)\
 {\
-	if(stages[##NUM].odeFunc) \
+	if(CAT_PP(stages[,NUM)].odeFunc) \
 	{\
-		return ODE_INIT##NUM<##floatval_t>(ret);\
+		return CAT_PP(CAT_PP(ODE_INIT,NUM)<,floatval_t)>(ret);\
 	}\
 	else\
 	{\
@@ -554,12 +554,14 @@ template<>
 inline fptr getODEInitFunc<mp_real>(int stage) { return ode_inits_mp[stage]; }
 #endif
 
+
+
 // And now the ODE destroy
 #define eval_code(NUM,floatval_t) static void ode_dest_##NUM##_##floatval_t(void* workspace)\
 {\
-	if(stages[##NUM].odeFunc) \
+	if(CAT_PP(stages[,NUM)].odeFunc) \
 	{\
-		return ODE_DEST##NUM<##floatval_t>(workspace);\
+		return CAT_PP(CAT_PP(ODE_DEST,NUM)<,floatval_t)>(workspace);\
 	}\
 	else\
 	{\
@@ -1004,7 +1006,7 @@ public:
 	    param.max_linesearch = MAXLINE;
 	    param.min_step = get_min_step<floatval_t>();
 	    param.max_step = get_max_step<floatval_t>();
-	    param.ftol = 1e10*EPS;
+	    param.ftol = 1e8*EPS;
 	    param.wolfe = 0.9;
 	    param.gtol = 0.9;
 	    param.xtol = EPS;
@@ -1014,10 +1016,6 @@ public:
 		param.gstep = get_gstep<floatval_t>();
 
 		ret = -1;
-
-		// TODO: Properly locate this
-		int ret;
-		ode_wspace = ode_init(&ret);
 
 		initialized = true;
     }
@@ -1784,8 +1782,9 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 // TODO: Need to cast down the values stored in x0, params and precompute
 // TODO: Document and name appropriately
 template<typename floatval_t>
-void handleResult(int threadNum, objective_function<floatval_t>* obj, OptimizeResult<floatval_t> locResults, void* ode_wspace)
+int handleResult(int threadNum, objective_function<floatval_t>* obj, OptimizeResult<floatval_t> locResults, void* ode_wspace, bool mustCast)
 {
+	int binNum;
 	floatval_t bestCast;
 	floatval_t* bestCastX = new floatval_t[FULLDIM];
 	floatval_t* XCast = new floatval_t[FULLDIM];
@@ -1852,6 +1851,8 @@ void handleResult(int threadNum, objective_function<floatval_t>* obj, OptimizeRe
 
 	delete[] bestCastX;
 	delete[] XCast;
+
+	return binNum;
 }
 
 
@@ -2381,18 +2382,37 @@ void *run_multi(void *threadarg)
 						threadFails[threadNum]++;
 					}
 				}
-#endif // (MAX_PRECISION_LEVEL > 3)
-#endif // (MAX_PRECISION_LEVEL > 2)
-#endif // (MAX_PRECISION_LEVEL > 1)
+#endif /* (MAX_PRECISION_LEVEL > 3) */
+#endif /* (MAX_PRECISION_LEVEL > 2) */
+#endif /* (MAX_PRECISION_LEVEL > 1) */
 			}
 
 			int binNum;
 
-			// TODO: Other precisions, move into it's own function
+			// Handle the final processing of the result to the required precision for this stage
+			// TODO: Make sure we only optimize to stage precision
 			if(stagePrecision == 1)
 			{
-				handleResult<double>(threadNum, obj_dbl, locResults_dbl, ode_wspace_dbl);
+				binNum = handleResult<double>(threadNum, obj_dbl, locResults_dbl, ode_wspace_dbl, mustCast);
 			}
+#if (MAX_PRECISION_LEVEL > 1)
+			else if(stagePrecision == 2)
+			{
+				binNum = handleResult<__float128>(threadNum, obj_dd, locResults_dd, ode_wspace_dd, mustCast);
+			}
+#if (MAX_PRECISION_LEVEL > 2)
+			else if(stagePrecision == 2)
+			{
+				binNum = handleResult<qd_real>(threadNum, obj_qd, locResults_qd, ode_wspace_qd, mustCast);
+			}
+#if (MAX_PRECISION_LEVEL > 3)
+			else if(stagePrecision == 2)
+			{
+				binNum = handleResult<mp_real>(threadNum, obj_mp, locResults_mp, ode_wspace_mp, mustCast);
+			}
+#endif /* (MAX_PRECISION_LEVEL > 3) */
+#endif /* (MAX_PRECISION_LEVEL > 2) */
+#endif /* (MAX_PRECISION_LEVEL > 1) */
 
 			if(binNum < threadMinBin[threadNum])
 			{

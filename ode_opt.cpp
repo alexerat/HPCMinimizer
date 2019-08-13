@@ -175,9 +175,9 @@ void* ode_init(int* ret)
 template<typename floatval_t>
 void ode_dest(void* workspace)
 {
-  xmds_free(((floatval_t*)workspace)->evolution_akfield_vec);
-  xmds_free(((floatval_t*)workspace)->evolution_agfield_vec);
-  xmds_free(((floatval_t*)workspace)->evolution_aifield_vec);
+  xmds_free(((ode_workspace_t<floatval_t>*)workspace)->evolution_akfield_vec);
+  xmds_free(((ode_workspace_t<floatval_t>*)workspace)->evolution_agfield_vec);
+  xmds_free(((ode_workspace_t<floatval_t>*)workspace)->evolution_aifield_vec);
 }
 
 template<typename floatval_t>
