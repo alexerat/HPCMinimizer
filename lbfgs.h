@@ -348,6 +348,11 @@ struct lbfgs_parameter_t {
      * The step size to use when calculating gradients.
      */
     floatval_t gstep;
+
+    /**
+     * If using an ODE cost function, this holds a reference to the memory used.
+     */
+    void* ode_wspace;
 };
 
 /**
@@ -376,6 +381,7 @@ struct lbfgs_parameter_t {
 template<typename floatval_t> 
 using lbfgs_evaluate_t = floatval_t (*)(
 	  const floatval_t *,
+    const floatval_t *,
     const floatval_t *,
     const floatval_t *,
     floatval_t *,
@@ -431,6 +437,8 @@ template <typename floatval_t>
 using line_search_proc_t = int (*)(
     int,
     floatval_t *,
+    const floatval_t *,
+    floatval_t *,
     floatval_t *,
     floatval_t *,
     floatval_t *,
@@ -443,7 +451,8 @@ using line_search_proc_t = int (*)(
     const floatval_t*,
     floatval_t *,
     callback_data_t<floatval_t> *,
-    const lbfgs_parameter_t<floatval_t> *
+    const lbfgs_parameter_t<floatval_t> *,
+    void *
     );
 
 template <typename floatval_t>
@@ -472,9 +481,11 @@ struct lbfgs_wspace_t {
       * The workspace memory.
       */
     floatval_t *xp;
+    floatval_t *xs;
     floatval_t *g, *gp, *pg;
     floatval_t *d, *w, *pf;
     iteration_data_t<floatval_t> *lm;
+    void* ode_wspace;
     };
 
 
@@ -541,6 +552,7 @@ template <typename floatval_t>
 int lbfgs(
     int n,
     floatval_t *x,
+    floatval_t *x0,
     floatval_t *ptr_fx,
     floatval_t *lowerbounds,
     floatval_t *upperbounds,
@@ -551,13 +563,11 @@ int lbfgs(
     lbfgs_wspace_t<floatval_t> *wspace
     );
 
-
-
 /**
  *  Initialize the workspace.
  */
 template <typename floatval_t>
-int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param);
+int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param, void* ode_wspace);
 
 /**
  *  Delete the workspace.

@@ -79,16 +79,15 @@ using std::cerr;
 using std::endl;
 
 /* Forward function declarations. */
+template int lbfgs<double>(int n,double *x,double *x0,double *ptr_fx,double *lowerbounds,double *upperbounds,double *extparams, double *precomps,lbfgs_evaluate_t<double> proc_evaluate,lbfgs_progress_t<double> proc_progress,lbfgs_wspace_t<double> *wspace);
+template int lbfgs<__float128>(int n,__float128 *x,__float128 *x0,__float128 *ptr_fx,__float128 *lowerbounds,__float128 *upperbounds,__float128 *extparams, __float128 *precomps,lbfgs_evaluate_t<__float128> proc_evaluate,lbfgs_progress_t<__float128> proc_progress,lbfgs_wspace_t<__float128> *wspace);
+//template int lbfgs<qd_real>(int n,qd_real *x,qd_real *x0,qd_real *ptr_fx,qd_real *lowerbounds,qd_real *upperbounds,qd_real *extparams, qd_real *precomps,lbfgs_evaluate_t<qd_real> proc_evaluate,lbfgs_progress_t<qd_real> proc_progress,lbfgs_wspace_t<qd_real> *wspace);
+//template int lbfgs<mp_real>(int n,mp_real *x,mp_real *x0,mp_real *ptr_fx,mp_real *lowerbounds,mp_real *upperbounds,mp_real *extparams, mp_real *precomps,lbfgs_evaluate_t<mp_real> proc_evaluate,lbfgs_progress_t<mp_real> proc_progress,lbfgs_wspace_t<mp_real> *wspace);
 
-template int lbfgs<double>(int n,double *x,double *ptr_fx,double *lowerbounds,double *upperbounds,double *extparams, double *precomps,lbfgs_evaluate_t<double> proc_evaluate,lbfgs_progress_t<double> proc_progress,lbfgs_wspace_t<double> *wspace);
-template int lbfgs<__float128>(int n,__float128 *x,__float128 *ptr_fx,__float128 *lowerbounds,__float128 *upperbounds,__float128 *extparams, __float128 *precomps,lbfgs_evaluate_t<__float128> proc_evaluate,lbfgs_progress_t<__float128> proc_progress,lbfgs_wspace_t<__float128> *wspace);
-//template int lbfgs<qd_real>(int n,qd_real *x,qd_real *ptr_fx,qd_real *lowerbounds,qd_real *upperbounds,qd_real *extparams, qd_real *precomps,lbfgs_evaluate_t<qd_real> proc_evaluate,lbfgs_progress_t<qd_real> proc_progress,lbfgs_wspace_t<qd_real> *wspace);
-//template int lbfgs<mp_real>(int n,mp_real *x,mp_real *ptr_fx,mp_real *lowerbounds,mp_real *upperbounds,mp_real *extparams, mp_real *precomps,lbfgs_evaluate_t<mp_real> proc_evaluate,lbfgs_progress_t<mp_real> proc_progress,lbfgs_wspace_t<mp_real> *wspace);
-
-template int lbfgs_init<double>(int n, lbfgs_wspace_t<double> *wspace, lbfgs_parameter_t<double> *param);
-template int lbfgs_init<__float128>(int n, lbfgs_wspace_t<__float128> *wspace, lbfgs_parameter_t<__float128> *param);
-//template int lbfgs_init<qd_real>(int n, lbfgs_wspace_t<qd_real> *wspace, lbfgs_parameter_t<qd_real> *param);
-//template int lbfgs_init<mp_real>(int n, lbfgs_wspace_t<mp_real> *wspace, lbfgs_parameter_t<mp_real> *param);
+template int lbfgs_init<double>(int n, lbfgs_wspace_t<double> *wspace, lbfgs_parameter_t<double> *param, void* ode_wspace);
+template int lbfgs_init<__float128>(int n, lbfgs_wspace_t<__float128> *wspace, lbfgs_parameter_t<__float128> *param, void* ode_wspace);
+//template int lbfgs_init<qd_real>(int n, lbfgs_wspace_t<qd_real> *wspace, lbfgs_parameter_t<qd_real> *param, void* ode_wspace);
+//template int lbfgs_init<mp_real>(int n, lbfgs_wspace_t<mp_real> *wspace, lbfgs_parameter_t<mp_real> *param, void* ode_wspace);
 
 template int lbfgs_dest<double>(lbfgs_wspace_t<double> *x);
 template int lbfgs_dest<__float128>(lbfgs_wspace_t<__float128> *x);
@@ -99,6 +98,7 @@ template <typename floatval_t>
 static int line_search_backtracking(
     int n,
     floatval_t *x,
+    const floatval_t *x0,
     floatval_t *extparams,
     floatval_t *precomps,
     floatval_t *lbounds,
@@ -107,17 +107,20 @@ static int line_search_backtracking(
     floatval_t *g,
     floatval_t *s,
     floatval_t *stp,
+    floatval_t *xs,
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wa,
     callback_data_t<floatval_t> *cd,
-    const lbfgs_parameter_t<floatval_t> *param
+    const lbfgs_parameter_t<floatval_t> *param,
+    void *ode_wspace
     );
 
 template <typename floatval_t>
 static int line_search_backtracking_owlqn(
     int n,
     floatval_t *x,
+    const floatval_t *x0,
     floatval_t *extparams,
     floatval_t *precomps,
     floatval_t *lbounds,
@@ -126,17 +129,20 @@ static int line_search_backtracking_owlqn(
     floatval_t *g,
     floatval_t *s,
     floatval_t *stp,
+    floatval_t *xs,
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wp,
     callback_data_t<floatval_t> *cd,
-    const lbfgs_parameter_t<floatval_t> *param
+    const lbfgs_parameter_t<floatval_t> *param,
+    void *ode_wspace
     );
 
 template <typename floatval_t>
 static int line_search_morethuente(
     int n,
     floatval_t *x,
+    const floatval_t *x0,
     floatval_t *extparams,
     floatval_t *precomps,
     floatval_t *lbounds,
@@ -145,11 +151,13 @@ static int line_search_morethuente(
     floatval_t *g,
     floatval_t *s,
     floatval_t *stp,
+    floatval_t *xs,
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wa,
     callback_data_t<floatval_t> *cd,
-    const lbfgs_parameter_t<floatval_t> *param
+    const lbfgs_parameter_t<floatval_t> *param,
+    void *ode_wspace
     );
 
 template <typename floatval_t>
@@ -198,7 +206,7 @@ static void owlqn_project(
     );
 
 template <typename floatval_t>
-int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *_param)
+int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *_param, void* ode_wspace)
 {
     //cout << "Entered lbfgs initialization." << endl;
 
@@ -346,9 +354,11 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
     wspace->pg = NULL;
     wspace->lm = NULL;
     wspace->pf = NULL;
+    wspace->ode_wspace = ode_wspace;
 
     /* Allocate working space. */
     wspace->xp = new floatval_t[n];
+    wspace->xs = new floatval_t[n];
     wspace->g  = new floatval_t[n];
     wspace->gp = new floatval_t[n];
     wspace->d  = new floatval_t[n];
@@ -428,6 +438,7 @@ int lbfgs_dest(lbfgs_wspace_t<floatval_t> *wspace)
     delete[] wspace->gp;
     delete[] wspace->g;
     delete[] wspace->xp;
+    delete[] wspace->xs;
 
     return 1;
 }
@@ -442,6 +453,7 @@ template <typename floatval_t>
 int lbfgs(
     int n,
     floatval_t *x,
+    floatval_t *x0,
     floatval_t *ptr_fx,
     floatval_t *lbounds,
     floatval_t *ubounds,
@@ -457,6 +469,7 @@ int lbfgs(
     floatval_t step;
 
     floatval_t *xp = wspace->xp;
+    floatval_t *xs = wspace->xs;
     floatval_t *g = wspace->g, *gp = wspace->gp, *pg = wspace->pg;
     floatval_t *d = wspace->d, *w = wspace->w, *pf = wspace->pf;
     iteration_data_t<floatval_t> *lm = wspace->lm, *it = NULL;
@@ -465,6 +478,7 @@ int lbfgs(
     floatval_t fx = 0.;
     floatval_t rate = 0.;
     line_search_proc_t<floatval_t> linesearch = wspace->linesearch;
+    void* ode_wspace = wspace->ode_wspace;
 
     lbfgs_parameter_t<floatval_t> param = wspace->param;
 
@@ -489,7 +503,7 @@ int lbfgs(
     //cout << "Making first evaluation." << endl;
 
     /* Evaluate the function value and its gradient. */
-    fx = cd.proc_evaluate(x, extparams, precomps, g, cd.n, GSTEP);
+    fx = cd.proc_evaluate(x, x0, extparams, precomps, g, cd.n, GSTEP, xs, ode_wspace);
     if (0. != param.orthantwise_c)
     {
         /* Compute the L1 norm of the variable and add it to the object value. */
@@ -635,11 +649,11 @@ int lbfgs(
         /* Search for an optimal step. */
         if (param.orthantwise_c == 0.)
         {
-            ls = linesearch(n, x, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xp, gp, w, &cd, &param);
+            ls = linesearch(n, x, x0, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xs, xp, gp, w, &cd, &param, ode_wspace);
         }
         else
         {
-            ls = linesearch(n, x, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xp, pg, w, &cd, &param);
+            ls = linesearch(n, x, x0, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xs, xp, pg, w, &cd, &param, ode_wspace);
             owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end, EPS);
         }
 
@@ -936,7 +950,7 @@ lbfgs_exit:
 
         if(recomp)
         {
-            fx = cd.proc_evaluate(x, extparams, precomps, g, cd.n, GSTEP);
+            fx = cd.proc_evaluate(x, x0, extparams, precomps, g, cd.n, GSTEP, xs, ode_wspace);
         }
     }
 
@@ -948,6 +962,7 @@ template <typename floatval_t>
 static int line_search_backtracking(
     int n,
     floatval_t *x,
+    const floatval_t *x0,
     floatval_t *extparams,
     floatval_t *precomps,
     floatval_t *lbounds,
@@ -956,11 +971,13 @@ static int line_search_backtracking(
     floatval_t *g,
     floatval_t *s,
     floatval_t *stp,
+    floatval_t *xs,
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wp,
     callback_data_t<floatval_t> *cd,
-    const lbfgs_parameter_t<floatval_t> *param
+    const lbfgs_parameter_t<floatval_t> *param,
+    void *ode_wspace
     )
 {
     int count = 0;
@@ -1011,7 +1028,7 @@ static int line_search_backtracking(
         vecadd(x, s, *stp, n);
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(x, extparams, precomps, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, x0, extparams, precomps, g, cd->n, GSTEP, xs, ode_wspace);
 
         ++count;
 
@@ -1080,6 +1097,7 @@ template <typename floatval_t>
 static int line_search_backtracking_owlqn(
     int n,
     floatval_t *x,
+    const floatval_t *x0,
     floatval_t *extparams,
     floatval_t *precomps,
     floatval_t *lbounds,
@@ -1088,11 +1106,13 @@ static int line_search_backtracking_owlqn(
     floatval_t *g,
     floatval_t *s,
     floatval_t *stp,
+    floatval_t *xs,
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wp,
     callback_data_t<floatval_t> *cd,
-    const lbfgs_parameter_t<floatval_t> *param
+    const lbfgs_parameter_t<floatval_t> *param,
+    void *ode_wspace
     )
 {
     int i, count = 0;
@@ -1139,7 +1159,7 @@ static int line_search_backtracking_owlqn(
         owlqn_project(x, wp, param->orthantwise_start, param->orthantwise_end, EPS);
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(x, extparams, precomps, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, x0, extparams, precomps, g, cd->n, GSTEP, xs, ode_wspace);
 
         /* Compute the L1 norm of the variables and add it to the object value. */
         norm = owlqn_x1norm(x, param->orthantwise_start, param->orthantwise_end);
@@ -1183,6 +1203,7 @@ template <typename floatval_t>
 static int line_search_morethuente(
     int n,
     floatval_t *x,
+    const floatval_t *x0,
     floatval_t *extparams,
     floatval_t *precomps,
     floatval_t *lbounds,
@@ -1191,11 +1212,13 @@ static int line_search_morethuente(
     floatval_t *g,
     floatval_t *s,
     floatval_t *stp,
+    floatval_t *xs,
     const floatval_t* xp,
     const floatval_t* gp,
     floatval_t *wa,
     callback_data_t<floatval_t> *cd,
-    const lbfgs_parameter_t<floatval_t> *param
+    const lbfgs_parameter_t<floatval_t> *param,
+    void *ode_wspace
     )
 {
     int count = 0;
@@ -1395,7 +1418,7 @@ static int line_search_morethuente(
 #endif
 
         /* Evaluate the function and gradient values. */
-        *f = cd->proc_evaluate(x, extparams, precomps, g, cd->n, GSTEP);
+        *f = cd->proc_evaluate(x, x0, extparams, precomps, g, cd->n, GSTEP, xs, ode_wspace);
         vecdot(&dg, g, s, n);
 
         ftest1 = finit + *stp * dgtest;

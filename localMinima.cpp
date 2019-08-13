@@ -39,9 +39,16 @@ using std::cerr;
 using std::endl;
 
 template<typename floatval_t> 
+using ode_init_t = void* (*)(int *);
+
+template<typename floatval_t> 
+using ode_dest_t = void (*)(void*);
+
+template<typename floatval_t> 
 using evaluate_t = floatval_t (*)(
     const floatval_t *,
     const floatval_t *,
+	const floatval_t *,
 	const floatval_t *,
     const int,
 	void *
@@ -84,7 +91,11 @@ struct stage_t
     int dim;
     int bSets;    
 	int algorithm;
-    const int* vars;     
+	int precision;
+    const int* vars;
+
+	bool odeFunc;
+
 	// Not very clear, but this will be an array of function pointers, allows for bounds to be functions of prev stage x's
     floatval_t (*(*pBSetOptSize))(floatval_t* x0);   
 	int (*get_density)(int* bState);
@@ -118,6 +129,8 @@ int DIM=0;
 int BSETS=0;
 // The starting boundary set for the current stage
 int bSetStartDepth = 0;
+// The max precision for the current stage
+int stagePrecision = MAX_PRECISION_LEVEL;
 
 int nodeNum = 0;
 #ifdef USE_MPI
@@ -442,6 +455,200 @@ void (* evaluates_gen_mp [])( ) =
 
 #undef funcptr_code
 
+
+// TODO: Much like the above we need the ODE init and destory, but also not for every stage, we can use some NULLs to mask them out and keep coding consistent
+#define eval_code(NUM,floatval_t) static void* ode_init_##NUM##_##floatval_t(int* ret)\
+{\
+	if(stages[##NUM].odeFunc) \
+	{\
+		return ODE_INIT##NUM<##floatval_t>(ret);\
+	}\
+	else\
+	{\
+		return NULL;\
+	}\
+}\
+
+#define M(i, _) eval_code(i,double)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#if (MAX_PRECISION_LEVEL > 1)
+#define M(i, _) eval_code(i,__float128)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 2)
+#define M(i, _) eval_code(i,qd_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 3)
+#define M(i, _) eval_code(i,mp_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+#endif
+
+#undef eval_code
+
+// Now to create the array of these for all the stages
+typedef void (*fptr)();
+
+#define funcptr_code(NUM,floatval_t) COMMA_IF_PP(NUM) reinterpret_cast<fptr>(ode_init_##NUM##_##floatval_t)
+#define M(i, _) funcptr_code(i,double)
+
+// The array of stage evaluation functions
+void (* ode_inits_dbl [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+
+#if (MAX_PRECISION_LEVEL > 1)
+#define M(i, _) funcptr_code(i,__float128)
+void (* ode_inits_dd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 2)
+#define M(i, _) funcptr_code(i,qd_real)
+void (* ode_inits_qd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 3)
+#define M(i, _) funcptr_code(i,mp_real)
+void (* ode_inits_mp [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+#endif
+
+#undef funcptr_code
+
+// And finally the distribution calls
+template <typename floatval_t>
+inline fptr getODEInitFunc(int stage);
+template<>
+inline fptr getODEInitFunc<double>(int stage) { return ode_inits_dbl[stage]; }
+#if (MAX_PRECISION_LEVEL > 1)
+template<>
+inline fptr getODEInitFunc<__float128>(int stage) { return ode_inits_dd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+template<>
+inline fptr getODEInitFunc<qd_real>(int stage) { return ode_inits_qd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+template<>
+inline fptr getODEInitFunc<mp_real>(int stage) { return ode_inits_mp[stage]; }
+#endif
+
+// And now the ODE destroy
+#define eval_code(NUM,floatval_t) static void ode_dest_##NUM##_##floatval_t(void* workspace)\
+{\
+	if(stages[##NUM].odeFunc) \
+	{\
+		return ODE_DEST##NUM<##floatval_t>(workspace);\
+	}\
+	else\
+	{\
+		return NULL;\
+	}\
+}\
+
+#define M(i, _) eval_code(i,double)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+
+#if (MAX_PRECISION_LEVEL > 1)
+#define M(i, _) eval_code(i,__float128)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 2)
+#define M(i, _) eval_code(i,qd_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 3)
+#define M(i, _) eval_code(i,mp_real)
+EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+#undef M
+#endif
+
+#undef eval_code
+
+// Now to create the array of these for all the stages
+typedef void (*fptr)();
+
+#define funcptr_code(NUM,floatval_t) COMMA_IF_PP(NUM) reinterpret_cast<fptr>(ode_dest_##NUM##_##floatval_t)
+#define M(i, _) funcptr_code(i,double)
+
+// The array of stage evaluation functions
+void (* ode_dests_dbl [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+
+#if (MAX_PRECISION_LEVEL > 1)
+#define M(i, _) funcptr_code(i,__float128)
+void (* ode_dests_dd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 2)
+#define M(i, _) funcptr_code(i,qd_real)
+void (* ode_dests_qd [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+#endif
+
+#if (MAX_PRECISION_LEVEL > 3)
+#define M(i, _) funcptr_code(i,mp_real)
+void (* ode_dests_mp [])( ) = 
+{
+	EVAL_PP(REPEAT_PP(NSTAGES, M, ~)) 
+};
+#undef M
+#endif
+
+#undef funcptr_code
+
+// And finally the distribution calls
+template <typename floatval_t>
+inline fptr getODEDestFunc(int stage);
+template<>
+inline fptr getODEDestFunc<double>(int stage) { return ode_dests_dbl[stage]; }
+#if (MAX_PRECISION_LEVEL > 1)
+template<>
+inline fptr getODEDestFunc<__float128>(int stage) { return ode_dests_dd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 2)
+template<>
+inline fptr getODEDestFunc<qd_real>(int stage) { return ode_dests_qd[stage]; }
+#endif
+#if (MAX_PRECISION_LEVEL > 3)
+template<>
+inline fptr getODEDestFunc<mp_real>(int stage) { return ode_dests_mp[stage]; }
+#endif
 
 template <typename floatval_t>
 static int progress(
@@ -865,14 +1072,12 @@ public:
 		    delete[] bestit;
 		    delete[] energy;
 		}
-
-		// TODO: Properly locate this
-		ode_dest(ode_wspace);
     }
 
     // Set/reset memory for new stage if necessary and set boundaries
-	int setup()
+	int setup(void* ode_wpace_in)
 	{
+		ode_wspace = ode_wpace_in;
 		// TODO: Instead of constant re-allocation, just set at FULLDIM size
 		// If the dimensions have changed or the optimisation algorithm changed, reallocate the memory for the new DIM
 		if(DIM != pDIM || PALGO != ALGO)
@@ -921,7 +1126,7 @@ public:
 			// Set the algorithm variables
 			if(ALGO == 0)
 			{
-				ret = lbfgs_init<floatval_t>(DIM, &wspace, &param);
+				ret = lbfgs_init<floatval_t>(DIM, &wspace, &param, ode_wspace);
 				if(ret != 0)
 				{
 					cout << "Initialization error: " << ret << endl;
@@ -1410,11 +1615,11 @@ public:
 	        */
 #ifdef OPT_PROGRESS
 			if(workNumber % SAMPLE_SPACING == 0)
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, _progress, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, x0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, _progress, &wspace);
 			else
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, x0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
 #else /*OPT_PROGRESS*/
-	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
+	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, x0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
 #endif /*!OPT_PROGRESS*/
 
 	       /* Report the result. */
@@ -1523,31 +1728,31 @@ objective_function *objTest;
 #endif /*TEST_START_POINTS*/
 
 template<typename floatval_t>
-void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX);
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* X0, floatval_t* best, floatval_t* bestX, void* ode_wspace);
 
 template<typename floatval_t>
-void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+void locCastRecurs(int depth, int locDepth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* X0, floatval_t* best, floatval_t* bestX, void* ode_wspace)
 {
 	if(locDepth == obj->currBSetDIMS[depth])
 	{
-		castBoundaries<floatval_t>(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, precompute, Xin, X, best, bestX);
+		castBoundaries<floatval_t>(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, precompute, Xin, X, X0, best, bestX, ode_wspace);
 	}
 	else
 	{
 		X[dimCount + locDepth] = floor(Xin[dimCount + locDepth]);
-		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, X0, best, bestX, ode_wspace);
 
 		X[dimCount + locDepth] = ceil(Xin[dimCount + locDepth]);
-		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, best, bestX);
+		locCastRecurs<floatval_t>(depth, locDepth + 1, dimCount, obj, params, precompute, Xin, X, X0, best, bestX, ode_wspace);
 	}
 }
 
 template<typename floatval_t>
-void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* best, floatval_t* bestX)
+void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj, floatval_t* params, floatval_t* precompute, floatval_t* Xin, floatval_t* X, floatval_t* X0, floatval_t* best, floatval_t* bestX, void* ode_wspace)
 {
 	if(depth == obj->NactiveBSETS)
 	{
-		floatval_t f = obj->evaluate(X, params, precompute, DIM);
+		floatval_t f = obj->evaluate(X, X0, params, precompute, DIM, ode_wspace);
 		if(f < *best)
 		{
 			*best = f;
@@ -1562,7 +1767,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 		
 		if(boundaries[obj->activeBSETS[depth]].intCast)
 		{
-			locCastRecurs(depth, 0, dimCount, obj, params, precompute, Xin, X, best, bestX);
+			locCastRecurs(depth, 0, dimCount, obj, params, precompute, Xin, X, X0, best, bestX, ode_wspace);
 		}
 		else
 		{
@@ -1570,7 +1775,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 			{
 				X[dimCount + i] = Xin[dimCount + i];
 			}
-			castBoundaries(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, precompute, Xin, X, best, bestX);
+			castBoundaries(depth + 1, dimCount + obj->currBSetDIMS[depth], obj, params, precompute, Xin, X, X0, best, bestX, ode_wspace);
 		}
 	}
 }
@@ -1581,37 +1786,50 @@ void *run_multi(void *threadarg)
 	pthread_mutex_lock(&theadCoordLock);
 
 	int threadNum = threadStartCount++;
+	int pStage = -1;
 
 	srand((int)time(NULL) ^ (threadNum*(1+nodeNum)));
-    
+
+    // TODO: Change this to give stage specific precision (specifically looking at the defines here)
 	objective_function<double> *obj_dbl = new objective_function<double>(threadNum);
 	OptimizeResult<double> locResults_dbl;
+	void* ode_wpace_dbl;
 #define obj obj_dbl
 #define locResults locResults_dbl
+#define ode_wpace ode_wpace_dbl
 
 #if (MAX_PRECISION_LEVEL > 1)
 	objective_function<__float128> *obj_dd = new objective_function<__float128>(threadNum);
 	OptimizeResult<__float128> locResults_dd;
+	void* ode_wpace_dd;
 #undef obj
 #define obj obj_dd
 #undef locResults
 #define locResults locResults_dd
+#undef ode_wpace
+#define ode_wpace ode_wpace_dd
 #endif
 #if (MAX_PRECISION_LEVEL > 2)
 	objective_function<qd_real> *obj_qd = new objective_function<qd_real>(threadNum);
 	OptimizeResult<qd_real> locResults_qd;
+	void* ode_wpace_qd;
 #undef obj
 #define obj obj_qd
 #undef locResults
 #define locResults locResults_qd
+#undef ode_wpace
+#define ode_wpace ode_wpace_qd
 #endif
 #if (MAX_PRECISION_LEVEL > 3)
 	objective_function<mp_real> *obj_mp = new objective_function<mp_real>(threadNum);
 	OptimizeResult<mp_real> locResults_mp;
+	void* ode_wpace_mp;
 #undef obj
 #define obj obj_mp
 #undef locResults
 #define locResults locResults_mp
+#undef ode_wpace
+#define ode_wpace ode_wpace_mp
 #endif
 
 #if (MAX_PRECISION_LEVEL > 1)
@@ -1759,7 +1977,19 @@ void *run_multi(void *threadarg)
 		}
    
 		// Setup boundaries and memory for all the workhorses
-		ret = obj_dbl->setup();
+		// TODO: Do this for the other precisions
+		if(currStage != pStage)
+		{
+			int ret;
+			// TODO: Destroy this at the very end too
+			if(pStage > 0 && stages[pStage].odeFunc)
+				(reinterpret_cast<ode_dest_t<double>>(getODEDestFunc<double>(currStage)))(ode_wpace_dbl);
+			if(stages[currStage].odeFunc)
+				ode_wpace_dbl = (reinterpret_cast<ode_init_t<double>>(getODEInitFunc<double>(currStage)))(&ret);
+			// TODO: Check return
+		}
+		// TODO: Fix the other setups
+		ret = obj_dbl->setup(ode_wpace_dbl);
 		if(ret < 0)
 		{
 			cerr << "Failed to allocate memory." << endl;
@@ -1824,6 +2054,12 @@ void *run_multi(void *threadarg)
 			std::_Exit(EXIT_FAILURE);
 		}
 #endif
+		// Update the stage number now that we've cleared the setting up.
+		if(currStage != pStage)
+		{
+			pStage = currStage;
+		}
+
 		while(!exitFlag)
 		{
 			if(threadError)
@@ -2099,7 +2335,7 @@ void *run_multi(void *threadarg)
 			if(mustCast)
 			{
 				bestCast = 1e10;
-				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, precompute, locResults.X, XCast, &bestCast, bestCastX);
+				castBoundaries<MAX_PRECISION_T>(0, 0, obj, params, precompute, locResults.X, x0, XCast, &bestCast, bestCastX, ode_wspace);
 
 				for(int i = 0; i < DIM; i++)
 				{
@@ -3105,6 +3341,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		BSETS = stages[stageNum].bSets;
 		PALGO = ALGO;
 		ALGO = stages[stageNum].algorithm;
+		stagePrecision = stages[stageNum].precision;
 
 		pCurrStage = currStage;
 		currStage = stageNum;

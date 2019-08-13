@@ -45,7 +45,6 @@
 
 #define TRAPTYPE 2
 
-typedef MAX_PRECISION_T real_t;
 using namespace std;
 
 inline void *xmds_malloc(size_t size);
@@ -53,11 +52,6 @@ inline void *xmds_malloc(size_t size);
 // ********************************************************
 // DEFINES
 // ********************************************************
-const real_t _EPSILON = get_epsilon<real_t>();
-#ifndef INFINITY
-#define INFINITY HUGE_VAL
-#endif
-
 #ifndef MAX
 #define MAX(a, b) \
   ({ typeof(a) _a = (a); \
@@ -73,17 +67,14 @@ const real_t _EPSILON = get_epsilon<real_t>();
 #endif
 
 // ********************************************************
-//   Auto-vectorisation defines
-#define _MAKE_AUTOVEC_VARIABLE(x) real_t* const __restrict__ x ## _autovec = (real_t*) x
-#define _AUTOVEC(x) (x ## _autovec)
-
-// ********************************************************
 // vector velocity defines
 #define _dimensionless_velocity_ncomponents 4
 // vector position defines
 #define _dimensionless_position_ncomponents 4
 // Vector phase defines
 #define _phase_ncomponents 1
+
+// TODO: Template the constants
 
 const long tot_dim = _dimensionless_velocity_ncomponents + _dimensionless_position_ncomponents + _phase_ncomponents;
 const long vel_start = 0;
@@ -94,101 +85,111 @@ const long phase_start = _dimensionless_velocity_ncomponents + _dimensionless_po
 // GLOBALS
 // ********************************************************
 //   'Globals' element globals
-const real_t a=con_fun<real_t>("0");
-const real_t q=con_fun<real_t>("0.1");
+const MAX_PRECISION_T a=con_fun<MAX_PRECISION_T>("0");
+const MAX_PRECISION_T q=con_fun<MAX_PRECISION_T>("0.1");
 
 
 #if (TRAPTYPE == 1)
-  const real_t trap=con_fun<real_t>("7864.76"); // (2 pi)^2/beta^2
+  const MAX_PRECISION_T trap=con_fun<MAX_PRECISION_T>("7864.76"); // (2 pi)^2/beta^2
 #elif (TRAPTYPE == 2)
-  const real_t trap=con_fun<real_t>("39.4784176043574344753379639995"); // (2 pi)^2
+  const MAX_PRECISION_T trap=con_fun<MAX_PRECISION_T>("39.4784176043574344753379639995"); // (2 pi)^2
 #else
   // Paul Trap
-  const real_t trap=con_fun<real_t>("39.4784176043574344753379639995"); // (2 pi)^2
+  const MAX_PRECISION_T trap=con_fun<MAX_PRECISION_T>("39.4784176043574344753379639995"); // (2 pi)^2
 #endif
 
-const real_t coulomb=con_fun<real_t>("8.64309169165991e8"); //e^2/4 pi eps0
-const real_t delta=con_fun<real_t>("6241.146965412783");
-const real_t wrf=con_fun<real_t>("177.367");
-const real_t eta=con_fun<real_t>("0.16");
-const real_t k=sqrt(con_fun<real_t>("200"))*eta;
+const MAX_PRECISION_T coulomb=con_fun<MAX_PRECISION_T>("8.64309169165991e8"); //e^2/4 pi eps0
+const MAX_PRECISION_T delta=con_fun<MAX_PRECISION_T>("6241.146965412783");
+const MAX_PRECISION_T wrf=con_fun<MAX_PRECISION_T>("177.367");
+const MAX_PRECISION_T eta=con_fun<MAX_PRECISION_T>("0.16");
+const MAX_PRECISION_T k=sqrt(con_fun<MAX_PRECISION_T>("200"))*eta;
 
 
-const real_t initDisp=con_fun<real_t>("0.5618549231638847");
+const MAX_PRECISION_T initDisp=con_fun<MAX_PRECISION_T>("0.5618549231638847");
 
 // Runge Kutta method constants {0.5, 1/6, 1/3}
-const real_t rkConsts[3] = {con_fun<real_t>("0.5"),con_fun<real_t>("1.0")/con_fun<real_t>("6.0"),con_fun<real_t>("1.0")/con_fun<real_t>("3.0")};
+const MAX_PRECISION_T rkConsts[3] = {con_fun<MAX_PRECISION_T>("0.5"),con_fun<MAX_PRECISION_T>("1.0")/con_fun<MAX_PRECISION_T>("6.0"),con_fun<MAX_PRECISION_T>("1.0")/con_fun<MAX_PRECISION_T>("3.0")};
 
+template<typename floatval_t>
 inline int compare(const void *arr1, const void *arr2)
 {
-  return 2*(((real_t*)arr1)[0] > ((real_t*)arr2)[0])-1;
+  return 2*(((floatval_t*)arr1)[0] > ((floatval_t*)arr2)[0])-1;
 }
 
+template<typename floatval_t>
 struct ode_workspace_t {
   /**
     * The workspace memory.
     */
-  real_t t;
+  floatval_t t;
 
-  real_t* vec = NULL;
-  real_t* active_vec = NULL;
+  floatval_t* vec = NULL;
+  floatval_t* active_vec = NULL;
 
   // ********************************************************
   //   segment 2 (RK89 adaptive-step integrator) globals
 
-  real_t* evolution_akfield_vec;
-  real_t* evolution_aifield_vec;
-  real_t* evolution_agfield_vec;
+  floatval_t* evolution_akfield_vec;
+  floatval_t* evolution_aifield_vec;
+  floatval_t* evolution_agfield_vec;
 
-  real_t phi;
+  floatval_t phi;
 };
 
 // ********************************************************
 // FUNCTION PROTOTYPES
 // ********************************************************
+template<typename floatval_t>
 void* ode_init(int* workspace);
+template<typename floatval_t>
 void ode_dest(void* workspace);
 
+template<typename floatval_t>
+void _dimensionless_vec_initialise(ode_workspace_t<floatval_t>* workspace);
+template<typename floatval_t>
+int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatval_t phi_in, int dim, ode_workspace_t<floatval_t>* workspace);
+template<typename floatval_t>
+void pi_pulse(bool neg, ode_workspace_t<floatval_t>* workspace);
+template<typename floatval_t>
+void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace);
+template<typename floatval_t>
+inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _step, ode_workspace_t<floatval_t>* workspace);
 
-void _dimensionless_vec_initialise(ode_workspace_t* workspace);
-int ode_run(const int* zVec, const real_t* tVec, real_t rep_time, real_t phi_in, int dim, ode_workspace_t* workspace);
-void pi_pulse(bool neg, ode_workspace_t* workspace);
-void evolution(real_t time_interval, ode_workspace_t* workspace);
-inline void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_workspace_t* workspace);
-
-
+template<typename floatval_t>
 void* ode_init(int* ret)
 {
-  ode_workspace_t* workspace = (ode_workspace_t*)malloc(sizeof(ode_workspace_t));
+  ode_workspace_t<floatval_t>* workspace = (ode_workspace_t<floatval_t>*)malloc(sizeof(ode_workspace_t<floatval_t>));
 
-  workspace->vec = (real_t*) xmds_malloc(sizeof(real_t) * tot_dim);
+  workspace->vec = (floatval_t*) xmds_malloc(sizeof(floatval_t) * tot_dim);
   workspace->active_vec = workspace->vec;
 
-  workspace->evolution_akfield_vec = (real_t*) xmds_malloc(sizeof(real_t) * tot_dim);
-  workspace->evolution_agfield_vec = (real_t*) xmds_malloc(sizeof(real_t) * tot_dim);
-  workspace->evolution_aifield_vec = (real_t*) xmds_malloc(sizeof(real_t) * tot_dim);
+  workspace->evolution_akfield_vec = (floatval_t*) xmds_malloc(sizeof(floatval_t) * tot_dim);
+  workspace->evolution_agfield_vec = (floatval_t*) xmds_malloc(sizeof(floatval_t) * tot_dim);
+  workspace->evolution_aifield_vec = (floatval_t*) xmds_malloc(sizeof(floatval_t) * tot_dim);
 
   // TODO: Check mem allocation
 
   return (void*)(workspace);
 }
 
+template<typename floatval_t>
 void ode_dest(void* workspace)
 {
-  xmds_free(((ode_workspace_t*)workspace)->evolution_akfield_vec);
-  xmds_free(((ode_workspace_t*)workspace)->evolution_agfield_vec);
-  xmds_free(((ode_workspace_t*)workspace)->evolution_aifield_vec);
+  xmds_free(((floatval_t*)workspace)->evolution_akfield_vec);
+  xmds_free(((floatval_t*)workspace)->evolution_agfield_vec);
+  xmds_free(((floatval_t*)workspace)->evolution_aifield_vec);
 }
 
-real_t ode_costFunc(const real_t* x, const real_t* x0, int dim, void* workspace)
+template<typename floatval_t>
+floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void* workspace)
 {
   // TODO: move into workspace for speed.
 
 
   int* zVec = new int[dim];
-  real_t* tVec = new real_t[dim];
-  real_t phi = x[dim];
-  real_t rep_time = 0.0001;
+  floatval_t* tVec = new floatval_t[dim];
+  floatval_t phi = x[dim];
+  floatval_t rep_time = 0.0001;
 
   for(int i = 0; i < dim; i++)
   {
@@ -196,22 +197,23 @@ real_t ode_costFunc(const real_t* x, const real_t* x0, int dim, void* workspace)
     tVec[i] = x[i];
   }
 
-  ode_run(zVec,tVec,rep_time,phi,dim,(ode_workspace_t*)workspace);
+  ode_run<floatval_t>(zVec,tVec,rep_time,phi,dim,(ode_workspace_t<floatval_t>*)workspace);
 
   // TODO: Take res and determine cost function.
   MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
-  return (__float128(1.0)/__float128(3.0))*pow(abs(((ode_workspace_t*)workspace)->vec[phase_start]) - pi_2,2) + __float128(0.2)*(((ode_workspace_t*)workspace)->vec[pos_start] + ((ode_workspace_t*)workspace)->vec[pos_start+1]) + __float128(0.2)*(((ode_workspace_t*)workspace)->vec[pos_start+2] + ((ode_workspace_t*)workspace)->vec[pos_start+3]);
+  return (__float128(1.0)/__float128(3.0))*pow(abs(((ode_workspace_t<floatval_t>*)workspace)->vec[phase_start]) - pi_2,2) + __float128(0.2)*(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start] + ((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+1]) + __float128(0.2)*(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+2] + ((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+3]);
 }
 
 // ********************************************************
 // MAIN ROUTINE
 // ********************************************************
-int ode_run(const int* zVec, const real_t* tVec, real_t rep_time, real_t phi, int dim, ode_workspace_t* workspace)
+template<typename floatval_t>
+int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatval_t phi, int dim, ode_workspace_t<floatval_t>* workspace)
 {
   int p=0;
   int j=0;
-  real_t* tau = new real_t[2*dim];
-  real_t minimum = tVec[0];
+  floatval_t* tau = new floatval_t[2*dim];
+  floatval_t minimum = tVec[0];
 
   for(p = 0; p<dim; p++)
   {
@@ -231,7 +233,7 @@ int ode_run(const int* zVec, const real_t* tVec, real_t rep_time, real_t phi, in
     printf("tau[%d][0]=%lf\n",p,(double)(tau[2*p]));
   }
   
-  qsort(tau,dim,sizeof(real_t)*2,compare);
+  qsort(tau,dim,sizeof(floatval_t)*2,compare<floatval_t>);
   
   for(p=0;p<dim;p++)
   {
@@ -260,7 +262,7 @@ int ode_run(const int* zVec, const real_t* tVec, real_t rep_time, real_t phi, in
     if(p>0)
     {
       cout << "Evolving" << endl;
-      evolution((tVec[p]-(((real_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((real_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
+      evolution<floatval_t>((tVec[p]-(((floatval_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((floatval_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
     }
       
     #pragma ivdep
@@ -300,7 +302,8 @@ inline void *xmds_malloc(size_t size)
 // ********************************************************
 //   field dimensionless function implementations
 // initialisation for vector velocity
-void _dimensionless_vec_initialise(ode_workspace_t* workspace)
+template<typename floatval_t>
+void _dimensionless_vec_initialise(ode_workspace_t<floatval_t>* workspace)
 {
   workspace->vec[vel_start+0]=0.0;
   workspace->vec[vel_start+1]=0.0;
@@ -317,7 +320,8 @@ void _dimensionless_vec_initialise(ode_workspace_t* workspace)
 
 // ********************************************************
 //   segment 1 (Filter) function implementations
-void pi_pulse(bool neg, ode_workspace_t* workspace)
+template<typename floatval_t>
+void pi_pulse(bool neg, ode_workspace_t<floatval_t>* workspace)
 {
   // Twice because there are two pi-pulses for each ions kick, i.e. counter-propagating
   if(neg)
@@ -336,26 +340,26 @@ void pi_pulse(bool neg, ode_workspace_t* workspace)
   }
 }
 
-
-void evolution(real_t time_interval, ode_workspace_t* workspace)
+template<typename floatval_t>
+void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
 {
-  real_t _start_time = workspace->t;
-  real_t _step = con_fun<real_t>("1e-10");
-  real_t _step_2 = rkConsts[0]*_step;
+  floatval_t _start_time = workspace->t;
+  floatval_t _step = con_fun<floatval_t>("1e-10");
+  floatval_t _step_2 = rkConsts[0]*_step;
 
   long nSteps = floor(time_interval/_step);
 
   cout << "Number of steps needed: " << nSteps << endl;
 
-  real_t* _akfield_vec = workspace->evolution_akfield_vec;
-  real_t* _aifield_vec = workspace->evolution_aifield_vec;
-  real_t* _agfield_vec = workspace->evolution_aifield_vec;
-  real_t* _vec = workspace->vec;
+  floatval_t* _akfield_vec = workspace->evolution_akfield_vec;
+  floatval_t* _aifield_vec = workspace->evolution_aifield_vec;
+  floatval_t* _agfield_vec = workspace->evolution_aifield_vec;
+  floatval_t* _vec = workspace->vec;
   
   for (long _istep = 0; _istep < nSteps; _istep++) 
   {
-    memcpy(_akfield_vec, _vec, sizeof(real_t) * tot_dim);
-    memcpy(_aifield_vec, _vec, sizeof(real_t) * tot_dim);
+    memcpy(_akfield_vec, _vec, sizeof(floatval_t) * tot_dim);
+    memcpy(_aifield_vec, _vec, sizeof(floatval_t) * tot_dim);
     workspace->active_vec = _akfield_vec;
 
     // a_k = G[a_k, t]
@@ -420,10 +424,10 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
   // Clean Up the last step which may be a fraction
   _step = _start_time + time_interval - workspace->t;
 
-  if(_step > _EPSILON)
+  if(_step > get_epsilon<floatval_t>())
   {
-    memcpy(_akfield_vec, _vec, sizeof(real_t) * tot_dim);
-    memcpy(_aifield_vec, _vec, sizeof(real_t) * tot_dim);
+    memcpy(_akfield_vec, _vec, sizeof(floatval_t) * tot_dim);
+    memcpy(_aifield_vec, _vec, sizeof(floatval_t) * tot_dim);
     workspace->active_vec = _akfield_vec;
 
     // a_k = G[a_k, t]
@@ -487,7 +491,8 @@ void evolution(real_t time_interval, ode_workspace_t* workspace)
 }
 
 // Delta A propagation operator for field dimensionless
-inline void evolution_dimensionless_operators_evaluate_operator0(real_t _step, ode_workspace_t* workspace)
+template<typename floatval_t>
+inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _step, ode_workspace_t<floatval_t>* workspace)
 {
   #define v1_1 workspace->active_vec[vel_start+0]
   #define v2_1 workspace->active_vec[vel_start+1]
@@ -500,22 +505,22 @@ inline void evolution_dimensionless_operators_evaluate_operator0(real_t _step, o
   #define phase workspace->active_vec[phase_start+0]
   #define t workspace->t
   #define phi workspace->phi
-  real_t dx2_1_dt;
-  real_t dv1_1_dt;
-  real_t dv2_1_dt;
-  real_t dx1_1_dt;
-  real_t dx2_2_dt;
-  real_t dv1_2_dt;
-  real_t dv2_2_dt;
-  real_t dx1_2_dt;
-  real_t dx2_3_dt;
-  real_t dv1_3_dt;
-  real_t dv2_3_dt;
-  real_t dx1_3_dt;
-  real_t dphase_dt;
+  floatval_t dx2_1_dt;
+  floatval_t dv1_1_dt;
+  floatval_t dv2_1_dt;
+  floatval_t dx1_1_dt;
+  floatval_t dx2_2_dt;
+  floatval_t dv1_2_dt;
+  floatval_t dv2_2_dt;
+  floatval_t dx1_2_dt;
+  floatval_t dx2_3_dt;
+  floatval_t dv1_3_dt;
+  floatval_t dv2_3_dt;
+  floatval_t dx1_3_dt;
+  floatval_t dphase_dt;
 
 #if (TRAPTYPE == 1)
-  real_t dyn_trap = trap*(a - 2*q*cos(wrf*(t)+phi));
+  floatval_t dyn_trap = trap*(a - 2*q*cos(wrf*(t)+phi));
 #endif
 
   // ************* Propagation code ***************
@@ -529,18 +534,18 @@ inline void evolution_dimensionless_operators_evaluate_operator0(real_t _step, o
   dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((delta+x2_1-x1_1)) - 0.5*dyn_trap*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((delta+x2_2-x1_2)) + 0.5*dyn_trap*(x1_2*x1_2+x2_2*x2_2);
 #elif (TRAPTYPE == 2)
 
-  real_t tx1_1 = trap*x1_1;
-  real_t tx2_1 = trap*x2_1;
+  floatval_t tx1_1 = trap*x1_1;
+  floatval_t tx2_1 = trap*x2_1;
 
-  real_t tmp1 = (delta+x2_1-x1_1);
-  real_t itd1 = coulomb/(tmp1*tmp1);
+  floatval_t tmp1 = (delta+x2_1-x1_1);
+  floatval_t itd1 = coulomb/(tmp1*tmp1);
 
-  real_t tx1_2 = trap*x1_2;
-  real_t tx2_2 = trap*x2_2;
+  floatval_t tx1_2 = trap*x1_2;
+  floatval_t tx2_2 = trap*x2_2;
 
-  real_t tmp2 = (delta+x2_2-x1_2);
-  real_t itd2 = coulomb/(tmp2*tmp2);
-  real_t it = -itd1 * tmp1 + itd2 * tmp2;
+  floatval_t tmp2 = (delta+x2_2-x1_2);
+  floatval_t itd2 = coulomb/(tmp2*tmp2);
+  floatval_t it = -itd1 * tmp1 + itd2 * tmp2;
 
   dv1_2_dt = -itd2 - tx1_2;
   dv2_2_dt = itd2 - tx2_2;
