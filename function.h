@@ -62,7 +62,7 @@ inline MAX_PRECISION_T stages_os10(MAX_PRECISION_T* x0) { return 1.0; }
 MAX_PRECISION_T (*stages_os1[1])(MAX_PRECISION_T* x0) = { &stages_os10 }; 
 // CHANGE: This will be stage dependent and given as a function
 inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
-#define STAGES const stage_t<MAX_PRECISION_T> stages_s0 = {1,1,0,stages_s0vars,stages_os0,dyn_density_0};stages[0]=stages_s0;/*const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};stages[1]=s1;*/
+#define STAGES const stage_t<MAX_PRECISION_T> stages_s0 = {1,1,0,1,stages_s0vars,true,stages_os0,dyn_density_0};stages[0]=stages_s0;/*const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};stages[1]=s1;*/
 
 // CHANGE:
 // These will be optimisation labels generated from the optimisation type codes
@@ -120,6 +120,11 @@ inline int dyn_density_0(int* bState) { return 2*(1 + bState[0]); }
 // CHANGE: Functions are now stage specific
 #define FUNCTION0(x, x0, params, precompute) (__extension__({ode_costFunc(x, x0, n, ode_wspace);}))
 #define DERIVATIVES0(g, x, x0, xs, params, precompute, f, step) (__extension__({xs[0]+=step;g[0]=ode_costFunc(xs, x0, n, ode_wspace);xs[0]=x[0];xs[1]+=step;g[1]=ode_costFunc(xs, x0, n, ode_wspace);}))
+
+
+// CHANGE: These defines direct to the relavent ODE initialize and destroy for this stage, if not present these are to be defined but blank
+#define ODE_INIT0 ode_init
+#define ODE_DEST0 ode_dest
 
 
 #endif /*USER_FUNCTION_H*/
