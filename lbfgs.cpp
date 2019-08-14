@@ -208,11 +208,12 @@ static void owlqn_project(
 template <typename floatval_t>
 int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *_param, void* ode_wspace)
 {
-    //cout << "Entered lbfgs initialization." << endl;
+    cout << "Entered lbfgs initialization." << endl;
+    cout << "Allocating with dim size: " << n << endl;
 
     iteration_data_t<floatval_t> *it = NULL;
     lbfgs_parameter_t<floatval_t> defparam;
-    lbfgs_parameter_t<floatval_t> param;
+    lbfgs_parameter_t<floatval_t>* param;
     int i, m;
 
     defparam.m = 12;
@@ -236,31 +237,31 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
 
     if(_param == NULL)
     {
-        param = defparam;
+        param = &defparam;
     }
     else
     {
-        param = *_param;
+        param = _param;
     }
 
     wspace->param = param;
 
-    m = param.m;
+    m = param->m;
 
     /* Check the input parameters for errors. */
     if (n <= 0)
     {
         return LBFGSERR_INVALID_N;
     }
-    if (param.eps < defparam.eps)
+    if (param->eps < defparam.eps)
     {
         return LBFGSERR_INVALID_EPSILON;
     }
-    if (param.past < 0)
+    if (param->past < 0)
     {
         return LBFGSERR_INVALID_TESTPERIOD;
     }
-    if (param.delta < defparam.eps)
+    if (param->delta < defparam.eps)
     {
         return LBFGSERR_INVALID_DELTA;
     }
@@ -271,53 +272,53 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
         return LBFGSERR_INVALID_MINSTEP;
     }
     */
-    if (param.max_step < param.min_step)
+    if (param->max_step < param->min_step)
     {
         return LBFGSERR_INVALID_MAXSTEP;
     }
-    if (param.ftol < defparam.eps)
+    if (param->ftol < defparam.eps)
     {
         return LBFGSERR_INVALID_FTOL;
     }
-    if (param.linesearch == LBFGS_LINESEARCH_BACKTRACKING_WOLFE ||
-        param.linesearch == LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE)
+    if (param->linesearch == LBFGS_LINESEARCH_BACKTRACKING_WOLFE ||
+        param->linesearch == LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE)
     {
-        if (param.wolfe <= param.ftol || 1. <= param.wolfe)
+        if (param->wolfe <= param->ftol || 1. <= param->wolfe)
         {
             return LBFGSERR_INVALID_WOLFE;
         }
     }
-    if (param.gtol < defparam.eps)
+    if (param->gtol < defparam.eps)
     {
         return LBFGSERR_INVALID_GTOL;
     }
-    if (param.xtol < defparam.eps)
+    if (param->xtol < defparam.eps)
     {
         return LBFGSERR_INVALID_XTOL;
     }
-    if (param.max_linesearch <= 0)
+    if (param->max_linesearch <= 0)
     {
         return LBFGSERR_INVALID_MAXLINESEARCH;
     }
-    if (param.orthantwise_c < 0.)
+    if (param->orthantwise_c < 0.)
     {
         return LBFGSERR_INVALID_ORTHANTWISE;
     }
-    if (param.orthantwise_start < 0 || n < param.orthantwise_start)
+    if (param->orthantwise_start < 0 || n < param->orthantwise_start)
     {
         return LBFGSERR_INVALID_ORTHANTWISE_START;
     }
-    if (param.orthantwise_end < 0)
+    if (param->orthantwise_end < 0)
     {
-        param.orthantwise_end = n;
+        param->orthantwise_end = n;
     }
-    if (n < param.orthantwise_end)
+    if (n < param->orthantwise_end)
     {
         return LBFGSERR_INVALID_ORTHANTWISE_END;
     }
-    if (param.orthantwise_c != 0.)
+    if (param->orthantwise_c != 0.)
     {
-        switch (param.linesearch)
+        switch (param->linesearch)
         {
         case LBFGS_LINESEARCH_BACKTRACKING:
             wspace->linesearch = line_search_backtracking_owlqn;
@@ -329,7 +330,7 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
     }
     else
     {
-        switch (param.linesearch)
+        switch (param->linesearch)
         {
         case LBFGS_LINESEARCH_MORETHUENTE:
             wspace->linesearch = line_search_morethuente;
@@ -369,7 +370,7 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
         return LBFGSERR_OUTOFMEMORY;
     }
 
-    if (param.orthantwise_c != 0.)
+    if (param->orthantwise_c != 0.)
     {
         /* Allocate working space for OW-LQN. */
         wspace->pg = new floatval_t[n];
@@ -407,9 +408,9 @@ int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floa
     }
 
     /* Allocate an array for storing previous values of the objective function. */
-    if (0 < param.past)
+    if (0 < param->past)
     {
-        wspace->pf = new floatval_t[param.past];
+        wspace->pf = new floatval_t[param->past];
     }
 
     return 0;
@@ -419,7 +420,7 @@ template <typename floatval_t>
 int lbfgs_dest(lbfgs_wspace_t<floatval_t> *wspace)
 {
     int i;
-    const int m = wspace->param.m;
+    const int m = wspace->param->m;
     delete[] wspace->pf;
 
     /* Free memory blocks used by this function. */
@@ -480,12 +481,12 @@ int lbfgs(
     line_search_proc_t<floatval_t> linesearch = wspace->linesearch;
     void* ode_wspace = wspace->ode_wspace;
 
-    lbfgs_parameter_t<floatval_t> param = wspace->param;
+    lbfgs_parameter_t<floatval_t>* param = wspace->param;
 
-    const int m = param.m;
-    const floatval_t EPS = param.eps;
-    const floatval_t GSTEP = param.gstep;
-    const floatval_t CONVEPS = param.conv_epsilon;
+    const int m = param->m;
+    const floatval_t EPS = param->eps;
+    const floatval_t GSTEP = param->gstep;
+    const floatval_t CONVEPS = param->conv_epsilon;
 
     if((lbounds != NULL && ubounds == NULL) || (lbounds == NULL && ubounds != NULL))
     {
@@ -504,12 +505,12 @@ int lbfgs(
 
     /* Evaluate the function value and its gradient. */
     fx = cd.proc_evaluate(x, x0, extparams, precomps, g, cd.n, GSTEP, xs, ode_wspace);
-    if (0. != param.orthantwise_c)
+    if (0. != param->orthantwise_c)
     {
         /* Compute the L1 norm of the variable and add it to the object value. */
-        xnorm = owlqn_x1norm(x, param.orthantwise_start, param.orthantwise_end);
-        fx += xnorm * param.orthantwise_c;
-        owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end, EPS);
+        xnorm = owlqn_x1norm(x, param->orthantwise_start, param->orthantwise_end);
+        fx += xnorm * param->orthantwise_c;
+        owlqn_pseudo_gradient(pg, x, g, n, param->orthantwise_c, param->orthantwise_start, param->orthantwise_end, EPS);
     }
 
 
@@ -522,7 +523,7 @@ int lbfgs(
         Compute the direction;
         we assume the initial hessian matrix H_0 as the identity matrix.
      */
-    if (param.orthantwise_c == 0.)
+    if (param->orthantwise_c == 0.)
     {
         vecncpy(d, g, n);
     }
@@ -609,7 +610,7 @@ int lbfgs(
     vec2norm(&xnorm, x, n);
 
 
-    if (param.orthantwise_c == 0.)
+    if (param->orthantwise_c == 0.)
     {
         vec2norm(&gnorm, g, n);
     }
@@ -620,7 +621,7 @@ int lbfgs(
 
     if (xnorm < 1.0) xnorm = 1.0;
 
-    if (gnorm / xnorm <= param.conv_epsilon)
+    if (gnorm / xnorm <= param->conv_epsilon)
     {
         ret = LBFGS_ALREADY_MINIMIZED;
         goto lbfgs_exit;
@@ -647,14 +648,14 @@ int lbfgs(
         veccpy(gp, g, n);
 
         /* Search for an optimal step. */
-        if (param.orthantwise_c == 0.)
+        if (param->orthantwise_c == 0.)
         {
-            ls = linesearch(n, x, x0, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xs, xp, gp, w, &cd, &param, ode_wspace);
+            ls = linesearch(n, x, x0, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xs, xp, gp, w, &cd, param, ode_wspace);
         }
         else
         {
-            ls = linesearch(n, x, x0, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xs, xp, pg, w, &cd, &param, ode_wspace);
-            owlqn_pseudo_gradient(pg, x, g, n, param.orthantwise_c, param.orthantwise_start, param.orthantwise_end, EPS);
+            ls = linesearch(n, x, x0, extparams, precomps, lbounds, ubounds, &fx, g, d, &step, xs, xp, pg, w, &cd, param, ode_wspace);
+            owlqn_pseudo_gradient(pg, x, g, n, param->orthantwise_c, param->orthantwise_start, param->orthantwise_end, EPS);
         }
 
 #ifdef VERBOSE
@@ -699,7 +700,7 @@ int lbfgs(
 
         /* Compute x and g norms. */
         vec2norm(&xnorm, x, n);
-        if (param.orthantwise_c == 0.)
+        if (param->orthantwise_c == 0.)
         {
             vec2norm(&gnorm, g, n);
         }
@@ -724,7 +725,7 @@ int lbfgs(
          */
         if (xnorm < 1.0) xnorm = 1.0;
 
-        if (gnorm / xnorm <= param.conv_epsilon)
+        if (gnorm / xnorm <= param->conv_epsilon)
         {
             /* Convergence. */
             ret = LBFGS_SUCCESS;
@@ -739,13 +740,13 @@ int lbfgs(
         if (pf != NULL)
         {
             /* We don't test the stopping criterion while k < past. */
-            if (param.past <= k)
+            if (param->past <= k)
             {
                 /* Compute the relative improvement from the past. */
-                rate = (pf[k % param.past] - fx) / fx;
+                rate = (pf[k % param->past] - fx) / fx;
 
                 /* The stopping criterion. */
-                if (rate < param.delta)
+                if (rate < param->delta)
                 {
                     ret = LBFGS_STOP;
                     break;
@@ -753,10 +754,10 @@ int lbfgs(
             }
 
             /* Store the current value of the objective function. */
-            pf[k % param.past] = fx;
+            pf[k % param->past] = fx;
         }
 
-        if (param.max_iterations != 0 && param.max_iterations < k+1)
+        if (param->max_iterations != 0 && param->max_iterations < k+1)
         {
             /* Maximum number of iterations. */
             ret = LBFGSERR_MAXIMUMITERATION;
@@ -802,7 +803,7 @@ int lbfgs(
         end = (end + 1) % m;
 
         /* Compute the steepest direction. */
-        if (param.orthantwise_c == 0.)
+        if (param->orthantwise_c == 0.)
         {
             /* Compute the negative of gradients. */
             vecncpy(d, g, n);
@@ -901,9 +902,9 @@ int lbfgs(
         /*
             Constrain the search direction for orthant-wise updates.
          */
-        if (param.orthantwise_c != 0.)
+        if (param->orthantwise_c != 0.)
         {
-            for (i = param.orthantwise_start;i < param.orthantwise_end;++i)
+            for (i = param->orthantwise_start;i < param->orthantwise_end;++i)
             {
                 if (d[i] * pg[i] > 0.0)
                 {

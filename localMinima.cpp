@@ -84,8 +84,19 @@ struct boundary_t
 	bool hasSym;
 };
 
-// TODO: Document this, desparetly needed
 // The description of a stage for multistaging optimisations
+/**
+ * The type used to store stage information
+ * 
+ * dim: the dimension of this stages search
+ * bSets: the number of boundary sets used by this stage
+ * algorithm: the algorithm used by this stage
+ * precision: the level of precision to be used by this stage
+ * vars: The variables being optimized over in this stage, referenced by where they occur in global ordering
+ * odeFunc: Whether this stage uses an ODE as part of its cost function.
+ * pBSetOptSize: The area of search refinement around the current best point for this stage, only relevent for stages > 1st, otherwise 0
+ * get_density: The density of the search for this stage
+ */
 template <typename floatval_t>
 struct stage_t 
 {
@@ -101,6 +112,8 @@ struct stage_t
     floatval_t (*(*pBSetOptSize))(floatval_t* x0);   
 	int (*get_density)(int* bState);
 };
+
+// TODO: Add enums or constants for precision levels and algorithm types
 
 int nruns = 0;
 bool startBound = true;
@@ -263,6 +276,7 @@ CONSTANTS(mp_real)
 		for(int i=0;i<n;i++) \
 		{ \
 			g_sum[i] = 0.; \
+			Xs[i] = X[i]; \
 		} \
 		for(int i=0;i<SAMPLES;i++) \
 		{ \
@@ -287,6 +301,10 @@ CONSTANTS(mp_real)
 		delete[] g_sum; \
 	) \
 	IFDEF_NROBUST( \
+		for(int i=0;i<n;i++) \
+		{ \
+			Xs[i] = X[i]; \
+		} \
 		fx = FUNCTION##NUM(X, X0, params, precompute); \
 		DERIVATIVES##NUM(g, X, X0, Xs, params, precompute, fx, step); \
 	) \
@@ -3917,10 +3935,11 @@ int main(int argc, char **argv)
         infile.close();
     }
 
-	int* paramState;
+	int* paramState = NULL;
 
 	if(NPARAMS > 0)
 		paramState = new int[NPARAMS];
+	
 
 	// TEST: This memory assignment needs changing for new code
 	int* bState = new int[FULLBSETS];
@@ -3968,10 +3987,11 @@ int main(int argc, char **argv)
 	time_t t = time(0);
     strftime(buff, DTTMSZ, DTTMFMT, localtime (&t));
 
+#ifdef NEVER
 	if(gotLastLine)
 	{
 // TODO: Remove this.
-#ifdef NEVER
+
 		infile.open("results.csv", std::ifstream::in );
 		if(infile.is_open())
 		{
@@ -4064,10 +4084,11 @@ int main(int argc, char **argv)
 		}
 		outfile << endl;
 		outfile << "=======================================================================================================================" << endl;
-#endif /* NEVER */
+
 	}
 	else
 	{
+#endif /* NEVER */
 		for(int i = 0; i < NSTAGES; i++)
 			pBests[i][stages[i].bSets - 1][0] = 1e10;
 
@@ -4078,7 +4099,10 @@ int main(int argc, char **argv)
 		outfile << "Parameters: " << EXPPARAMETERS << endl;
 		outfile << "Format: " << EXPFORMAT << endl;
 		outfile << "=======================================================================================================================" << endl;
+	
+#ifdef NEVER
 	}
+#endif /* NEVER */
 
     outfile.close();
 

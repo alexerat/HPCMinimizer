@@ -475,7 +475,7 @@ struct lbfgs_wspace_t {
       */
     line_search_proc_t<floatval_t> linesearch;
 
-    lbfgs_parameter_t<floatval_t> param;
+    lbfgs_parameter_t<floatval_t>* param;
 
     /**
       * The workspace memory.

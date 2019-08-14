@@ -102,7 +102,7 @@ const MAX_PRECISION_T coulomb=con_fun<MAX_PRECISION_T>("8.64309169165991e8"); //
 const MAX_PRECISION_T delta=con_fun<MAX_PRECISION_T>("6241.146965412783");
 const MAX_PRECISION_T wrf=con_fun<MAX_PRECISION_T>("177.367");
 const MAX_PRECISION_T eta=con_fun<MAX_PRECISION_T>("0.16");
-const MAX_PRECISION_T k=sqrt(con_fun<MAX_PRECISION_T>("200"))*eta;
+const MAX_PRECISION_T k=sqrt(con_fun<MAX_PRECISION_T>("2"))*eta;
 
 
 const MAX_PRECISION_T initDisp=con_fun<MAX_PRECISION_T>("0.5618549231638847");
@@ -186,18 +186,28 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
   // TODO: move into workspace for speed.
 
 
-  int* zVec = new int[dim];
-  floatval_t* tVec = new floatval_t[dim];
-  floatval_t phi = x[dim];
-  floatval_t rep_time = 0.0001;
+
+  //int* zVec = new int[dim];
+  int zVec[8] = {37, 55, -11, 71, 80, 65, -43, 98};
+  floatval_t tInit[8] = {0.0, 0.15625, 0.3125, 0.46875, 0.625, 0.78125, 0.9375, 1.09375};
+
+  floatval_t* tVec = new floatval_t[dim+1];
+  tVec[0] = tInit[0];
+   
+  //floatval_t phi = x[dim];
+  floatval_t phi = 0.0;
+
+
+  floatval_t rep_time = 0.0;
+
+  cout << "dim is: " << dim << endl;
 
   for(int i = 0; i < dim; i++)
   {
-    zVec[i] = to_int(x0[i]);
-    tVec[i] = x[i];
+    tVec[i+1] = tInit[i+1] + x[i];
   }
 
-  ode_run<floatval_t>(zVec,tVec,rep_time,phi,dim,(ode_workspace_t<floatval_t>*)workspace);
+  ode_run<floatval_t>(&zVec[0],tVec,rep_time,phi,dim+1,(ode_workspace_t<floatval_t>*)workspace);
 
   // TODO: Take res and determine cost function.
   MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
@@ -225,27 +235,25 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
   
   for(p=0;p<dim;p++)
   {
-    tau[2*p]-= minimum;
+    tau[2*p]-=minimum;
   }
 
+/* 
   for(p=0;p<dim;p++)
   {
     printf("tau[%d][0]=%lf\n",p,(double)(tau[2*p]));
   }
-  
+*/
   qsort(tau,dim,sizeof(floatval_t)*2,compare<floatval_t>);
   
+/* 
   for(p=0;p<dim;p++)
   {
     printf("tau[%d][0]=%lf, tau[%d][1]=%lf\n",p,(double)(tau[2*p]),p,(double)(tau[2*p+1]));
   }
+*/
   // **********************************************
     
-  
-  // Run-time validation checks
-  if (tau[2*1 + 0] <= 0.0)
-    _LOG(_ERROR_LOG_LEVEL, "ERROR: The interval for segment 2 is not positive!\n"
-                           "Interval = %e\n", (double)(tau[2*1+0]));
   
   /* Code that actually does stuff goes here */
   workspace->t = 0.0;
@@ -261,27 +269,28 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
     
     if(p>0)
     {
-      cout << "Evolving" << endl;
+      //cout << "Evolving" << endl;
       evolution<floatval_t>((tVec[p]-(((floatval_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((floatval_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
     }
       
     #pragma ivdep
     for(j=0;j<abs(zVec[p]);j++)
     {
-      cout << "Pulsing" << endl;
+      //cout << "Pulsing" << endl;
       pi_pulse(zVec[p] < 0, workspace);
 
       if(j < abs(zVec[p]) -1)
       {
-        cout << "Evolving" << endl;
-        evolution(rep_time, workspace);
+        //cout << "Evolving" << endl;
+        if(rep_time > DBL_EPSILON)
+        {
+          evolution(rep_time, workspace);
+        }
+        
       }
         
     }
   }
-  
-  // Bing!
-  _LOG(_SIMULATION_LOG_LEVEL, "\a");
   
   delete[] tau;
 
@@ -344,12 +353,12 @@ template<typename floatval_t>
 void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
 {
   floatval_t _start_time = workspace->t;
-  floatval_t _step = con_fun<floatval_t>("1e-10");
+  floatval_t _step = con_fun<floatval_t>("1e-7");
   floatval_t _step_2 = rkConsts[0]*_step;
 
   long nSteps = floor(time_interval/_step);
 
-  cout << "Number of steps needed: " << nSteps << endl;
+  //cout << "Number of steps needed: " << nSteps << endl;
 
   floatval_t* _akfield_vec = workspace->evolution_akfield_vec;
   floatval_t* _aifield_vec = workspace->evolution_aifield_vec;
