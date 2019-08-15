@@ -99,6 +99,7 @@ const MAX_PRECISION_T q=con_fun<MAX_PRECISION_T>("0.1");
 #endif
 
 const MAX_PRECISION_T coulomb=con_fun<MAX_PRECISION_T>("8.64309169165991e8"); //e^2/4 pi eps0
+const MAX_PRECISION_T coulombInPhase=con_fun<MAX_PRECISION_T>("8.64309169165991e8"); // (e^2 Sqrt[M \[Omega] ])/(2 \[Epsilon]0 \[HBar] Sqrt[\[HBar]]\[Omega])
 const MAX_PRECISION_T delta=con_fun<MAX_PRECISION_T>("6241.146965412783");
 const MAX_PRECISION_T wrf=con_fun<MAX_PRECISION_T>("177.367");
 const MAX_PRECISION_T eta=con_fun<MAX_PRECISION_T>("0.16");
@@ -175,9 +176,12 @@ void* ode_init(int* ret)
 template<typename floatval_t>
 void ode_dest(void* workspace)
 {
+  xmds_free(((ode_workspace_t<floatval_t>*)workspace)->vec);
   xmds_free(((ode_workspace_t<floatval_t>*)workspace)->evolution_akfield_vec);
   xmds_free(((ode_workspace_t<floatval_t>*)workspace)->evolution_agfield_vec);
   xmds_free(((ode_workspace_t<floatval_t>*)workspace)->evolution_aifield_vec);
+
+  free(workspace);
 }
 
 template<typename floatval_t>
@@ -191,7 +195,7 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
   int zVec[8] = {37, 55, -11, 71, 80, 65, -43, 98};
   floatval_t tInit[8] = {0.0, 0.15625, 0.3125, 0.46875, 0.625, 0.78125, 0.9375, 1.09375};
 
-  floatval_t* tVec = new floatval_t[dim+1];
+  floatval_t* tVec = new floatval_t[8];
   tVec[0] = tInit[0];
    
   //floatval_t phi = x[dim];
@@ -213,6 +217,8 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
 
   // TODO: Take res and determine cost function.
   MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
+
+  delete[] tVec;
   return (__float128(1.0)/__float128(3.0))*pow(abs(((ode_workspace_t<floatval_t>*)workspace)->vec[phase_start]) - pi_2,2) + __float128(0.2)*(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start] + ((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+1]) + __float128(0.2)*(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+2] + ((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+3]);
 }
 
@@ -232,7 +238,7 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
     tau[2*p]=tVec[p];
     tau[2*p + 1]=zVec[p];
 
-    minimum = min(tVec[p],minimum);
+    //minimum = min(tVec[p],minimum);
   }
   
   for(p=0;p<dim;p++)
@@ -246,7 +252,7 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
     printf("tau[%d][0]=%lf\n",p,(double)(tau[2*p]));
   }
 */
-  qsort(tau,dim,sizeof(floatval_t)*2,compare<floatval_t>);
+  //qsort(tau,dim,sizeof(floatval_t)*2,compare<floatval_t>);
   
 /* 
   for(p=0;p<dim;p++)

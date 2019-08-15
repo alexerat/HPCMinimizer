@@ -1011,6 +1011,7 @@ public:
 	 */
     objective_function(int threadNum_in)
     {
+		cout << "Constructing objective function.." << endl;
 		// TODO: These options will become stage specific
 		initialized = false;
 		threadNum = threadNum_in;
@@ -1044,6 +1045,7 @@ public:
 	 */
     virtual ~objective_function()
     {
+		cout << "Deleting objective function.." << endl;
 		// CHECK: Fix all this, mainly on the ALGO setup, multiple stages may make use of them
         if (m_x != NULL)
         {
@@ -4235,6 +4237,9 @@ int main(int argc, char **argv)
 	delete[] params;
 	delete[] parameters;
 	delete[] boundaries;
+
+	delete[] x0;
+	delete[] stages;
 
 	pthread_spin_destroy(&workLock);
 	pthread_mutex_destroy(&theadCoordLock);
