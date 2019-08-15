@@ -209,6 +209,8 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
 
   ode_run<floatval_t>(&zVec[0],tVec,rep_time,phi,dim+1,(ode_workspace_t<floatval_t>*)workspace);
 
+  cout << "Phase is: " << to_out_string(abs(((ode_workspace_t<floatval_t>*)workspace)->vec[phase_start]),8) << endl;
+
   // TODO: Take res and determine cost function.
   MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
   return (__float128(1.0)/__float128(3.0))*pow(abs(((ode_workspace_t<floatval_t>*)workspace)->vec[phase_start]) - pi_2,2) + __float128(0.2)*(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start] + ((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+1]) + __float128(0.2)*(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+2] + ((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+3]);
@@ -500,6 +502,7 @@ void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
 }
 
 // Delta A propagation operator for field dimensionless
+// TODO: Combine steps into constants to gain about another 20-30% speed
 template<typename floatval_t>
 inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _step, ode_workspace_t<floatval_t>* workspace)
 {
@@ -560,7 +563,7 @@ inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _ste
   dv2_2_dt = itd2 - tx2_2;
   dv1_1_dt = -itd1 - tx1_1;
   dv2_1_dt = itd1 - tx2_1;
-  dphase_dt = rkConsts[0]*((v1_1-v1_2)*(v1_1+v1_2) + (v2_1-v2_2)*(v2_1+v2_2) - x1_1*tx1_1+x2_1*tx2_1  + x1_2*tx1_2+x2_2*tx2_2) + it;
+  dphase_dt = rkConsts[0]*((v1_1-v1_2)*(v1_1+v1_2) + (v2_1-v2_2)*(v2_1+v2_2) - x1_1*tx1_1+x2_1*tx2_1 + x1_2*tx1_2+x2_2*tx2_2) + it;
 #else
   // Paul Trap
   dv1_1_dt = -coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x1_1;
