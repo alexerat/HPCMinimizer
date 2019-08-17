@@ -98,8 +98,13 @@ const MAX_PRECISION_T q=con_fun<MAX_PRECISION_T>("0.1");
   const MAX_PRECISION_T trap=con_fun<MAX_PRECISION_T>("39.4784176043574344753379639995"); // (2 pi)^2
 #endif
 
-const MAX_PRECISION_T coulomb=con_fun<MAX_PRECISION_T>("8.64309169165991e8"); //e^2/4 pi eps0
-const MAX_PRECISION_T coulombInPhase=con_fun<MAX_PRECISION_T>("8.64309169165991e8"); // (e^2 Sqrt[M \[Omega] ])/(2 \[Epsilon]0 \[HBar] Sqrt[\[HBar]]\[Omega])
+const MAX_PRECISION_T pi2sqr=con_fun<MAX_PRECISION_T>("39.4784176043574344753379639995"); // (2 \pi)^2
+const MAX_PRECISION_T lambda=con_fun<MAX_PRECISION_T>("2.189320701320595e7"); // (e^2 Sqrt[M \[Omega] ])/(4 \pi \[Epsilon]0 \[HBar] Sqrt[\[HBar]]\[Omega])
+
+const MAX_PRECISION_T coulomb=pi2sqr*lambda;
+const MAX_PRECISION_T lambda2=2.0*lambda;
+const MAX_PRECISION_T pi2sqrinv=1.0/pi2sqr;
+
 const MAX_PRECISION_T delta=con_fun<MAX_PRECISION_T>("6241.146965412783");
 const MAX_PRECISION_T wrf=con_fun<MAX_PRECISION_T>("177.367");
 const MAX_PRECISION_T eta=con_fun<MAX_PRECISION_T>("0.16");
@@ -195,6 +200,8 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
   int zVec[8] = {37, 55, -11, 71, 80, 65, -43, 98};
   floatval_t tInit[8] = {0.0, 0.15625, 0.3125, 0.46875, 0.625, 0.78125, 0.9375, 1.09375};
 
+  //floatval_t tInit[8] = {0.0, 0.0015625, 0.003125, 0.0046875, 0.00625, 0.0078125, 0.009375, 0.0109375};
+
   floatval_t* tVec = new floatval_t[8];
   tVec[0] = tInit[0];
    
@@ -213,7 +220,11 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
 
   ode_run<floatval_t>(&zVec[0],tVec,rep_time,phi,dim+1,(ode_workspace_t<floatval_t>*)workspace);
 
-  cout << "Phase is: " << to_out_string(abs(((ode_workspace_t<floatval_t>*)workspace)->vec[phase_start]),8) << endl;
+
+  // The real phase is multiplied by a factor of pi/2
+  cout << "Phase is: " << to_out_string(2.0*abs(((ode_workspace_t<floatval_t>*)workspace)->vec[phase_start]),8) << endl;
+  cout << "Res mode 1: " << to_out_string(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start] + initDisp,8) << endl;
+  cout << "Res mode 2: " << to_out_string(((ode_workspace_t<floatval_t>*)workspace)->vec[pos_start+2] + initDisp,8) << endl;
 
   // TODO: Take res and determine cost function.
   MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
@@ -271,7 +282,6 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
 
   workspace->phi = phi;
 
-  #pragma ivdep
   for(p=0;p<dim;p++)
   {
     
@@ -280,8 +290,7 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
       //cout << "Evolving" << endl;
       evolution<floatval_t>((tVec[p]-(((floatval_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((floatval_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
     }
-      
-    #pragma ivdep
+
     for(j=0;j<abs(zVec[p]);j++)
     {
       //cout << "Pulsing" << endl;
@@ -357,6 +366,8 @@ void pi_pulse(bool neg, ode_workspace_t<floatval_t>* workspace)
   }
 }
 
+
+
 template<typename floatval_t>
 void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
 {
@@ -370,7 +381,7 @@ void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
 
   floatval_t* _akfield_vec = workspace->evolution_akfield_vec;
   floatval_t* _aifield_vec = workspace->evolution_aifield_vec;
-  floatval_t* _agfield_vec = workspace->evolution_aifield_vec;
+  floatval_t* _agfield_vec = workspace->evolution_agfield_vec;
   floatval_t* _vec = workspace->vec;
   
   for (long _istep = 0; _istep < nSteps; _istep++) 
@@ -436,6 +447,8 @@ void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
       // a = a + a_k/6
       _vec[_i0] += rkConsts[1]*_agfield_vec[_i0];
     }
+
+    
   }
 
   // Clean Up the last step which may be a fraction
@@ -504,6 +517,8 @@ void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
       // a = a + a_k/6
       _vec[_i0] += rkConsts[1]*_agfield_vec[_i0];
     }
+
+    
   }
 }
 
@@ -552,6 +567,7 @@ inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _ste
   dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((delta+x2_1-x1_1)) - 0.5*dyn_trap*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((delta+x2_2-x1_2)) + 0.5*dyn_trap*(x1_2*x1_2+x2_2*x2_2);
 #elif (TRAPTYPE == 2)
 
+  
   floatval_t tx1_1 = trap*x1_1;
   floatval_t tx2_1 = trap*x2_1;
 
@@ -563,13 +579,22 @@ inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _ste
 
   floatval_t tmp2 = (delta+x2_2-x1_2);
   floatval_t itd2 = coulomb/(tmp2*tmp2);
-  floatval_t it = -itd1 * tmp1 + itd2 * tmp2;
 
+  floatval_t it = (-itd1 * tmp1 + itd2 * tmp2) * 2.0;
+
+  /*
   dv1_2_dt = -itd2 - tx1_2;
   dv2_2_dt = itd2 - tx2_2;
   dv1_1_dt = -itd1 - tx1_1;
   dv2_1_dt = itd1 - tx2_1;
-  dphase_dt = rkConsts[0]*((v1_1-v1_2)*(v1_1+v1_2) + (v2_1-v2_2)*(v2_1+v2_2) - x1_1*tx1_1+x2_1*tx2_1 + x1_2*tx1_2+x2_2*tx2_2) + it;
+  */
+
+  dv1_1_dt = -(pi2sqr*lambda)/((delta + x2_1 - x1_1)*(delta + x2_1 - x1_1)) - pi2sqr*x1_1;
+  dv2_1_dt = (pi2sqr*lambda)/((delta + x2_1 - x1_1)*(delta + x2_1 - x1_1)) - pi2sqr*x2_1;
+  dv1_2_dt = -(pi2sqr*lambda)/((delta + x2_2 - x1_2)*(delta + x2_2 - x1_2)) - pi2sqr*x1_2;
+  dv2_2_dt = (pi2sqr*lambda)/((delta + x2_2 - x1_2)*(delta + x2_2 - x1_2)) - pi2sqr*x2_2;
+
+  dphase_dt = v1_1*v1_1 + v2_1*v2_1 - v1_2*v1_2 - v2_2*v2_2 + pi2sqr*(x1_2*x1_2+x2_2*x2_2 + lambda2 / (delta + x2_2 - x1_2) - x1_1*x1_1-x2_1*x2_1 - lambda2 / (delta + x2_1 - x1_1));
 #else
   // Paul Trap
   dv1_1_dt = -coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x1_1;
