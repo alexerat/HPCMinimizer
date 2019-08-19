@@ -35,12 +35,12 @@ bool intCast;
 bool hasSym;
 */
 // NOTE: These are inline functiosn to prevent multiple definition errors.
-inline MAX_PRECISION_T bounds_su0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.00001"); }
-inline MAX_PRECISION_T bounds_sl0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-0.00001"); }
-inline MAX_PRECISION_T bounds_iu0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.1"); }
-inline MAX_PRECISION_T bounds_il0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-0.1"); }
+inline MAX_PRECISION_T bounds_su0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.01"); }
+inline MAX_PRECISION_T bounds_sl0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-0.01"); }
+inline MAX_PRECISION_T bounds_iu0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.01"); }
+inline MAX_PRECISION_T bounds_il0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-0.01"); }
 
-#define BOUNDS const boundary_t<MAX_PRECISION_T> bounds_b0={bounds_sl0,bounds_il0,bounds_su0,bounds_iu0,1,7,false,false};boundaries[0]=bounds_b0;
+#define BOUNDS const boundary_t<MAX_PRECISION_T> bounds_b0={bounds_sl0,bounds_il0,bounds_su0,bounds_iu0,10,7,false,false};boundaries[0]=bounds_b0;
 
 // CHANGE: We now need to define the number of stages
 #define NSTAGES 1
@@ -66,7 +66,7 @@ inline MAX_PRECISION_T stages_os10(MAX_PRECISION_T* x0) { return 1.0; }
 MAX_PRECISION_T (*stages_os1[1])(MAX_PRECISION_T* x0) = { &stages_os10 }; 
 
 // CHANGE: This will be stage dependent and given as a function
-inline int dyn_density_0(int* bState) { return 2*(1); }
+inline int dyn_density_0(int* bState) { return 2*(10); }
 #define STAGES const stage_t<MAX_PRECISION_T> stages_s0 = {7,1,0,1,stages_s0vars,true,stages_os0,dyn_density_0};stages[0]=stages_s0;/*const stage_t<MAX_PRECISION_T> s1 = {1,1,0,s1vars,os1};stages[1]=s1;*/
 
 // CHANGE:

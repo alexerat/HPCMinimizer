@@ -478,9 +478,9 @@ void (* evaluates_gen_mp [])( ) =
 // Much like the above we need the ODE init and destory, but also not for every stage, we can use some NULLs to mask them out and keep coding consistent
 #define eval_code(NUM,floatval_t) static void* ode_init_##NUM##_##floatval_t(int* ret)\
 {\
-	if(CAT_PP(stages[,NUM)].odeFunc) \
+	if(stages[NUM].odeFunc) \
 	{\
-		return CAT_PP(CAT_PP(ODE_INIT,NUM)<,floatval_t)>(ret);\
+		return CAT_PP(ODE_INIT,NUM)<floatval_t>(ret);\
 	}\
 	else\
 	{\
@@ -577,9 +577,9 @@ inline fptr getODEInitFunc<mp_real>(int stage) { return ode_inits_mp[stage]; }
 // And now the ODE destroy
 #define eval_code(NUM,floatval_t) static void ode_dest_##NUM##_##floatval_t(void* workspace)\
 {\
-	if(CAT_PP(stages[,NUM)].odeFunc) \
+	if(stages[NUM].odeFunc) \
 	{\
-		return CAT_PP(CAT_PP(ODE_DEST,NUM)<,floatval_t)>(workspace);\
+		return CAT_PP(ODE_DEST,NUM)<floatval_t>(workspace);\
 	}\
 	else\
 	{\
@@ -3858,7 +3858,7 @@ int main(int argc, char **argv)
 #ifdef USE_MPI
 	int ierr;
 #endif
-	
+	/* 
 	int ret;
 	void* ode_wspace = ode_init<MAX_PRECISION_T>(&ret);
 
@@ -3872,21 +3872,20 @@ int main(int argc, char **argv)
 	ret = ode_run<MAX_PRECISION_T>(zVec,tVec,rep_time,ode_phi,ode_dim,((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace));
 
 
-	cout << "Phase is: " << to_out_string(2*abs((((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[8])),35) << endl;
+	cout << "Phase1 is: " << to_out_string(2*abs((((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[12])),35) << endl;
+	cout << "Phase2 is: " << to_out_string(2*abs((((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[13])),35) << endl;
 	cout << "Position is: " << to_out_string(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[4],35) << endl;
 
 	MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
-	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[8]) - 1.0,2) + __float128(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[4]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[5]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[6]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[7]-initDisp,2));
+	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[12]) - 1.0,2) + __float128(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[4]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[5]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[6]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[7]-initDisp,2));
 
 
 	ode_dest<MAX_PRECISION_T>(ode_wspace);
 
 	cout << "Cost is: " << to_out_string(cost,35) << endl;
 
-
-
 	return 0;
-
+	*/
 
 	num_nodes = 1;
 

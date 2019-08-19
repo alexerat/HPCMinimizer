@@ -1486,10 +1486,12 @@ static int line_search_morethuente(
             return LBFGSERR_MINIMUMSTEP;
         }
 
+#ifdef VERBOSE
         if ((stmax - stmin) <= param->xtol * stmax)
         {
             cout << "Would have done this but not brackt" << endl;
         }
+#endif
 
         if (brackt && (stmax - stmin) <= param->xtol * stmax)
         {
@@ -1532,7 +1534,9 @@ static int line_search_morethuente(
          */
         if (stage1 && ftest1 < *f && *f <= fx)
         {
+#ifdef VERBOSE
             cout << "Linesearch stage 1 trial interval." << endl;
+#endif
             /* Define the modified function and derivative values. */
             fm = *f - *stp * dgtest;
             fxm = fx - stx * dgtest;
@@ -1555,7 +1559,9 @@ static int line_search_morethuente(
         }
         else
         {
+#ifdef VERBOSE
             cout << "Linesearch stage 2 trial interval." << endl;
+#endif
             /*
                 Call update_trial_interval() to update the interval of
                 uncertainty and to compute the new step.

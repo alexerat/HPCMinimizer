@@ -289,7 +289,7 @@
 #endif
 
 #ifndef CFG_HAVE_SSE3
-  #define CFG_HAVE_SSE3 0
+  #define CFG_HAVE_SSE3 1
 #endif
 
 #ifndef CFG_HAVE_ALTIVEC

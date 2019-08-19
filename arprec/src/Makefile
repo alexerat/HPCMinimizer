@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-c -O2 -fno-exceptions -DHAVE_CONFIG -std=gnu++11
 debug: CFLAGS=-c -O0 -g -DHAVE_CONFIG -std=gnu++11
-debug_opt: CFLAGS=-c -g -O2 -DHAVE_CONFIG -std=gnu++11 -qopt-report=5 -simd -qopt-zmm-usage=high
+debug_opt: CFLAGS=-c -g -O2 -DHAVE_CONFIG -std=gnu++11
 INCLUDES=-I../ -I../include -I../../qd/include
 ARCHFLAGS=
 PROFFLAG=

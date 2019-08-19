@@ -18,15 +18,15 @@ SUBDIRS=./qd/src/ ./arprec/src/
 
 no_prof: PROFFLAG=
 
-profile: CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -ansi-alias -DNINTELLISENSE
+profile: CFLAGS=-c -O2 -fno-exceptions -std=gnu++11 -ansi-alias -DNINTELLISENSE
 profile: PROFFLAG=-prof-gen
 profile: OPTFLAG=
 
-debug: CFLAGS=-c -O0 -std=gnu++11 -fp-model consistent -Qoption,cpp,--extended_float_types -g -Wall -pedantic -DVERBOSE -DNINTELLISENSE
+debug: CFLAGS=-c -O0 -std=gnu++11 -fp-model consistent -g -Wall -pedantic -DVERBOSE -DNINTELLISENSE
 debug: OPTFLAG=
 debug: PROFFLAG=
 
-debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE -qopt-report=5 -simd -qopt-zmm-usage=high -Qoption,cpp,--extended_float_type
+debug_opt: CFLAGS=-c -g -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE -qopt-report=5 -qopt-zmm-usage=high
 debug_opt: OPTFLAG=
 debug_opt: PROFFLAG=
 
@@ -39,10 +39,10 @@ test: LD=g++
 test: OPTFLAG=
 test: PROFFLAG=
 
-det: CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -ansi-alias -fno-exceptions -DDETERMINISTIC -DNINTELLISENSE
+det: CFLAGS=-c -O2 -fno-exceptions -std=gnu++11 -ansi-alias -fno-exceptions -DDETERMINISTIC -DNINTELLISENSE
 
 mpi: CC=mpicxx
-mpi: CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -ansi-alias -fno-exceptions -DUSE_MPI -cxx=g++ -DNINTELLISENSE
+mpi: CFLAGS=-c -O2 -fno-exceptions -std=gnu++11 -ansi-alias -fno-exceptions -DUSE_MPI -cxx=g++ -DNINTELLISENSE
 mpi: PROFFLAG=
 mpi: PROFDIR=-prof-dir=./.MPI-Profiling
 mpi_debug: CC=mpicxx
