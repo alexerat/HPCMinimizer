@@ -98,20 +98,21 @@ const MAX_PRECISION_T q=con_fun<MAX_PRECISION_T>("0.1");
   const MAX_PRECISION_T trap=con_fun<MAX_PRECISION_T>("39.4784176043574344753379639995"); // (2 pi)^2
 #endif
 
-const MAX_PRECISION_T pi2sqr=con_fun<MAX_PRECISION_T>("39.4784176043574344753379639995"); // (2 \pi)^2
-const MAX_PRECISION_T lambda=con_fun<MAX_PRECISION_T>("2.189320701320595e7"); // (e^2 Sqrt[M \[Omega] ])/(4 \pi \[Epsilon]0 \[HBar] Sqrt[\[HBar]]\[Omega])
+const MAX_PRECISION_T pi2sqr=con_fun<MAX_PRECISION_T>("39.47841760435743447533796399950460454125"); // (2 \pi)^2
+const MAX_PRECISION_T lambda=con_fun<MAX_PRECISION_T>("2.18932070132059425018071560641491163354e7"); // (e^2 Sqrt[M \[Omega] ])/(4 \pi \[Epsilon]0 \[HBar] Sqrt[\[HBar]]\[Omega])
+const MAX_PRECISION_T pi2sqrlambda = pi2sqr*lambda;
 
 const MAX_PRECISION_T coulomb=pi2sqr*lambda;
 const MAX_PRECISION_T lambda2=2.0*lambda;
 const MAX_PRECISION_T pi2sqrinv=1.0/pi2sqr;
 
-const MAX_PRECISION_T delta=con_fun<MAX_PRECISION_T>("6241.146965412783");
+const MAX_PRECISION_T delta=con_fun<MAX_PRECISION_T>("6241.14696541278273431081150408784038292");
 const MAX_PRECISION_T wrf=con_fun<MAX_PRECISION_T>("177.367");
 const MAX_PRECISION_T eta=con_fun<MAX_PRECISION_T>("0.16");
 const MAX_PRECISION_T k=sqrt(con_fun<MAX_PRECISION_T>("2"))*eta;
 
 
-const MAX_PRECISION_T initDisp=con_fun<MAX_PRECISION_T>("0.5618549231638847");
+const MAX_PRECISION_T initDisp=con_fun<MAX_PRECISION_T>("0.56185492316390790205106415377285991690");
 
 // Runge Kutta method constants {0.5, 1/6, 1/3}
 const MAX_PRECISION_T rkConsts[3] = {con_fun<MAX_PRECISION_T>("0.5"),con_fun<MAX_PRECISION_T>("1.0")/con_fun<MAX_PRECISION_T>("6.0"),con_fun<MAX_PRECISION_T>("1.0")/con_fun<MAX_PRECISION_T>("3.0")};
@@ -372,7 +373,7 @@ template<typename floatval_t>
 void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
 {
   floatval_t _start_time = workspace->t;
-  floatval_t _step = con_fun<floatval_t>("1e-7");
+  floatval_t _step = con_fun<floatval_t>("1e-6");
   floatval_t _step_2 = rkConsts[0]*_step;
 
   long nSteps = floor(time_interval/_step);
@@ -383,12 +384,22 @@ void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
   floatval_t* _aifield_vec = workspace->evolution_aifield_vec;
   floatval_t* _agfield_vec = workspace->evolution_agfield_vec;
   floatval_t* _vec = workspace->vec;
+
+  ofstream outfile;
+
+  outfile.open("ode.csv", ios::app );
   
   for (long _istep = 0; _istep < nSteps; _istep++) 
   {
     memcpy(_akfield_vec, _vec, sizeof(floatval_t) * tot_dim);
     memcpy(_aifield_vec, _vec, sizeof(floatval_t) * tot_dim);
     workspace->active_vec = _akfield_vec;
+
+    if(_istep % 10 == 0)
+    {
+      outfile << to_out_string<floatval_t>(workspace->t,15) << "," << to_out_string<floatval_t>(_vec[phase_start],15) << endl;
+    }
+    
 
     // a_k = G[a_k, t]
     evolution_dimensionless_operators_evaluate_operator0(_step,workspace);
@@ -517,9 +528,11 @@ void evolution(floatval_t time_interval, ode_workspace_t<floatval_t>* workspace)
       // a = a + a_k/6
       _vec[_i0] += rkConsts[1]*_agfield_vec[_i0];
     }
-
-    
   }
+
+  outfile << to_out_string<floatval_t>(workspace->t,15) << "," << to_out_string<floatval_t>(_vec[phase_start],15) << endl;
+
+  outfile.close();
 }
 
 // Delta A propagation operator for field dimensionless
@@ -568,33 +581,35 @@ inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _ste
 #elif (TRAPTYPE == 2)
 
   
-  floatval_t tx1_1 = trap*x1_1;
-  floatval_t tx2_1 = trap*x2_1;
+  floatval_t tx1_1 = pi2sqr*x1_1;
+  floatval_t tx2_1 = pi2sqr*x2_1;
 
   floatval_t tmp1 = (delta+x2_1-x1_1);
-  floatval_t itd1 = coulomb/(tmp1*tmp1);
+  floatval_t itd1 = (pi2sqrlambda)/((tmp1)*(tmp1));
 
-  floatval_t tx1_2 = trap*x1_2;
-  floatval_t tx2_2 = trap*x2_2;
+  floatval_t tx1_2 = pi2sqr*x1_2;
+  floatval_t tx2_2 = pi2sqr*x2_2;
 
   floatval_t tmp2 = (delta+x2_2-x1_2);
-  floatval_t itd2 = coulomb/(tmp2*tmp2);
+  floatval_t itd2 = (pi2sqrlambda)/((tmp2)*(tmp2));
 
-  floatval_t it = (-itd1 * tmp1 + itd2 * tmp2) * 2.0;
+  floatval_t it = 2.0*(itd2*tmp2 - itd1*tmp1);
 
-  /*
+
   dv1_2_dt = -itd2 - tx1_2;
   dv2_2_dt = itd2 - tx2_2;
   dv1_1_dt = -itd1 - tx1_1;
   dv2_1_dt = itd1 - tx2_1;
-  */
 
+  /*
   dv1_1_dt = -(pi2sqr*lambda)/((delta + x2_1 - x1_1)*(delta + x2_1 - x1_1)) - pi2sqr*x1_1;
   dv2_1_dt = (pi2sqr*lambda)/((delta + x2_1 - x1_1)*(delta + x2_1 - x1_1)) - pi2sqr*x2_1;
   dv1_2_dt = -(pi2sqr*lambda)/((delta + x2_2 - x1_2)*(delta + x2_2 - x1_2)) - pi2sqr*x1_2;
   dv2_2_dt = (pi2sqr*lambda)/((delta + x2_2 - x1_2)*(delta + x2_2 - x1_2)) - pi2sqr*x2_2;
+  */
 
-  dphase_dt = v1_1*v1_1 + v2_1*v2_1 - v1_2*v1_2 - v2_2*v2_2 + pi2sqr*(x1_2*x1_2+x2_2*x2_2 + lambda2 / (delta + x2_2 - x1_2) - x1_1*x1_1-x2_1*x2_1 - lambda2 / (delta + x2_1 - x1_1));
+  dphase_dt = (v1_1+v1_2)*(v1_1-v1_2) + (v2_1+v2_2)*(v2_1-v2_2) + (tx1_2+tx1_1)*(x1_2-x1_1) + (tx2_2+tx2_1)*(x2_2-x2_1) + it;
+  //dphase_dt = v1_1*v1_1 + v2_1*v2_1 - v1_2*v1_2 - v2_2*v2_2 + pi2sqr*(x1_2*x1_2+x2_2*x2_2 + lambda2 / (delta + x2_2 - x1_2) - x1_1*x1_1-x2_1*x2_1 - lambda2 / (delta + x2_1 - x1_1));
 #else
   // Paul Trap
   dv1_1_dt = -coulomb/((x2_1-x1_1)*(x2_1-x1_1)) - x1_1;

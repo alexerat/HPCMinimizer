@@ -967,6 +967,7 @@ public:
 protected:
 	// Local optimisation variables
     floatval_t* m_x = NULL;
+	floatval_t* locX0 = NULL;
 	// Local copy of boundaries, TODO: Assess necessity
     floatval_t* localLower;
     floatval_t* localUpper;
@@ -1034,6 +1035,8 @@ public:
 	    param.orthantwise_end = -1;
 		param.gstep = get_gstep<floatval_t>();
 
+		locX0 = new floatval_t[FULLDIM];
+
 		ret = -1;
 
 		initialized = true;
@@ -1072,6 +1075,10 @@ public:
 		{
 			delete[] activeBSETS;
 		}
+		if(locX0 != NULL)
+		{
+			delete[] locX0;
+		}
 
 		if(ALGO == 0)
 		{
@@ -1094,9 +1101,14 @@ public:
     }
 
     // Set/reset memory for new stage if necessary and set boundaries
-	int setup(void* ode_wpace_in)
+	int setup(void* ode_wspace_in, MAX_PRECISION_T* x0_in)
 	{
-		ode_wspace = ode_wpace_in;
+		ode_wspace = ode_wspace_in;
+		for(int i = 0; i < FULLDIM; i++)
+		{
+			locX0[i] = (floatval_t)x0_in[i];
+		}
+
 		// TODO: Instead of constant re-allocation, just set at FULLDIM size
 		// If the dimensions have changed or the optimisation algorithm changed, reallocate the memory for the new DIM
 		if(DIM != pDIM || PALGO != ALGO)
@@ -1634,11 +1646,11 @@ public:
 	        */
 #ifdef OPT_PROGRESS
 			if(workNumber % SAMPLE_SPACING == 0)
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, x0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, _progress, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, locX0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, _progress, &wspace);
 			else
-				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, x0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
+				ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, locX0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
 #else /*OPT_PROGRESS*/
-	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, x0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
+	    	ret = lbfgs<floatval_t>(DIM, use_start ? start_x : m_x, locX0, &fx, localLower, localUpper, locParams, locPreComps, _lbgfs_evaluate, NULL, &wspace);
 #endif /*!OPT_PROGRESS*/
 
 	       /* Report the result. */
@@ -1802,12 +1814,18 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 // TODO: Need to cast down the values stored in x0, params and precompute
 // TODO: Document and name appropriately
 template<typename floatval_t>
-int handleResult(int threadNum, objective_function<floatval_t>* obj, OptimizeResult<floatval_t> locResults, void* ode_wspace, bool mustCast)
+int handleResult(int threadNum, objective_function<floatval_t>* obj, floatval_t* params, floatval_t* precompute, OptimizeResult<floatval_t> locResults, void* ode_wspace, bool mustCast)
 {
 	int binNum;
 	floatval_t bestCast;
 	floatval_t* bestCastX = new floatval_t[FULLDIM];
 	floatval_t* XCast = new floatval_t[FULLDIM];
+	floatval_t* x0_loc = new floatval_t[FULLDIM];
+
+	for(int i=0; i < FULLDIM; i++)
+	{
+		x0_loc[i] = (floatval_t)x0[i];
+	}
 
 	if(locResults.f < 0.0)
 	{
@@ -1829,7 +1847,7 @@ int handleResult(int threadNum, objective_function<floatval_t>* obj, OptimizeRes
 	{
 		bestCast = 1e10;
 		
-		castBoundaries<floatval_t>(0, 0, obj, params, precompute, locResults.X, x0, XCast, &bestCast, bestCastX, ode_wspace);
+		castBoundaries<floatval_t>(0, 0, obj, params, precompute, locResults.X, x0_loc, XCast, &bestCast, bestCastX, ode_wspace);
 
 		for(int i = 0; i < DIM; i++)
 		{
@@ -1885,6 +1903,8 @@ void *run_multi(void *threadarg)
 
 	srand((int)time(NULL) ^ (threadNum*(1+nodeNum)));
 
+	OptimizeResult<MAX_PRECISION_T> locResults;
+
     // TODO: Change this to give stage specific precision (specifically looking at the defines here)
 	objective_function<double> *obj_dbl = new objective_function<double>(threadNum);
 	OptimizeResult<double> locResults_dbl;
@@ -1929,6 +1949,23 @@ void *run_multi(void *threadarg)
 #else /* No parameter precomputes */
 	double* locPreComps_qd = NULL;
 #endif
+#endif
+
+#if (MAX_PRECISION_LEVEL == 1)
+	double* locParams_dbl = params;
+	double* locPreComps_dbl = precompute;
+#endif
+#if (MAX_PRECISION_LEVEL == 2)
+	__float128* locParams_dd = params;
+	__float128* locPreComps_dd = precompute;
+#endif
+#if (MAX_PRECISION_LEVEL == 3)
+	qd_real* locParams_qd = params;
+	qd_real* locPreComps_qd = precompute;
+#endif
+#if (MAX_PRECISION_LEVEL == 4)
+	mp_real* locParams_mp = params;
+	mp_real* locPreComps_mp = precompute;
 #endif
 
 	bool workDone = false;
@@ -2058,7 +2095,7 @@ void *run_multi(void *threadarg)
 			// TODO: Check return
 		}
 		// TODO: Fix the other setups
-		ret = obj_dbl->setup(ode_wspace_dbl);
+		ret = obj_dbl->setup(ode_wspace_dbl, x0);
 		if(ret < 0)
 		{
 			cerr << "Failed to allocate memory." << endl;
@@ -2080,12 +2117,12 @@ void *run_multi(void *threadarg)
 		if(currStage != pStage)
 		{
 			if(pStage > 0 && stages[pStage].odeFunc)
-				(reinterpret_cast<ode_dest_t<dd_real>>(getODEDestFunc<dd_real>(currStage)))(ode_wpace_dd);
+				(reinterpret_cast<ode_dest_t<__float128>>(getODEDestFunc<__float128>(currStage)))(ode_wspace_dd);
 			if(stages[currStage].odeFunc)
-				ode_wpace_dd = (reinterpret_cast<ode_init_t<dd_real>>(getODEInitFunc<dd_real>(currStage)))(&ret);
+				ode_wspace_dd = (reinterpret_cast<ode_init_t<__float128>>(getODEInitFunc<__float128>(currStage)))(&ret);
 			// TODO: Check return
 		}
-		ret = obj_dd->setup(ode_wpace_dd);
+		ret = obj_dd->setup(ode_wspace_dd, x0);
 		if(ret < 0)
 		{
 			cerr << "Failed to allocate memory." << endl;
@@ -2107,12 +2144,12 @@ void *run_multi(void *threadarg)
 		if(currStage != pStage)
 		{
 			if(pStage > 0 && stages[pStage].odeFunc)
-				(reinterpret_cast<ode_dest_t<qd_real>>(getODEDestFunc<qd_real>(currStage)))(ode_wpace_dd);
+				(reinterpret_cast<ode_dest_t<qd_real>>(getODEDestFunc<qd_real>(currStage)))(ode_wspace_dd);
 			if(stages[currStage].odeFunc)
-				ode_wpace_qd = (reinterpret_cast<ode_init_t<qd_real>>(getODEInitFunc<qd_real>(currStage)))(&ret);
+				ode_wspace_qd = (reinterpret_cast<ode_init_t<qd_real>>(getODEInitFunc<qd_real>(currStage)))(&ret);
 			// TODO: Check return
 		}
-		ret = obj_qd->setup(ode_wpace_qd);
+		ret = obj_qd->setup(ode_wspace_qd);
 		if(ret < 0)
 		{
 			cerr << "Failed to allocate memory." << endl;
@@ -2134,12 +2171,12 @@ void *run_multi(void *threadarg)
 		if(currStage != pStage)
 		{
 			if(pStage > 0 && stages[pStage].odeFunc)
-				(reinterpret_cast<ode_dest_t<mp_real>>(getODEDestFunc<mp_real>(currStage)))(ode_wpace_mp);
+				(reinterpret_cast<ode_dest_t<mp_real>>(getODEDestFunc<mp_real>(currStage)))(ode_wspace_mp);
 			if(stages[currStage].odeFunc)
-				ode_wpace_mp = (reinterpret_cast<ode_init_t<mp_real>>(getODEInitFunc<mp_real>(currStage)))(&ret);
+				ode_wspace_mp = (reinterpret_cast<ode_init_t<mp_real>>(getODEInitFunc<mp_real>(currStage)))(&ret);
 			// TODO: Check return
 		}
-		ret = obj_mp->setup(ode_wpace_mp);
+		ret = obj_mp->setup(ode_wspace_mp);
 		if(ret < 0)
 		{
 			cerr << "Failed to allocate memory." << endl;
@@ -2413,22 +2450,22 @@ void *run_multi(void *threadarg)
 			// TODO: Make sure we only optimize to stage precision
 			if(stagePrecision == 1)
 			{
-				binNum = handleResult<double>(threadNum, obj_dbl, locResults_dbl, ode_wspace_dbl, mustCast);
+				binNum = handleResult<double>(threadNum, obj_dbl, locParams_dbl, locPreComps_dbl, locResults_dbl, ode_wspace_dbl, mustCast);
 			}
 #if (MAX_PRECISION_LEVEL > 1)
 			else if(stagePrecision == 2)
 			{
-				binNum = handleResult<__float128>(threadNum, obj_dd, locResults_dd, ode_wspace_dd, mustCast);
+				binNum = handleResult<__float128>(threadNum, obj_dd, locParams_dd, locPreComps_dd, locResults_dd, ode_wspace_dd, mustCast);
 			}
 #if (MAX_PRECISION_LEVEL > 2)
 			else if(stagePrecision == 2)
 			{
-				binNum = handleResult<qd_real>(threadNum, obj_qd, locResults_qd, ode_wspace_qd, mustCast);
+				binNum = handleResult<qd_real>(threadNum, obj_qd, locParams_qd, locPreComps_qd, locResults_qd, ode_wspace_qd, mustCast);
 			}
 #if (MAX_PRECISION_LEVEL > 3)
 			else if(stagePrecision == 2)
 			{
-				binNum = handleResult<mp_real>(threadNum, obj_mp, locResults_mp, ode_wspace_mp, mustCast);
+				binNum = handleResult<mp_real>(threadNum, obj_mp, locParams_dd, locPreComps_dd, locResults_mp, ode_wspace_mp, mustCast);
 			}
 #endif /* (MAX_PRECISION_LEVEL > 3) */
 #endif /* (MAX_PRECISION_LEVEL > 2) */
@@ -2540,7 +2577,7 @@ void *run_multi(void *threadarg)
 	{
 		(reinterpret_cast<ode_dest_t<double>>(getODEDestFunc<double>(currStage)))(ode_wspace_dbl);
 #if (MAX_PRECISION_LEVEL > 1)
-		(reinterpret_cast<ode_dest_t<dd_real>>(getODEDestFunc<double>(currStage)))(ode_wspace_dd);
+		(reinterpret_cast<ode_dest_t<__float128>>(getODEDestFunc<double>(currStage)))(ode_wspace_dd);
 #if (MAX_PRECISION_LEVEL > 2)
 		(reinterpret_cast<ode_dest_t<qd_real>>(getODEDestFunc<double>(currStage)))(ode_wspace_qd);
 #if (MAX_PRECISION_LEVEL > 3)
@@ -3821,6 +3858,35 @@ int main(int argc, char **argv)
 #ifdef USE_MPI
 	int ierr;
 #endif
+	
+	int ret;
+	void* ode_wspace = ode_init<MAX_PRECISION_T>(&ret);
+
+	int ode_dim = 8;
+	int zVec[8] = {37, 55, -11, 71, 80, 65, -43, 98};
+  	MAX_PRECISION_T tVec[8] = {0.0, 0.15625, 0.3125, 0.46875, 0.625, 0.78125, 0.9375, 1.09375};
+
+	MAX_PRECISION_T rep_time = 0.0;
+	MAX_PRECISION_T ode_phi = 0.0;
+
+	ret = ode_run<MAX_PRECISION_T>(zVec,tVec,rep_time,ode_phi,ode_dim,((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace));
+
+
+	cout << "Phase is: " << to_out_string(2*abs((((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[8])),35) << endl;
+	cout << "Position is: " << to_out_string(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[4],35) << endl;
+
+	MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
+	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[8]) - 1.0,2) + __float128(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[4]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[5]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[6]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)ode_wspace)->vec[7]-initDisp,2));
+
+
+	ode_dest<MAX_PRECISION_T>(ode_wspace);
+
+	cout << "Cost is: " << to_out_string(cost,35) << endl;
+
+
+
+	return 0;
+
 
 	num_nodes = 1;
 
