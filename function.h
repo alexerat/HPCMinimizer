@@ -40,7 +40,7 @@ inline MAX_PRECISION_T bounds_sl0(MAX_PRECISION_T* x0) { return con_fun<MAX_PREC
 inline MAX_PRECISION_T bounds_iu0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("0.01"); }
 inline MAX_PRECISION_T bounds_il0(MAX_PRECISION_T* x0) { return con_fun<MAX_PRECISION_T>("-0.01"); }
 
-#define BOUNDS const boundary_t<MAX_PRECISION_T> bounds_b0={bounds_sl0,bounds_il0,bounds_su0,bounds_iu0,10,7,false,false};boundaries[0]=bounds_b0;
+#define BOUNDS const boundary_t<MAX_PRECISION_T> bounds_b0={bounds_sl0,bounds_il0,bounds_su0,bounds_iu0,1,7,false,false};boundaries[0]=bounds_b0;
 
 // CHANGE: We now need to define the number of stages
 #define NSTAGES 1

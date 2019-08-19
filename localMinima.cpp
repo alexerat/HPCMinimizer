@@ -1202,13 +1202,16 @@ public:
 
 			int currBSet = 0;
 			int dimCount = 0;
+			
 
 			// Determine the number of Bsets covered
 			for(int i = 0; i < DIM; i++)
 			{
-				if(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
+				// TODO: Verify the use of +1 here. It makes sense because dim is total number and vars is index
+
+				if(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
 				{
-					while(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
+					while(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
 					{
 						dimCount += boundaries[currBSet].dim;
 						currBSet++;
@@ -1218,22 +1221,26 @@ public:
 			}
 
 			activeBSETS = new int[NactiveBSETS];
+			currBSetDIMS = new int[NactiveBSETS];
 
 			int bSetCounter = 0;
 			int bDimCount = 0;
 
+			currBSet = 0;
+			dimCount = 0;
+
 			// Set the current Bset DIMS and the active Bsets
 			for(int i = 0; i < DIM; i++)
 			{
-				if(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
+				if(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
 				{
-					while(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
+					while(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
 					{
 						dimCount += boundaries[currBSet].dim;
 						currBSet++;
 					}
 
-					currBSetDIMS[bSetCounter] = bDimCount;
+					currBSetDIMS[bSetCounter] = bDimCount + 1;
 					bDimCount = 0;
 					activeBSETS[bSetCounter] = currBSet;
 					bSetCounter++;
@@ -4174,7 +4181,7 @@ int main(int argc, char **argv)
     outfile.close();
 
 	nThreads = get_nprocs();
-	nThreads=1;
+	nThreads=2;
 
 #ifdef OPT_PROGRESS
 	nThreads = 1;
