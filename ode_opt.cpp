@@ -154,17 +154,6 @@ inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _ste
 template<typename floatval_t>
 void* ode_init(int* ret)
 {
-  /* 
-  ode_workspace_t<floatval_t>* workspace = (ode_workspace_t<floatval_t>*)malloc(sizeof(ode_workspace_t<floatval_t>));
-
-  workspace->vec = (floatval_t*) malloc(sizeof(floatval_t) * tot_dim);
-  workspace->active_vec = workspace->vec;
-
-  workspace->evolution_akfield_vec = (floatval_t*) malloc(sizeof(floatval_t) * tot_dim);
-  workspace->evolution_agfield_vec = (floatval_t*) malloc(sizeof(floatval_t) * tot_dim);
-  workspace->evolution_aifield_vec = (floatval_t*) malloc(sizeof(floatval_t) * tot_dim);
-  */
-
   ode_workspace_t<floatval_t>* workspace = new ode_workspace_t<floatval_t>[1];
 
   workspace->vec = new floatval_t[tot_dim];
@@ -182,15 +171,6 @@ void* ode_init(int* ret)
 template<typename floatval_t>
 void ode_dest(void* workspace)
 {
-  /* 
-  free(((ode_workspace_t<floatval_t>*)workspace)->vec);
-  free(((ode_workspace_t<floatval_t>*)workspace)->evolution_akfield_vec);
-  free(((ode_workspace_t<floatval_t>*)workspace)->evolution_agfield_vec);
-  free(((ode_workspace_t<floatval_t>*)workspace)->evolution_aifield_vec);
-
-  free(workspace);
-  */
-
   delete[] ((ode_workspace_t<floatval_t>*)workspace)->vec;
   delete[] ((ode_workspace_t<floatval_t>*)workspace)->evolution_akfield_vec;
   delete[] ((ode_workspace_t<floatval_t>*)workspace)->evolution_agfield_vec;
@@ -218,7 +198,7 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
   floatval_t phi = 0.0;
 
 
-  floatval_t rep_time = 0.0;
+  floatval_t rep_time = 0.001;
 
   for(int i = 0; i < dim; i++)
   {

@@ -1,13 +1,13 @@
 CC=icpc
 LD=icpc
-CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE
+CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -DNINTELLISENSE -qopt-zmm-usage=high
 TFLAGS=
-PROFDIR=
+PROFDIR=-prof-dir.profile
 ARCHFLAGS=-xCOMMON-AVX512
 INCLUDES=-I./qd/include -I./arprec/include
 LFLAGS=
 SOURCES=lbfgs.cpp localMinima.cpp
-PROFFLAG=
+PROFFLAG=-prof-use -ipo
 QDOBJS=$(wildcard ./qd/src/*.o) $(wildcard ./arprec/src/*.o)
 OPTFLAG=
 OBJECTS=$(SOURCES:.cpp=.o) $(QDOBJS)
@@ -18,7 +18,7 @@ SUBDIRS=./qd/src/ ./arprec/src/
 
 no_prof: PROFFLAG=
 
-profile: CFLAGS=-c -O2 -fno-exceptions -std=gnu++11 -ansi-alias -DNINTELLISENSE
+profile: CFLAGS=-c -O3 -fno-exceptions -std=gnu++11 -ansi-alias -DNINTELLISENSE -qopt-zmm-usage=high
 profile: PROFFLAG=-prof-gen
 profile: OPTFLAG=
 

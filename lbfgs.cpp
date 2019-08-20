@@ -208,9 +208,6 @@ static void owlqn_project(
 template <typename floatval_t>
 int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *_param, void* ode_wspace)
 {
-    cout << "Entered lbfgs initialization." << endl;
-    cout << "Allocating with dim size: " << n << endl;
-
     iteration_data_t<floatval_t> *it = NULL;
     lbfgs_parameter_t<floatval_t> defparam;
     lbfgs_parameter_t<floatval_t>* param;
@@ -1346,6 +1343,19 @@ static int line_search_morethuente(
         cout << "----------------------" << endl;
 #endif
 
+        
+        // TODO: This may be a somewhat hacked condition
+        floatval_t realmax = 0.0;
+
+        for (int i = 0;i < n;i++)
+        {
+			realmax += ((*stp)*s[i])*((*stp)*s[i]);
+		}
+        if(realmax < param->conv_epsilon)
+        {
+            return count;
+        }
+
         /* Check for boundary conditions. */
         if(lbounds != NULL && ubounds != NULL)
         {
@@ -1504,9 +1514,9 @@ static int line_search_morethuente(
         if (param->max_linesearch <= count)
         {
             /* Maximum number of iteration. */
-#ifdef VERBOSE
+//#ifdef VERBOSE
             cout << "Exiting linesearch with maximum linesearch." << endl;
-#endif
+//#endif
             return LBFGSERR_MAXIMUMLINESEARCH;
         }
 

@@ -1048,7 +1048,6 @@ public:
 	 */
     virtual ~objective_function()
     {
-		cout << "Deleting objective function.." << endl;
 		// CHECK: Fix all this, mainly on the ALGO setup, multiple stages may make use of them
         if (m_x != NULL)
         {
@@ -1074,6 +1073,10 @@ public:
 		if(activeBSETS != NULL)
 		{
 			delete[] activeBSETS;
+		}
+		if(currBSetDIMS != NULL)
+		{
+			delete[] currBSetDIMS;
 		}
 		if(locX0 != NULL)
 		{
@@ -1191,7 +1194,7 @@ public:
 		
 		if(prevStage != currStage)
 		{
-			NactiveBSETS = 0;
+			NactiveBSETS = 1;
 
 			// If we previously assigned arayas, delete the memory.
 			if(prevStage >= 0)
@@ -1209,9 +1212,9 @@ public:
 			{
 				// TODO: Verify the use of +1 here. It makes sense because dim is total number and vars is index
 
-				if(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
+				if(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
 				{
-					while(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
+					while(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
 					{
 						dimCount += boundaries[currBSet].dim;
 						currBSet++;
@@ -1232,21 +1235,24 @@ public:
 			// Set the current Bset DIMS and the active Bsets
 			for(int i = 0; i < DIM; i++)
 			{
-				if(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
+				if(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
 				{
-					while(stages[currStage].vars[i] + 1 >= boundaries[currBSet].dim + dimCount)
+					currBSetDIMS[bSetCounter] = bDimCount;
+					bDimCount = 0;
+					activeBSETS[bSetCounter] = currBSet;
+					bSetCounter++;
+
+					while(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
 					{
 						dimCount += boundaries[currBSet].dim;
 						currBSet++;
 					}
-
-					currBSetDIMS[bSetCounter] = bDimCount + 1;
-					bDimCount = 0;
-					activeBSETS[bSetCounter] = currBSet;
-					bSetCounter++;
 				}
 				bDimCount++;
 			}
+			
+			currBSetDIMS[bSetCounter] = bDimCount;
+			activeBSETS[bSetCounter] = currBSet;
 
 			prevStage = currStage;
 		}
@@ -1818,7 +1824,7 @@ void castBoundaries(int depth, int dimCount, objective_function<floatval_t> *obj
 	}
 }
 
-// TODO: Need to cast down the values stored in x0, params and precompute
+// TODO: Need to cast down the values stored in params and precompute
 // TODO: Document and name appropriately
 template<typename floatval_t>
 int handleResult(int threadNum, objective_function<floatval_t>* obj, floatval_t* params, floatval_t* precompute, OptimizeResult<floatval_t> locResults, void* ode_wspace, bool mustCast)
@@ -1896,6 +1902,7 @@ int handleResult(int threadNum, objective_function<floatval_t>* obj, floatval_t*
 
 	delete[] bestCastX;
 	delete[] XCast;
+	delete[] x0_loc;
 
 	return binNum;
 }
@@ -4181,7 +4188,6 @@ int main(int argc, char **argv)
     outfile.close();
 
 	nThreads = get_nprocs();
-	nThreads=2;
 
 #ifdef OPT_PROGRESS
 	nThreads = 1;

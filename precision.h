@@ -61,7 +61,7 @@ inline floatval_t get_conv_epsilon();
 template<>
 inline float get_conv_epsilon<float>() { return 1e-4; }
 template<>
-inline double get_conv_epsilon<double>() { return 1e-8; }
+inline double get_conv_epsilon<double>() { return 1e-10; }
 template<>
 inline __float128 get_conv_epsilon<__float128>() { return con_fun<__float128>("1e-16q"); }
 template<>
@@ -97,7 +97,7 @@ inline floatval_t get_gstep();
 template<>
 inline float get_gstep<float>() { return 1e-5; }
 template<>
-inline double get_gstep<double>() { return 1e-8; }
+inline double get_gstep<double>() { return 1e-6; }
 template<>
 inline __float128 get_gstep<__float128>() { return con_fun<__float128>("1e-12"); }
 template<>
