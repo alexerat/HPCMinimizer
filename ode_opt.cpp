@@ -185,14 +185,20 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
 
 
 
-  //int* zVec = new int[dim];
-  int zVec[8] = {37, 55, -11, 71, 80, 65, -43, 98};
-  floatval_t tInit[8] = {0.0, 0.15625, 0.3125, 0.46875, 0.625, 0.78125, 0.9375, 1.09375};
+  int* zVec = new int[2*dim];
+  for(int i = 0; i < dim; i++)
+  {
+    zVec[i] = -x0[i];
+    zVec[2*i+1] = x0[i];
+  }
+
+
+  floatval_t tInit[10] = {0., 0.25, 0.5, 0.75, 1., 1.5, 1.75, 2., 2.25, 2.5};
 
   //floatval_t tInit[8] = {0.0, 0.0015625, 0.003125, 0.0046875, 0.00625, 0.0078125, 0.009375, 0.0109375};
 
-  floatval_t* tVec = new floatval_t[8];
-  tVec[0] = tInit[0];
+  floatval_t* tVec = new floatval_t[2*dim];
+
    
   //floatval_t phi = x[dim];
   floatval_t phi = 0.0;
@@ -202,7 +208,8 @@ floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void
 
   for(int i = 0; i < dim; i++)
   {
-    tVec[i+1] = tInit[i+1] + x[i];
+    tVec[i] = tInit[i] - x[i];
+    tVec[2*i+1] = tInit[i] + x[i];
   }
 
   ode_run<floatval_t>(&zVec[0],tVec,rep_time,phi,dim+1,(ode_workspace_t<floatval_t>*)workspace);

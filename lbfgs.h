@@ -352,7 +352,7 @@ struct lbfgs_parameter_t {
     /**
      * If using an ODE cost function, this holds a reference to the memory used.
      */
-    void* ode_wspace;
+    void* func_wspace;
 };
 
 /**
@@ -485,7 +485,7 @@ struct lbfgs_wspace_t {
     floatval_t *g, *gp, *pg;
     floatval_t *d, *w, *pf;
     iteration_data_t<floatval_t> *lm;
-    void* ode_wspace;
+    void* func_wspace;
     };
 
 
@@ -567,7 +567,7 @@ int lbfgs(
  *  Initialize the workspace.
  */
 template <typename floatval_t>
-int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param, void* ode_wspace);
+int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param, void* func_wspace);
 
 /**
  *  Delete the workspace.
