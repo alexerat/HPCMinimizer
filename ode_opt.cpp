@@ -34,7 +34,7 @@
 
 //#define FPTEST
 
-#define TRAPTYPE 2
+#define TRAPTYPE 1
 
 using namespace std;
 
@@ -179,38 +179,55 @@ void ode_dest(void* workspace)
 }
 
 template<typename floatval_t>
-floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void* workspace)
+floatval_t ode_costFunc(const floatval_t* x, const floatval_t* x0, int dim, void* workspace, const floatval_t* params)
 {
   // TODO: move into workspace for speed.
 
 
 
-  int* zVec = new int[2*dim];
-  for(int i = 0; i < dim; i++)
+  int* zVec = new int[10];
+  
+  /*for(int i = 0; i < dim; i++)
   {
     zVec[i] = -x0[i];
     zVec[2*i+1] = x0[i];
   }
 
 
-  floatval_t tInit[10] = {0., 0.25, 0.5, 0.75, 1., 1.5, 1.75, 2., 2.25, 2.5};
+  floatval_t tInit[10] = {0., 0.25, 0.5, 0.75, 1., 1.5, 1.75, 2., 2.25, 2.5};*/
 
   //floatval_t tInit[8] = {0.0, 0.0015625, 0.003125, 0.0046875, 0.00625, 0.0078125, 0.009375, 0.0109375};
 
-  floatval_t* tVec = new floatval_t[2*dim];
+  floatval_t* tVec = new floatval_t[9];
 
+  tVec[0] = x[0];
+  tVec[1] = x[1];
+  tVec[2] = x[2];
+  tVec[3] = x[3];
+  tVec[4] = x[4];
+  tVec[5] = x[5];
+  tVec[6] = x[6];
+  tVec[7] = x[7];
+  tVec[8] = x[8];
+  tVec[9] = x[9];
    
   //floatval_t phi = x[dim];
-  floatval_t phi = 0.0;
+  floatval_t phi = 3.1415;
 
 
-  floatval_t rep_time = 0.001;
+  floatval_t rep_time = 0.0;
 
-  for(int i = 0; i < dim; i++)
-  {
-    tVec[i] = tInit[i] - x[i];
-    tVec[2*i+1] = tInit[i] + x[i];
-  }
+  zVec[0] = 75;
+  zVec[1] = 10;
+  zVec[2] = -29;
+  zVec[3] = 77;
+  zVec[4] = -67;
+  zVec[5] = -28;
+  zVec[6] = 48;
+  zVec[7] = -76;
+  zVec[8] = 34;
+  zVec[9] = 77;
+  zVec[10] = 47;
 
   ode_run<floatval_t>(&zVec[0],tVec,rep_time,phi,dim+1,(ode_workspace_t<floatval_t>*)workspace);
 
@@ -249,40 +266,7 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
 {
   int p=0;
   int j=0;
-  floatval_t* tau = new floatval_t[2*dim];
-  floatval_t minimum = tVec[0];
 
-  for(p = 0; p<dim; p++)
-  {
-    tau[2*p]=tVec[p];
-    tau[2*p + 1]=zVec[p];
-
-    //minimum = min(tVec[p],minimum);
-  }
-  
-  for(p=0;p<dim;p++)
-  {
-    tau[2*p]-=minimum;
-  }
-
-/* 
-  for(p=0;p<dim;p++)
-  {
-    printf("tau[%d][0]=%lf\n",p,(double)(tau[2*p]));
-  }
-*/
-  //qsort(tau,dim,sizeof(floatval_t)*2,compare<floatval_t>);
-  
-/* 
-  for(p=0;p<dim;p++)
-  {
-    printf("tau[%d][0]=%lf, tau[%d][1]=%lf\n",p,(double)(tau[2*p]),p,(double)(tau[2*p+1]));
-  }
-*/
-  // **********************************************
-    
-  
-  /* Code that actually does stuff goes here */
   workspace->t = 0.0;
   
   workspace->active_vec = workspace->vec;
@@ -293,10 +277,12 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
   for(p=0;p<dim;p++)
   {
     
-    if(p>0)
+    if(p>0 && p<dim-1)
     {
       //cout << "Evolving" << endl;
-      evolution<floatval_t>((tVec[p]-(((floatval_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((floatval_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
+      //evolution<floatval_t>((tVec[p]-(((floatval_t)abs(zVec[p]))/2)*rep_time) - (tVec[p-1]+((floatval_t)(abs(zVec[p-1]))/2)*rep_time), workspace);
+
+      evolution<floatval_t>(tVec[p], workspace);
     }
 
     for(j=0;j<abs(zVec[p]);j++)
@@ -313,11 +299,8 @@ int ode_run(const int* zVec, const floatval_t* tVec, floatval_t rep_time, floatv
         }
         
       }
-        
     }
   }
-  
-  delete[] tau;
 
   return 0;
 }
@@ -591,11 +574,44 @@ inline void evolution_dimensionless_operators_evaluate_operator0(floatval_t _ste
 
   // Microtrap with micromotion
 #if (TRAPTYPE == 1)
-  dv1_1_dt = -coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x1_1;
-  dv2_1_dt = coulomb/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x2_1;
-  dv1_2_dt = -coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x1_2;
-  dv2_2_dt = coulomb/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x2_2;
-  dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - coulomb/((delta+x2_1-x1_1)) - 0.5*dyn_trap*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + coulomb/((delta+x2_2-x1_2)) + 0.5*dyn_trap*(x1_2*x1_2+x2_2*x2_2);
+  dv1_1_dt = -pi2sqrlambda/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x1_1;
+  dv2_1_dt = pi2sqrlambda/((delta+x2_1-x1_1)*(delta+x2_1-x1_1)) - dyn_trap*x2_1;
+  dv1_2_dt = -pi2sqrlambda/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x1_2;
+  dv2_2_dt = pi2sqrlambda/((delta+x2_2-x1_2)*(delta+x2_2-x1_2)) - dyn_trap*x2_2;
+
+  floatval_t tx1_1 = dyn_trap*x1_1;
+  floatval_t tx2_1 = dyn_trap*x2_1;
+
+  floatval_t tmp1 = (delta+x2_1-x1_1);
+  floatval_t itd1 = (pi2sqrlambda)/((tmp1)*(tmp1));
+
+  floatval_t tx1_2 = dyn_trap*x1_2;
+  floatval_t tx2_2 = dyn_trap*x2_2;
+
+  floatval_t tmp2 = (delta+x2_2-x1_2);
+  floatval_t itd2 = (pi2sqrlambda)/((tmp2)*(tmp2));
+
+  floatval_t tx1_3 = dyn_trap*x1_3;
+  floatval_t tx2_3 = dyn_trap*x2_3;
+
+  floatval_t tmp3 = (delta+x2_3-x1_3);
+  floatval_t itd3 = (pi2sqrlambda)/((tmp3)*(tmp3));
+
+  floatval_t it1 = 2.0*(itd2*tmp2 - itd1*tmp1);
+  floatval_t it2 = 2.0*(itd3*tmp3 - itd1*tmp1);
+
+
+  dv1_1_dt = -itd1 - tx1_1;
+  dv2_1_dt = itd1 - tx2_1;
+  dv1_2_dt = -itd2 - tx1_2;
+  dv2_2_dt = itd2 - tx2_2;
+  dv1_3_dt = -itd3 - tx1_3;
+  dv2_3_dt = itd3 - tx2_3;
+
+  dphase1_dt = (v1_1+v1_2)*(v1_1-v1_2) + (v2_1+v2_2)*(v2_1-v2_2) + (tx1_2+tx1_1)*(x1_2-x1_1) + (tx2_2+tx2_1)*(x2_2-x2_1) + it1;
+  dphase2_dt = (v1_1+v1_3)*(v1_1-v1_3) + (v2_1+v2_3)*(v2_1-v2_3) + (tx1_3+tx1_1)*(x1_3-x1_1) + (tx2_3+tx2_1)*(x2_3-x2_1) + it2;
+
+  dphase_dt = 0.5*(v1_1*v1_1 + v2_1*v2_1) - (pi2sqr*lambda)/((delta+x2_1-x1_1)) - 0.5*dyn_trap*(x1_1*x1_1+x2_1*x2_1) - 0.5*(v1_2*v1_2 + v2_2*v2_2) + (pi2sqr*lambda)/((delta+x2_2-x1_2)) + 0.5*dyn_trap*(x1_2*x1_2+x2_2*x2_2);
 #elif (TRAPTYPE == 2)
 
   
