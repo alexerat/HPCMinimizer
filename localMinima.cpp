@@ -31,8 +31,6 @@
 // TODO: Remove
 #include <unistd.h>
 
-#include "ode_opt.cpp"
-
 using namespace std;
 using std::cout;
 using std::cerr;
@@ -74,10 +72,10 @@ typedef void (*fptr)();
 template <typename floatval_t>
 struct boundary_t
 {
-	floatval_t (*startLower)(floatval_t* x0);
-	floatval_t (*incrementLower)(floatval_t* x0);
-	floatval_t (*startUpper)(floatval_t* x0);
-	floatval_t (*incrementUpper)(floatval_t* x0);
+	floatval_t (*startLower)(floatval_t* x0, floatval_t* params);
+	floatval_t (*incrementLower)(floatval_t* x0, floatval_t* params);
+	floatval_t (*startUpper)(floatval_t* x0, floatval_t* params);
+	floatval_t (*incrementUpper)(floatval_t* x0, floatval_t* params);
 	int steps;
 	int dim;
 	bool intCast;
@@ -1104,6 +1102,7 @@ public:
 	int setup(void* func_wspace_in, MAX_PRECISION_T* x0_in)
 	{
 		func_wspace = func_wspace_in;
+
 		for(int i = 0; i < FULLDIM; i++)
 		{
 			locX0[i] = (floatval_t)x0_in[i];
@@ -1155,6 +1154,26 @@ public:
 			}
 
 			
+			// TODO: Tidy this up. This gets muddled in subsequent stages
+			param.m = MEMSIZE;
+			param.conv_epsilon = get_conv_epsilon<floatval_t>();
+			param.eps = EPS;
+			param.past = 0;
+			param.delta = get_delta<floatval_t>();
+			param.max_iterations = MAXIT;
+			param.linesearch = LBFGS_LINESEARCH_MORETHUENTE;
+			param.max_linesearch = MAXLINE;
+			param.min_step = get_min_step<floatval_t>();
+			param.max_step = get_max_step<floatval_t>();
+			param.ftol = 1e8*EPS;
+			param.wolfe = 0.9;
+			param.gtol = 0.9;
+			param.xtol = EPS;
+			param.orthantwise_c = 0.0;
+			param.orthantwise_start = 0;
+			param.orthantwise_end = -1;
+			param.gstep = get_gstep<floatval_t>();
+
 
 			pDIM = DIM;
 		}
@@ -1232,8 +1251,20 @@ public:
 			{
 				int sect = -2;
 				// We don't want the sym to happen when we are refining points from previous stage
+#ifdef VERBOSE
+				cout << "NactiveBSETS: " << NactiveBSETS << endl;
+				cout << "iterating over active boundary set: " << j << endl;
+				cout << "iterating over actual boundary set: " << activeBSETS[j] << endl;
+				cout << "bSetStartDepth is: " << bSetStartDepth << endl;
+				cout << "currBSetDIMS[j]: " << currBSetDIMS[j] << endl;
+#endif /*VERBOSE*/
+		
 				if(activeBSETS[j] > bSetStartDepth)
 					sect = rand() % (2*currBSetDIMS[j] - (boundaries[activeBSETS[j]].hasSym ? 1 : 0));
+
+#ifdef VERBOSE
+				cout << "sect initially: " << sect << endl;
+#endif /*VERBOSE*/
 
 				/* Initialize the variables. */
 				for (int i = dimCount;i < (dimCount + currBSetDIMS[j]);i++)
@@ -1260,7 +1291,6 @@ public:
 					{
 						m_x[i] = (localUpper[i] - localLower[i])*rnd_uni<floatval_t>() + localLower[i];
 					}
-
 #ifdef DEBUG
 #ifdef VERBOSE
 					cout << ", x[" << i << "] = " << to_out_string(m_x[i],5);
@@ -1798,10 +1828,8 @@ int handleResult(int threadNum, objective_function<floatval_t>* obj, floatval_t*
 	if(mustCast)
 	{
 		bestCast = 1e10;
-
-		cout << "Should be casting boundaries...." << endl;
 		
-		castBoundaries<floatval_t>(0, 0, obj, params, precompute, locResults.X, x0_loc, XCast, &bestCast, bestCastX, func_wspace);
+		castBoundaries<floatval_t>(0, 0, obj, params, precompute, locResults.X, XCast, x0_loc, &bestCast, bestCastX, func_wspace);
 
 		for(int i = 0; i < DIM; i++)
 		{
@@ -1839,6 +1867,7 @@ int handleResult(int threadNum, objective_function<floatval_t>* obj, floatval_t*
 			results[threadNum].X[i] = locResults.X[i];
 		}
 		results[threadNum].f = locResults.f;
+		cout << "new best: " << to_out_string(locResults.f, 4) << endl;
 	}
 
 	delete[] bestCastX;
@@ -3169,13 +3198,20 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 			cout << "Finished experiment." << endl;
 #endif /*!SILENT*/
 
+#ifdef VERBOSE
 			cout << "Copying result onto x0............................." << endl;
+#endif /*VERBOSE*/
+
 			pBest[NactiveBSETS - 1][0] = bestRes->f;
 			for(int k = 0; k < DIM; k++)
 			{
 				pPoint[NactiveBSETS - 1][0][k] = bestRes->X[k];
 				// Copy current x onto the full x
 				x0[stages[stageNum].vars[k]] = bestRes->X[k];
+
+#ifdef VERBOSE
+				cout << "x0[" << stages[stageNum].vars[k] << "]=" << x0[stages[stageNum].vars[k]] << endl;
+#endif /*VERBOSE*/
 			}
 
 			// Now do the next stages if present.
@@ -3207,17 +3243,17 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 					// TEST: Set the boundaries around alredy minimized variables. Search only an isolated region.
 					while(currDimIdx < DIM && stages[currStage].vars[currDimIdx] < dimCount + boundaries[depth].dim)
 					{
-						if(x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth](x0) > boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * bState[depth])
+						if(x0[stages[currStage].vars[currDimIdx]] + stages[currStage].pBSetOptSize[depth](x0) > boundaries[depth].startUpper(x0, params) + boundaries[depth].incrementUpper(x0, params) * bState[depth])
 						{
-							lbounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * bState[depth] - 2*stages[currStage].pBSetOptSize[depth](x0);
-							ubounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * bState[depth];
+							lbounds[currDimIdx] = boundaries[depth].startUpper(x0, params) + boundaries[depth].incrementUpper(x0, params) * bState[depth] - 2*stages[currStage].pBSetOptSize[depth](x0);
+							ubounds[currDimIdx] = boundaries[depth].startUpper(x0, params) + boundaries[depth].incrementUpper(x0, params) * bState[depth];
 
 							
 						}
-						else if(x0[stages[currStage].vars[currDimIdx]] - stages[currStage].pBSetOptSize[depth](x0) < boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * bState[depth])
+						else if(x0[stages[currStage].vars[currDimIdx]] - stages[currStage].pBSetOptSize[depth](x0) < boundaries[depth].startLower(x0, params) + boundaries[depth].incrementLower(x0, params) * bState[depth])
 						{
-							lbounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * bState[depth];
-							ubounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * bState[depth] + 2*stages[currStage].pBSetOptSize[depth](x0);
+							lbounds[currDimIdx] = boundaries[depth].startLower(x0, params) + boundaries[depth].incrementLower(x0, params) * bState[depth];
+							ubounds[currDimIdx] = boundaries[depth].startLower(x0, params) + boundaries[depth].incrementLower(x0, params) * bState[depth] + 2*stages[currStage].pBSetOptSize[depth](x0);
 						}
 						else
 						{
@@ -3299,8 +3335,8 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 					{
 						cout << "LOOPING TO SET BOUNDS" << endl;
 
-						lbounds[currDimIdx] = boundaries[depth].startLower(x0) + boundaries[depth].incrementLower(x0) * i;
-						ubounds[currDimIdx] = boundaries[depth].startUpper(x0) + boundaries[depth].incrementUpper(x0) * i;
+						lbounds[currDimIdx] = boundaries[depth].startLower(x0, params) + boundaries[depth].incrementLower(x0, params) * i;
+						ubounds[currDimIdx] = boundaries[depth].startUpper(x0, params) + boundaries[depth].incrementUpper(x0, params) * i;
 
 						cout << "BOUND LOWER IS " << to_out_string(lbounds[currDimIdx],4) << endl;
 
@@ -3310,8 +3346,8 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 							lbounds[currDimIdx] = 0.0;
 						}
 
-						stepUp[currDimIdx] = boundaries[depth].incrementUpper(x0);
-						stepDown[currDimIdx] =  boundaries[depth].incrementLower(x0);
+						stepUp[currDimIdx] = boundaries[depth].incrementUpper(x0, params);
+						stepDown[currDimIdx] =  boundaries[depth].incrementLower(x0, params);
 
 						// Propagate these to lower precisions
 #if (MAX_PRECISION_LEVEL > 1)
@@ -3527,29 +3563,25 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 		for(int i = 0; i < DIM; i++)
 		{
 			// TODO: Verify the use of +1 here. It makes sense because dim is total number and vars is index
-
+			// This variable is outside the current boundary set
 			if(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
 			{
-				if(stages[currStage].vars[i] == boundaries[currBSet].dim + dimCount)
-				{
-					NactiveBSETS++;
-					pBset = currBSet;
-				}
-
+				// Move forward untill we are in a boundary set that is used
 				while(stages[currStage].vars[i] >= boundaries[currBSet].dim + dimCount)
 				{
 					dimCount += boundaries[currBSet].dim;
 					currBSet++;
 				}
-				
+
+				// Mark that it's used
+				NactiveBSETS++;
+				pBset = currBSet;
 			}
-			else
+			else if(currBSet != pBset)
 			{
-				if(currBSet != pBset)
-				{
-					NactiveBSETS++;
-					pBset = currBSet;
-				}
+				// This covers the case that the first boundarySet is used
+				NactiveBSETS++;
+				pBset = currBSet;
 			}
 			
 		}
@@ -4265,7 +4297,7 @@ int main(int argc, char **argv)
     outfile.close();
 
 	nThreads = get_nprocs();
-	nThreads = 1;
+	nThreads = 6;
 
 #ifdef OPT_PROGRESS
 	nThreads = 1;
