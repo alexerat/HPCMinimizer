@@ -3055,14 +3055,14 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 #endif /*!SILENT*/
 
 		res->f = depthRes[index];
-		for(int k = 0; k < DIM; k++)
+		for(int k = 0; k < (currStage == (NSTAGES - 1) ? FULLDIM : DIM); k++)
 		{
 			res->X[k] = depthP[index][k];
 		}
 
 #ifndef SILENT
 		cout << "Got it, it was: " << to_out_string(res->f,4) << " at: ";
-		for(int k = 0; k < DIM; k++)
+		for(int k = 0; k < (currStage == (NSTAGES - 1) ? FULLDIM : DIM); k++)
 		{
 			cout << to_out_string(res->X[k],4) << ", ";
 		}
@@ -3205,13 +3205,23 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 			pBest[NactiveBSETS - 1][0] = bestRes->f;
 			for(int k = 0; k < DIM; k++)
 			{
-				pPoint[NactiveBSETS - 1][0][k] = bestRes->X[k];
+				// The final stage we will copy across the whole point
+				if(currStage != NSTAGES - 1)
+					pPoint[NactiveBSETS - 1][0][k] = bestRes->X[k];
+
 				// Copy current x onto the full x
 				x0[stages[stageNum].vars[k]] = bestRes->X[k];
 
 #ifdef VERBOSE
 				cout << "x0[" << stages[stageNum].vars[k] << "]=" << x0[stages[stageNum].vars[k]] << endl;
 #endif /*VERBOSE*/
+			}
+
+			// The final stage carries the full previous best info
+			if(currStage == NSTAGES - 1)
+			{
+				for(int k = 0; k < FULLDIM; k++)
+					pPoint[NactiveBSETS - 1][0][k] = x0[k];
 			}
 
 			// Now do the next stages if present.
@@ -3308,7 +3318,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 					for(int j = 0; j < mult; j++)
 					{
 						levelBest[bState[activeCount]*mult + j] = nextLevelBest[j];
-						for(int k = 0; k < DIM; k++)
+						for(int k = 0; k < (currStage == (NSTAGES - 1) ? FULLDIM : DIM); k++)
 						{
 							levelPoint[bState[activeCount]*mult + j][k] = nextLevelPoint[j][k];
 						}
@@ -3385,7 +3395,7 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 						for(int j = 0; j < mult; j++)
 						{
 							levelBest[i*mult + j] = nextLevelBest[j];
-							for(int k = 0; k < DIM; k++)
+							for(int k = 0; k < (currStage == (NSTAGES - 1) ? FULLDIM : DIM); k++)
 							{
 								levelPoint[i*mult + j][k] = nextLevelPoint[j][k];
 							}
@@ -3744,7 +3754,7 @@ void stageIteration(int stageNum, int dimCount, int* bState, MAX_PRECISION_T*** 
 
 	    for(int k = 0; k < FULLDIM; k++)
 	    {
-	        outfile << "," << to_out_string(x0[k],SIGDIG);
+	        outfile << "," << to_out_string(pPoints[NSTAGES-1][BSETS - 1][0][k],SIGDIG);
 	    }
 
 	    outfile << endl;
@@ -4151,7 +4161,10 @@ int main(int argc, char **argv)
 			pPoints[i][j] = new MAX_PRECISION_T*[stepCount];
 			for(int k = 0; k < stepCount; k++)
 			{
-				pPoints[i][j][k] = new MAX_PRECISION_T[stages[i].dim];
+				if(i == NSTAGES-1)
+					pPoints[i][j][k] = new MAX_PRECISION_T[FULLDIM];
+				else
+					pPoints[i][j][k] = new MAX_PRECISION_T[stages[i].dim];
 			}
 			stepCount *= (boundaries[j].steps + 1);
 		}
