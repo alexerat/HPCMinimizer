@@ -932,14 +932,18 @@ lbfgs_exit:
             // TODO: Make sure this is back in.
             if(x[i] < lbounds[i])
             {
+#ifdef VERBOSE
                 cout << "Final boundary exceeded." << endl;
+#endif /*VERBOSE*/
 
                 x[i] = lbounds[i];
                 recomp = true;
             }
             else if(ubounds[i] < x[i])
             {
+#ifdef VERBOSE
                 cout << "Final boundary exceeded." << endl;
+#endif /*VERBOSE*/
 
                 x[i] = ubounds[i];
                 recomp = true;

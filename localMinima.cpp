@@ -133,6 +133,8 @@ MAX_PRECISION_T* stepDown = NULL;
 
 // The set of full variables, we copy results onto this and use this as the initial positions.
 MAX_PRECISION_T* x0;
+// Holds the previous best x0
+MAX_PRECISION_T* px0;
 // The current stage so the worker threads know which cost function to use
 int currStage=0;
 // The current working dimension
@@ -1003,9 +1005,6 @@ protected:
 
 	const floatval_t EPS = get_epsilon<floatval_t>();
 
-	// Thecurrent DIM memory allocation
-	int pDIM = 0;
-
 	lbfgs_parameter_t<floatval_t> param;
 
 public:
@@ -1051,6 +1050,7 @@ public:
 	 */
     virtual ~objective_function()
     {
+		cout << "Should be destroying the objective function..." << endl;
 		// CHECK: Fix all this, mainly on the ALGO setup, multiple stages may make use of them
         if (m_x != NULL)
         {
@@ -1110,73 +1110,68 @@ public:
 
 		// TODO: Instead of constant re-allocation, just set at FULLDIM size
 		// If the dimensions have changed or the optimisation algorithm changed, reallocate the memory for the new DIM
-		if(DIM != pDIM)
+		if(m_x != NULL)
 		{
-			if(m_x != NULL)
+			delete[] m_x;
+			delete[] localLower;
+			delete[] localUpper;
+			delete[] localBStepDown;
+			delete[] localBStepUp;
+
+			if(PALGO == 0)
 			{
-				delete[] m_x;
-				delete[] localLower;
-				delete[] localUpper;
-				delete[] localBStepDown;
-				delete[] localBStepUp;
-
-				if(PALGO == 0)
-				{
-					lbfgs_dest<floatval_t>(&wspace);
-				}
-				else if(PALGO == 1)
-				{
-					delete[] ini_upper;
-					delete[] ini_lower;
-					delete[] c;
-					delete[] d;
-					delete[] oldarray;
-					delete[] newarray;
-					delete[] swaparray;
-					delete[] tmp;
-					delete[] best;
-					delete[] bestit;
-					delete[] energy;
-				}
+				lbfgs_dest<floatval_t>(&wspace);
 			}
-
-			m_x = new floatval_t[DIM];
-		
-			localLower = new floatval_t[DIM];
-			localUpper = new floatval_t[DIM];
-			localBStepDown = new floatval_t[DIM];
-			localBStepUp = new floatval_t[DIM];
-
-			if (m_x == NULL || localLower == NULL || localUpper == NULL || localBStepDown == NULL || localBStepUp == NULL)
+			else if(PALGO == 1)
 			{
-				cout << "ERROR: Failed to allocate a memory block for variables." << endl;
-				return -1;
+				delete[] ini_upper;
+				delete[] ini_lower;
+				delete[] c;
+				delete[] d;
+				delete[] oldarray;
+				delete[] newarray;
+				delete[] swaparray;
+				delete[] tmp;
+				delete[] best;
+				delete[] bestit;
+				delete[] energy;
 			}
-
-			
-			// TODO: Tidy this up. This gets muddled in subsequent stages
-			param.m = MEMSIZE;
-			param.conv_epsilon = get_conv_epsilon<floatval_t>();
-			param.eps = EPS;
-			param.past = 0;
-			param.delta = get_delta<floatval_t>();
-			param.max_iterations = MAXIT;
-			param.linesearch = LBFGS_LINESEARCH_MORETHUENTE;
-			param.max_linesearch = MAXLINE;
-			param.min_step = get_min_step<floatval_t>();
-			param.max_step = get_max_step<floatval_t>();
-			param.ftol = 1e8*EPS;
-			param.wolfe = 0.9;
-			param.gtol = 0.9;
-			param.xtol = EPS;
-			param.orthantwise_c = 0.0;
-			param.orthantwise_start = 0;
-			param.orthantwise_end = -1;
-			param.gstep = get_gstep<floatval_t>();
-
-
-			pDIM = DIM;
 		}
+
+		m_x = new floatval_t[DIM];
+	
+		localLower = new floatval_t[DIM];
+		localUpper = new floatval_t[DIM];
+		localBStepDown = new floatval_t[DIM];
+		localBStepUp = new floatval_t[DIM];
+
+		if (m_x == NULL || localLower == NULL || localUpper == NULL || localBStepDown == NULL || localBStepUp == NULL)
+		{
+			cout << "ERROR: Failed to allocate a memory block for variables." << endl;
+			return -1;
+		}
+
+		
+		// TODO: Tidy this up. This gets muddled in subsequent stages
+		param.m = MEMSIZE;
+		param.conv_epsilon = get_conv_epsilon<floatval_t>();
+		param.eps = EPS;
+		param.past = 0;
+		param.delta = get_delta<floatval_t>();
+		param.max_iterations = MAXIT;
+		param.linesearch = LBFGS_LINESEARCH_MORETHUENTE;
+		param.max_linesearch = MAXLINE;
+		param.min_step = get_min_step<floatval_t>();
+		param.max_step = get_max_step<floatval_t>();
+		param.ftol = 1e8*EPS;
+		param.wolfe = 0.9;
+		param.gtol = 0.9;
+		param.xtol = EPS;
+		param.orthantwise_c = 0.0;
+		param.orthantwise_start = 0;
+		param.orthantwise_end = -1;
+		param.gstep = get_gstep<floatval_t>();
+
 
 		// Set the algorithm variables
 		if(ALGO == 0)
@@ -1867,7 +1862,7 @@ int handleResult(int threadNum, objective_function<floatval_t>* obj, floatval_t*
 			results[threadNum].X[i] = locResults.X[i];
 		}
 		results[threadNum].f = locResults.f;
-		cout << "new best: " << to_out_string(locResults.f, 4) << endl;
+		//cout << "new best: " << to_out_string(locResults.f, 4) << endl;
 	}
 
 	delete[] bestCastX;
@@ -2067,12 +2062,10 @@ void *run_multi(void *threadarg)
 		{
 			if(pStage > 0 && stages[pStage].extFunc)
 			{
-				cout << "Uninitializing the external function workspace for stage: " << pStage << endl;
-				(reinterpret_cast<func_dest_t<double>>(getDestFunc<double>(currStage)))(func_wspace_dbl);
+				(reinterpret_cast<func_dest_t<double>>(getDestFunc<double>(pStage)))(func_wspace_dbl);
 			}
 			if(stages[currStage].extFunc)
 			{
-				cout << "Initializing the external function workspace for stage: " << currStage << endl;
 				func_wspace_dbl = (reinterpret_cast<func_init_t<double>>(getInitFunc<double>(currStage)))(&ret);
 			}
 
@@ -2559,20 +2552,23 @@ void *run_multi(void *threadarg)
 	}
 
 	// TODO: Destroy this at the very end too
-	if(stages[currStage].extFunc)
+	cout << "got to destruction with pStage: " << pStage << endl;
+	if(stages[pStage].extFunc)
 	{
-		(reinterpret_cast<func_dest_t<double>>(getDestFunc<double>(currStage)))(func_wspace_dbl);
+		cout << "should be destroying ode space here......" << endl;
+		(reinterpret_cast<func_dest_t<double>>(getDestFunc<double>(pStage)))(func_wspace_dbl);
 #if (MAX_PRECISION_LEVEL > 1)
-		(reinterpret_cast<func_dest_t<__float128>>(getDestFunc<double>(currStage)))(func_wspace_dd);
+		(reinterpret_cast<func_dest_t<__float128>>(getDestFunc<__float128>(pStage)))(func_wspace_dd);
 #if (MAX_PRECISION_LEVEL > 2)
-		(reinterpret_cast<func_dest_t<qd_real>>(getDestFunc<double>(currStage)))(func_wspace_qd);
+		(reinterpret_cast<func_dest_t<qd_real>>(getDestFunc<qd_real>(pStage)))(func_wspace_qd);
 #if (MAX_PRECISION_LEVEL > 3)
-		(reinterpret_cast<func_dest_t<mp_real>>(getDestFunc<double>(currStage)))(func_wspace_mp);
+		(reinterpret_cast<func_dest_t<mp_real>>(getDestFunc<mp_real>(pStage)))(func_wspace_mp);
 #endif
 #endif
 #endif
 	}
 
+	cout << "Destroying results and objective function ......." << endl;
 	delete[] locResults_dbl.X;
 	delete obj_dbl;
 
@@ -2960,6 +2956,12 @@ void runExperiment(OptimizeResult<MAX_PRECISION_T>* prevBest)
 			{
 				bestX[k] = prevBest->X[k];
 			}
+
+			if(currStage == NSTAGES - 1)
+			for(int k = 0; k < FULLDIM; k++)
+			{
+				x0[k] = px0[k];
+			}
 		}
 	}
 
@@ -3055,14 +3057,21 @@ void getAdjacentRes(int depth, int* bState, MAX_PRECISION_T** pBest, MAX_PRECISI
 #endif /*!SILENT*/
 
 		res->f = depthRes[index];
-		for(int k = 0; k < (currStage == (NSTAGES - 1) ? FULLDIM : DIM); k++)
+		for(int k = 0; k < DIM; k++)
 		{
-			res->X[k] = depthP[index][k];
+			res->X[k] = depthP[index][stages[currStage].vars[k]];
+		}
+		if(currStage == NSTAGES - 1)
+		{
+			for(int k = 0; k < FULLDIM; k++)
+			{
+				px0[k] = depthP[index][k];
+			}
 		}
 
 #ifndef SILENT
 		cout << "Got it, it was: " << to_out_string(res->f,4) << " at: ";
-		for(int k = 0; k < (currStage == (NSTAGES - 1) ? FULLDIM : DIM); k++)
+		for(int k = 0; k < DIM; k++)
 		{
 			cout << to_out_string(res->X[k],4) << ", ";
 		}
@@ -3110,6 +3119,10 @@ int boundaryRecursion(int depth, int dimCount, int currDimIdx, int* bState, MAX_
 
 			OptimizeResult<MAX_PRECISION_T> res;
 			res.X = new MAX_PRECISION_T[DIM];
+
+			for(int k = 0; k < DIM; k++)
+				res.X[k] = 0.0;
+
 			MAX_PRECISION_T currBest = 1e10;
 			MAX_PRECISION_T* point = new MAX_PRECISION_T[DIM];
 
@@ -3992,31 +4005,23 @@ int main(int argc, char **argv)
 #ifdef USE_MPI
 	int ierr;
 #endif
-	/* 
+	/*
 	int ret;
-	void* func_wspace = func_init<MAX_PRECISION_T>(&ret);
+	void* func_wspace = ode_init<MAX_PRECISION_T>(&ret);
 
-	int ode_dim = 8;
-	int zVec[8] = {37, 55, -11, 71, 80, 65, -43, 98};
-  	MAX_PRECISION_T tVec[8] = {0.0, 0.15625, 0.3125, 0.46875, 0.625, 0.78125, 0.9375, 1.09375};
+	int ode_dim = 11;
+	MAX_PRECISION_T zVec[11] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  	MAX_PRECISION_T tVec[10] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
 	MAX_PRECISION_T rep_time = 0.0;
 	MAX_PRECISION_T ode_phi = 0.0;
+	MAX_PRECISION_T testParams[1] = {0.0};
 
-	ret = ode_run<MAX_PRECISION_T>(zVec,tVec,rep_time,ode_phi,ode_dim,((ode_workspace_t<MAX_PRECISION_T>*)func_wspace));
-
-
-	cout << "Phase1 is: " << to_out_string(2*abs((((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[12])),35) << endl;
-	cout << "Phase2 is: " << to_out_string(2*abs((((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[13])),35) << endl;
-	cout << "Position is: " << to_out_string(((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[4],35) << endl;
-
-	MAX_PRECISION_T pi_2 = con_fun<MAX_PRECISION_T>("1.5707963267948966192313216916397514");
-	MAX_PRECISION_T cost = (MAX_PRECISION_T(1.0)/MAX_PRECISION_T(3.0))*pow(abs(((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[12]) - 1.0,2) + __float128(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[4]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[5]-initDisp,2)) + MAX_PRECISION_T(0.2)*(pow(((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[6]+initDisp,2) + pow(((ode_workspace_t<MAX_PRECISION_T>*)func_wspace)->vec[7]-initDisp,2));
-
+	MAX_PRECISION_T ode_cost = ode_costFunc<MAX_PRECISION_T>(tVec,zVec,11,((ode_workspace_t<MAX_PRECISION_T>*)func_wspace),testParams);
 
 	ode_dest<MAX_PRECISION_T>(func_wspace);
 
-	cout << "Cost is: " << to_out_string(cost,35) << endl;
+	cout << "Cost is: " << to_out_string(ode_cost,35) << endl;
 
 	return 0;
 	*/
@@ -4114,6 +4119,13 @@ int main(int argc, char **argv)
     parameters = new parameter_t<MAX_PRECISION_T>[NPARAMS];
 
 	x0 = new MAX_PRECISION_T[FULLDIM];
+	for(int k = 0; k < FULLDIM; k++)
+		x0[k]=0.0;
+
+	px0 = new MAX_PRECISION_T[FULLDIM];
+	for(int k = 0; k < FULLDIM; k++)
+		px0[k]=0.0;
+
     boundaries = new boundary_t<MAX_PRECISION_T>[FULLBSETS];
 	stages = new stage_t<MAX_PRECISION_T>[NSTAGES];
 
@@ -4158,13 +4170,23 @@ int main(int argc, char **argv)
 		for(int j = stages[i].bSets - 1; j >= 0; j--)
 		{
 			pBests[i][j] = new MAX_PRECISION_T[stepCount];
+
 			pPoints[i][j] = new MAX_PRECISION_T*[stepCount];
 			for(int k = 0; k < stepCount; k++)
 			{
+				pBests[i][j][k] = 1e10;
 				if(i == NSTAGES-1)
+				{
 					pPoints[i][j][k] = new MAX_PRECISION_T[FULLDIM];
+					for(int l = 0; l < FULLDIM; l++)
+						pPoints[i][j][k][l] = 0.0;
+				}
 				else
+				{
 					pPoints[i][j][k] = new MAX_PRECISION_T[stages[i].dim];
+					for(int l = 0; l < stages[i].dim; l++)
+						pPoints[i][j][k][l] = 0.0;
+				}
 			}
 			stepCount *= (boundaries[j].steps + 1);
 		}
@@ -4310,7 +4332,6 @@ int main(int argc, char **argv)
     outfile.close();
 
 	nThreads = get_nprocs();
-	nThreads = 6;
 
 #ifdef OPT_PROGRESS
 	nThreads = 1;
@@ -4435,6 +4456,8 @@ int main(int argc, char **argv)
 	delete[] pPoints;
 	delete[] bState;
 
+	if(NPARAMS > 0)
+		delete[] paramState;
 	delete[] params;
 	delete[] parameters;
 	delete[] boundaries;
