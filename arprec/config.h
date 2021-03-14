@@ -21,7 +21,7 @@
 #define ARPREC_INLINE 1
 
 /* Define to 1 to use the QD library. */
-/* #undef ARPREC_QD */
+#define ARPREC_QD 1
 
 /* Set to 1 if using VisualAge C++ compiler for __fmadd builtin. */
 /* #undef ARPREC_VACPP_BUILTINS_H */
@@ -58,7 +58,7 @@
 #define HAVE_DRAND48 1
 
 /* Define to 1 if Fortran interface is to be compiled. */
-#define HAVE_FORTRAN 1
+#define HAVE_FORTRAN 0
 
 /* Define to 1 if you have the <fpu_control.h> header file. */
 #define HAVE_FPU_CONTROL_H 1

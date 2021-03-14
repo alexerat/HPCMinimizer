@@ -134,6 +134,8 @@ struct QD_API qd_real {
 
   static qd_real debug_rand();
 
+  explicit operator double() const { return x[0]; }
+  explicit operator dd_real() const { return dd_real(x[0],x[1]); }
 };
 
 namespace std {

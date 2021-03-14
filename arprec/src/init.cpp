@@ -13,7 +13,11 @@
 #include <arprec/mp_real.h>
 #include <arprec/mp_complex.h>
 #include <arprec/mp_int.h>
+#ifdef ARPREC_QD
+#include <qd/fpu.h>
+#else
 #include <arprec/fpu.h>
+#endif
 
 #if !(ARPREC_INLINE)
 #include <arprec/mp_inline.h>
@@ -84,7 +88,7 @@ static void init_constants();
 static void init_eps();
 
 void mp::mp_init(int new_digits, const char *filename, bool compute_consts) {
-  fpu_fix_start(&mp::old_cw);
+  //fpu_fix_start(&mp::old_cw);
 
   const double digits_per_word = mp::mpnbt * log(2.0)/log(10.0);
 
