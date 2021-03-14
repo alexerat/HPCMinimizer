@@ -15,3 +15,6 @@ which outputs the minimisation results into a several CSV files.
 The cost function can also be a numerical ODE, where an example of this is used in the mathematica template.
 The optimisation can additionally be conducted over a series of stages, using different cost functions.
 Using the minima from previous stages as the basis for searching for new minima.
+
+
+The thread handling and data management is conducted by the code in the localMinima.cpp file.
