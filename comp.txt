@@ -1,0 +1,103 @@
+rm -f *.o *~
+make CC=g++ ARCHFLAGS= OPTFLAG= PROFFLAG= -C qd/src/ debug
+make[1]: Entering directory '/home/alex/minimizer_code/qd/src'
+rm -f *.o *~
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include util.cpp -o util.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include dd_real.cpp -o dd_real.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include bits.cpp -o bits.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include qd_const.cpp -o qd_const.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include qd_real.cpp -o qd_real.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include c_dd.cpp -o c_dd.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include fpu.cpp -o fpu.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include dd_const.cpp -o dd_const.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include c_qd.cpp -o c_qd.o
+make[1]: Leaving directory '/home/alex/minimizer_code/qd/src'
+make CC=g++ ARCHFLAGS= OPTFLAG= PROFFLAG= -C arprec/src/ debug
+make[1]: Entering directory '/home/alex/minimizer_code/arprec/src'
+rm -f *.o *~
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include out.cpp -o out.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include int_div.cpp -o int_div.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fftcr.cpp -o fftcr.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include divrem.cpp -o divrem.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include exp.cpp -o exp.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include gamma.cpp -o gamma.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include agmx.cpp -o agmx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include angx.cpp -o angx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include pix.cpp -o pix.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include erfc.cpp -o erfc.o
+erfc.cpp: In function ‘mp_real erfc(const mp_real&)’:
+erfc.cpp:43:34: warning: narrowing conversion of ‘(4 - mp::n_words)’ from ‘int’ to ‘double’ inside { } [-Wnarrowing]
+     static double eps[8] = {8,1,4-mp::n_words,1,0,0,0,0};
+                                 ~^~~
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include div.cpp -o div.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include inpc.cpp -o inpc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include complex.cpp -o complex.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include write.cpp -o write.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include debug_routines.cpp -o debug_routines.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include sqx.cpp -o sqx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include dble.cpp -o dble.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include int.cpp -o int.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include sort.cpp -o sort.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include nrtx.cpp -o nrtx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include roun.cpp -o roun.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include eq.cpp -o eq.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include to_digits.cpp -o to_digits.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include rand.cpp -o rand.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include muld.cpp -o muld.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fftrc.cpp -o fftrc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include mulx.cpp -o mulx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include divd.cpp -o divd.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fmod.cpp -o fmod.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include ang.cpp -o ang.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include cssx.cpp -o cssx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include pi.cpp -o pi.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include infr.cpp -o infr.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include mul.cpp -o mul.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include sqrtx.cpp -o sqrtx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include sub.cpp -o sub.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include mulacc.cpp -o mulacc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include qd.cpp -o qd.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include init.cpp -o init.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include nint.cpp -o nint.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include norm.cpp -o norm.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include construct.cpp -o construct.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include cssh.cpp -o cssh.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fft1.cpp -o fft1.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include log.cpp -o log.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include lconv.cpp -o lconv.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include expx.cpp -o expx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fft2.cpp -o fft2.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fpu.cpp -o fpu.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include inc.cpp -o inc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include npwx.cpp -o npwx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include c_mp.cpp -o c_mp.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include dmc.cpp -o dmc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include fft3.cpp -o fft3.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include nrt.cpp -o nrt.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include mp_real.cpp -o mp_real.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include binary_io.cpp -o binary_io.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include erf.cpp -o erf.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include dexc.cpp -o dexc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include besselexp.cpp -o besselexp.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include outc.cpp -o outc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include cssn.cpp -o cssn.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include add.cpp -o add.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include small_inline.cpp -o small_inline.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include npwr.cpp -o npwr.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include sqrt.cpp -o sqrt.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include divx.cpp -o divx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include inix.cpp -o inix.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include outx.cpp -o outx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include dotd.cpp -o dotd.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include bessel.cpp -o bessel.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include cpr.cpp -o cpr.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include assign.cpp -o assign.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include logx.cpp -o logx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include read.cpp -o read.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include mdc.cpp -o mdc.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include cshx.cpp -o cshx.o
+g++ -c -O0 -g -DHAVE_CONFIG -std=c++11     -I../ -I../include -I../../qd/include array.cpp -o array.o
+make[1]: Leaving directory '/home/alex/minimizer_code/arprec/src'
+g++ -c -O0 -fno-exceptions -std=c++11 -g -Wall -pedantic -DVERBOSE      -I./qd/include -I./arprec/include lbfgs.cpp -o lbfgs.o
+Makefile:88: recipe for target 'lbfgs.o' failed
+make: *** [lbfgs.o] Interrupt

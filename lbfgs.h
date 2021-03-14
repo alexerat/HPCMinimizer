@@ -348,6 +348,11 @@ struct lbfgs_parameter_t {
      * The step size to use when calculating gradients.
      */
     floatval_t gstep;
+
+    /**
+     * If using an ODE cost function, this holds a reference to the memory used.
+     */
+    void* func_wspace;
 };
 
 /**
@@ -358,24 +363,32 @@ struct lbfgs_parameter_t {
  *  this function to evaluate the values of the objective function and its
  *  gradients, given current values of variables.
  *
- *  @param  instance    The user data sent for lbfgs() function by the client.
  *  @param  x           The current values of variables.
+ *  @param  x0          The values of x that are not being optimized currently.
  *  @param  params      The additional parameters provided to the function.
+ *  @param  precompute  The values using by the cost function that can be computed
+ *                      on each parameter iteration.
  *  @param  g           The gradient vector. The callback function must compute
  *                      the gradient values for the current variables.
  *  @param  n           The number of variables.
  *  @param  step        The current step of the line search routine.
+ *  @param  Xs          The pointer to memory used to store the stepped x positions 
+ *                      for calculating g.
+ *  @param  ode_wspace  The workspace used for the ODE, NULL if not using ODE optimisation.
  *  @retval floatval_t The value of the objective function for the current
  *                          variables.
  */
 template<typename floatval_t> 
 using lbfgs_evaluate_t = floatval_t (*)(
-    void *,
+	  const floatval_t *,
+    const floatval_t *,
     const floatval_t *,
     const floatval_t *,
     floatval_t *,
     const int,
-    const floatval_t
+    const floatval_t,
+    floatval_t *,
+    void *
     );
 
 /**
@@ -398,9 +411,9 @@ using lbfgs_evaluate_t = floatval_t (*)(
  *  @retval int         Zero to continue the optimization process. Returning a
  *                      non-zero value will cancel the optimization process.
  */
+// TODO: Move to a general code location
 template <typename floatval_t>
 using lbfgs_progress_t = int (*)(
-    void *,
     const floatval_t *,
     const floatval_t *,
     const floatval_t,
@@ -424,6 +437,9 @@ template <typename floatval_t>
 using line_search_proc_t = int (*)(
     int,
     floatval_t *,
+    const floatval_t *,
+    floatval_t *,
+    floatval_t *,
     floatval_t *,
     floatval_t *,
     floatval_t *,
@@ -435,7 +451,8 @@ using line_search_proc_t = int (*)(
     const floatval_t*,
     floatval_t *,
     callback_data_t<floatval_t> *,
-    const lbfgs_parameter_t<floatval_t> *
+    const lbfgs_parameter_t<floatval_t> *,
+    void *
     );
 
 template <typename floatval_t>
@@ -458,15 +475,17 @@ struct lbfgs_wspace_t {
       */
     line_search_proc_t<floatval_t> linesearch;
 
-    lbfgs_parameter_t<floatval_t> param;
+    lbfgs_parameter_t<floatval_t>* param;
 
     /**
       * The workspace memory.
       */
     floatval_t *xp;
+    floatval_t *xs;
     floatval_t *g, *gp, *pg;
     floatval_t *d, *w, *pf;
     iteration_data_t<floatval_t> *lm;
+    void* func_wspace;
     };
 
 
@@ -533,23 +552,22 @@ template <typename floatval_t>
 int lbfgs(
     int n,
     floatval_t *x,
+    floatval_t *x0,
     floatval_t *ptr_fx,
     floatval_t *lowerbounds,
     floatval_t *upperbounds,
     floatval_t *extparams,
+    floatval_t *precomps,
     lbfgs_evaluate_t<floatval_t> proc_evaluate,
     lbfgs_progress_t<floatval_t> proc_progress,
-    void *instance,
     lbfgs_wspace_t<floatval_t> *wspace
     );
-
-
 
 /**
  *  Initialize the workspace.
  */
 template <typename floatval_t>
-int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param);
+int lbfgs_init(int n, lbfgs_wspace_t<floatval_t> *wspace, lbfgs_parameter_t<floatval_t> *param, void* func_wspace);
 
 /**
  *  Delete the workspace.

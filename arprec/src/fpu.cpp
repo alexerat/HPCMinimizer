@@ -12,14 +12,17 @@
  */
 
 #include "config.h"
+#ifndef ARPREC_QD
+
 #include <arprec/fpu.h>
+
 
 #ifdef X86
 #ifdef  _WIN32
 #include <float.h>
 #else
 
-#ifdef HAVE_FPU_CONTROL
+#ifdef HAVE_FPU_CONTROL_H
 #include <fpu_control.h>
 #endif
 
@@ -107,3 +110,4 @@ void fpu_fix_end(unsigned int *old_cw) {
 
 }
  
+#endif
